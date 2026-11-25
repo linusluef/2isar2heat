@@ -117,6 +117,8 @@ button:focus-visible{outline:3px solid var(--signal);outline-offset:3px}
 #bHorn{right:112px;bottom:194px;width:58px;height:58px;font-size:12px}
 #bDrift{right:178px;bottom:194px;width:58px;height:58px;font-size:12px}
 #bNitro{right:244px;bottom:194px;width:58px;height:58px;font-size:12px;border-color:rgba(127,209,255,.8)}
+#bJob{right:0;bottom:262px;width:236px;height:46px;border-radius:12px;font-size:13px;letter-spacing:.06em;border-color:rgba(61,220,132,.8);color:#bff5d6}
+#bJob.on{border-color:rgba(255,65,54,.85);color:#ffd2ce}
 .top{position:absolute;right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;gap:8px;pointer-events:auto}
 .ico{min-width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--glass);display:flex;align-items:center;justify-content:center;gap:5px;padding:0 6px;font-weight:700;font-size:17px}
 .ico svg{width:22px;height:22px;fill:none;stroke:var(--paper);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -307,6 +309,7 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
     <button class="pad" id="bHorn" type="button">Hupe</button>
     <button class="pad" id="bDrift" type="button">Drift</button>
     <button class="pad" id="bNitro" type="button" hidden>Nitro</button>
+    <button class="pad" id="bJob" type="button" hidden>Schicht starten</button>
     <div id="pedals">
       <div class="pedal" id="pBrake">Bremse<small>halten = zurück</small></div>
       <div class="pedal" id="pGas">Gas</div>

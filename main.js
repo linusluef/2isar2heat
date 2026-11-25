@@ -201,6 +201,8 @@ function updateHUD(){
   // pads
   setHidden('footPads',!!c);setHidden('carPads',!c);
   if(!c){const fl=P.weapon===0?'Schlag':P.weapon===4?'Werfen':'Feuer';setTxt('bFire',fl);const near=!!S.nearestCarFor(P.x,P.y,2.2);if(cache.ed!==!near){cache.ed=!near;$('bEnter').classList.toggle('dim',!near)}}
+  if(c){const j=S.jobFor(c),on=S.onShift(),show=!!j&&(on||!S.mission.active);setHidden('bJob',!show);if(show){setTxt('bJob',on?'■ Schicht beenden':'▶ '+j.title+' starten');if(cache.jobOn!==on){cache.jobOn=on;$('bJob').classList.toggle('on',on)}}}
+  if(!c)setHidden('bJob',true);
   else if(c.t.plane){setHidden('bNitro',true);setHidden('bDrift',true)}   // aircraft: height is on the joystick
   else{setHidden('bNitro',!(c.up.nitro>0));setHidden('bDrift',false);setTxt('bNitro','Nitro');setTxt('bDrift','Drift')}
   // online chip
@@ -345,6 +347,7 @@ function bindAll(){
   bindPad('bAlt',()=>{inp.altQ=true});
   bindPad('bHorn',()=>{inp.fire=true},()=>{inp.fire=false});
   bindPad('bDrift',()=>{inp.hb=true},()=>{inp.hb=false});
+  bindPad('bJob',()=>{S.toggleJob()});
   bindPad('bNitro',()=>{inp.nitroQ=true;inp.up=true},()=>{inp.up=false});
 }
 $('bPause').addEventListener('click',()=>setPause(true));
@@ -365,7 +368,7 @@ document.querySelectorAll('[data-set]').forEach(b=>b.addEventListener('click',()
 syncSettingButtons();
 const nameIn=$('pname');nameIn.value=IH.settings.name;nameIn.addEventListener('input',()=>{IH.settings.name=nameIn.value.slice(0,16);saveSettings();if(NET&&NET.enabled)NET.name=IH.settings.name.trim()||'Gast'});
 nameIn.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')nameIn.blur()});
-window.addEventListener('keydown',e=>{if(!inp)return;if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;if(mapOpenNow()){if(e.code==='Escape'||e.code==='KeyK')closeMap();return}if(!$('shop').hidden||!$('start').hidden||!$('prop').hidden)return;if(e.code==='KeyK'){openMap();return}inp.kb[e.code]=true;if(e.code==='KeyE'||e.code==='Enter')inp.enterQ=true;if(e.code==='KeyQ')inp.altQ=true;if(e.code==='KeyN')inp.nitroQ=true;if(e.code==='KeyC')toggleCam();if(e.code==='KeyP'||e.code==='Escape')setPause(!G.paused);if(e.code==='Space'&&P.inCar)inp.fire=true;if(e.code==='KeyT'&&NET.enabled)toggleChat();if(/^Digit[1-8]$/.test(e.code)&&chatOpen){NET.chat(+e.code.slice(5)-1);toggleChat(false)}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
+window.addEventListener('keydown',e=>{if(!inp)return;if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;if(mapOpenNow()){if(e.code==='Escape'||e.code==='KeyK')closeMap();return}if(!$('shop').hidden||!$('start').hidden||!$('prop').hidden)return;if(e.code==='KeyK'){openMap();return}inp.kb[e.code]=true;if(e.code==='KeyE'||e.code==='Enter')inp.enterQ=true;if(e.code==='KeyQ')inp.altQ=true;if(e.code==='KeyJ'&&P.inCar)S.toggleJob();if(e.code==='KeyN')inp.nitroQ=true;if(e.code==='KeyC')toggleCam();if(e.code==='KeyP'||e.code==='Escape')setPause(!G.paused);if(e.code==='Space'&&P.inCar)inp.fire=true;if(e.code==='KeyT'&&NET.enabled)toggleChat();if(/^Digit[1-8]$/.test(e.code)&&chatOpen){NET.chat(+e.code.slice(5)-1);toggleChat(false)}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
 window.addEventListener('keyup',e=>{if(!inp)return;inp.kb[e.code]=false;if(e.code==='Space')inp.fire=false});
 // iPad: no pinch zoom, no double-tap zoom, no rubber-band scrolling outside menus
 for(const ev of['gesturestart','gesturechange','gestureend'])document.addEventListener(ev,e=>e.preventDefault());
@@ -388,6 +391,7 @@ function pollGamepad(){
   const pressed=i=>{const v=b(i),was=gpPrev[i];gpPrev[i]=v;return v&&!was};
   let lx=gp.axes[0]||0,ly=gp.axes[1]||0;if(b(14))lx=-1;if(b(15))lx=1;if(b(12))ly=-1;if(b(13))ly=1;
   const mag=Math.min(1,hypot(lx,ly));const any=mag>0.18||gp.buttons.some(x=>x&&x.pressed);
+  if(pressed(11)&&P.inCar&&G.state==='play')S.toggleJob();
   if(pressed(9)){if(!$('start').hidden)$('btnCont').hidden?$('btnNew').click():$('btnCont').click();else if(!$('shop').hidden)$('shopClose').click();else setPause(!G.paused)}
   if(!any&&!gpActive)return;gpActive=any;
   if(G.paused||G.state==='menu')return;

@@ -119,10 +119,12 @@ Players log in with any **name and password** (at least 6 characters). Using an 
   | Supersportwagen | Fastest car in the city, rare |
   | MVG-Bus | Long and slow, wide turns |
   | Bierlaster | Heavy truck |
-  | Krankenwagen, Feuerwehr | Sirens, start their side jobs |
+  | Krankenwagen, Feuerwehr | Sirens, side jobs by button |
   | Polizei-SUV | Used by the police from 3 stars |
 
-- **Side jobs:** get into one of these vehicles and the job starts. Getting out ends the shift.
+- **Side jobs:** these vehicles can simply be driven (or stolen) like any other. To work, tap the green **▶ … starten** button above the driving buttons. It turns into **■ Schicht beenden**, which ends the shift and shows how many jobs you did. Getting out also ends the shift.
+  - **Keyboard:** J. **Controller:** right stick click (R3).
+  - The button is hidden while a story mission is running.
 
   | Vehicle | Where to find it | Job |
   |---|---|---|
@@ -145,6 +147,10 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 
 - **Witnesses:** you only get a wanted level if someone sees the crime. Police officers see about 45 m, passers-by about 22 m, and both need a clear line of sight. A passer-by first has to call the police, which takes a few seconds.
 - **Slower stars:** the wanted level rises gradually. Even a long rampage takes well over a minute to reach 5 stars, and fewer police cars chase you at once.
+- **Getting away:**
+  - Patrol cars are no faster than an ordinary saloon. At low wanted levels they chase more cautiously (80 % of their top speed at 1 star, rising to full speed at 4–5 stars), so a sports car, a motorbike or clever driving gets you away.
+  - Officers only know where you are while one of them can see you. Once you are out of sight they drive to where you were last seen and then search the streets around it.
+  - Stay unseen long enough and you lose a star (about 9 seconds at 1 star, 16 seconds at 5 stars).
 - **Health:** you take less damage than before. Out of combat, your health slowly recovers on its own up to 60.
 - **Bodies:** people now have health. A light hit knocks them down and they get up again; a deadly one leaves them lying there. Bodies disappear after a while, sooner once you are out of sight, so the police can't pile up.
 
@@ -219,7 +225,13 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - **Every song is new:** each one gets its own key, tempo, chord progression, melody and arrangement, with intros, breaks, fills and endings. Each station rotates through its three styles.
   - **Real-sounding instruments:** plucked guitar, zither and double bass, piano, electric piano, supersaw synths, vocal pads, trumpets, tuba, accordion, clarinet, vibraphone and a full drum kit. They play in stereo with reverb and echo, dance tracks pump with the kick, and lo-fi has vinyl crackle and tape wobble.
   - **Song info:** the radio bar shows the style, artist and title. All artists and titles are made up.
-  - **Presenter:** between songs the presenter names the last song and sometimes adds a traffic or weather note or announces what comes next, using the iPad's German voice.
+  - **Presenter:**
+    - The presenter speaks in German with the iPad's voice, and the music dips while they talk. What they say also appears in the radio bar.
+    - When you get in or switch stations, you hear the station name and the current song.
+    - Between songs there is always a short segment: the last song, a station slogan, then traffic, weather, the time or local news, and the next song.
+    - When you are wanted, the news reports the manhunt and names your vehicle.
+    - Songs sometimes get a short intro too.
+    - On iPhone and iPad the voice only starts after you have touched the screen once, which happens anyway when you start the game.
 
   The music is generated live by the game, so there are no recordings or licences. Each station keeps playing in the background, so when you switch back you land in the middle of a song.
   - **Keyboard:** , and . switch stations. **Controller:** d-pad left / right.
@@ -253,8 +265,9 @@ These work in the global lobby with other players, and alone (offline or nobody 
 ## Graphics and performance
 
 - **Smooth while flying:** the ground textures of the city are reused from a fixed pool instead of being created anew as you fly, so memory stays flat and the iPad no longer runs out of it. At height the game draws the whole city from one detailed overview map, so nothing loads in patches and no buildings look see-through.
-- **Far view:** fog and view distance grow with altitude, and shadows update every second frame. The picture quality stays the same.
-- **Walking:** people walk with bending knees, planted feet and natural arm swing, and their steps match their speed.
+- **Far view:** fog and view distance grow with altitude. The picture quality stays the same.
+- **Walking and running:** people walk with bending knees and elbows, planted feet and a natural arm swing, and their steps match their speed. When running they lean into it from the hips, and their legs swing out in front of the body, not behind it.
+- **Shadows:** shadows are drawn every frame and locked to the shadow map's pixel grid, so shadows of fast cars and aircraft follow them smoothly without flickering.
 
 ## Controls
 
@@ -266,6 +279,7 @@ These work in the global lobby with other players, and alone (offline or nobody 
 | Fire / horn / siren / water | Fire button / horn button | X | Space |
 | Sprint (on foot) | Push the joystick fully | B | Shift |
 | Get in or out | Button | A | E |
+| Start / end a side job (taxi, ambulance, fire engine, bus, beer truck) | Green button above the driving buttons | Right stick click | J |
 | Drift / nitro | Buttons | B / RB | Shift / N |
 | Switch weapon | Button | Y | Q |
 | Camera | Camera icon | LB | C |

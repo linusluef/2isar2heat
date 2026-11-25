@@ -22,7 +22,7 @@ const CT={
   sport:{len:4.5,wid:1.92,ht:1.2,max:43,acc:20,turn:2.8,hp:85,mass:1.1,name:'Sportwagen'},
   taxi:{len:4.8,wid:1.86,ht:1.5,max:32,acc:14,turn:2.3,hp:110,mass:1.25,name:'Taxi'},
   transporter:{len:5.6,wid:2.05,ht:2.4,max:26,acc:10,turn:1.9,hp:150,mass:1.8,name:'Transporter'},
-  polizei:{len:4.8,wid:1.86,ht:1.5,max:38,acc:18,turn:2.6,hp:140,mass:1.35,name:'Streifenwagen'},
+  polizei:{len:4.8,wid:1.86,ht:1.5,max:33,acc:15.5,turn:2.6,hp:140,mass:1.35,name:'Streifenwagen'},
   motorrad:{len:2.1,wid:0.8,ht:1.25,max:38,acc:22,turn:3.3,hp:45,mass:0.35,name:'Motorrad',bike:true},
   suv:{len:4.9,wid:2.0,ht:1.8,max:32,acc:14,turn:2.2,hp:170,mass:1.8,name:'SUV',offroad:0.85},
   super:{len:4.6,wid:2.0,ht:1.12,max:52,acc:27,turn:3.0,hp:80,mass:1.1,name:'Supersportwagen'},
@@ -30,7 +30,7 @@ const CT={
   bierlaster:{len:8,wid:2.45,ht:3.2,max:24,acc:8,turn:1.55,hp:260,mass:4,name:'Bierlaster'},
   krankenwagen:{len:5.6,wid:2.1,ht:2.6,max:35,acc:15,turn:2.1,hp:170,mass:2,name:'Krankenwagen',emerg:true},
   feuerwehr:{len:7.6,wid:2.5,ht:3.1,max:28,acc:10,turn:1.7,hp:280,mass:4,name:'Feuerwehr',emerg:true},
-  polsuv:{len:4.9,wid:2.0,ht:1.85,max:37,acc:17,turn:2.4,hp:190,mass:1.9,name:'Polizei-SUV',offroad:0.85},
+  polsuv:{len:4.9,wid:2.0,ht:1.85,max:31,acc:14,turn:2.4,hp:190,mass:1.9,name:'Polizei-SUV',offroad:0.85},
   // aircraft (flyable): vr = rotation speed, climb = best climb rate m/s, turn = turn rate in the air
   cessna:{len:8.3,wid:2.2,ht:2.7,max:62,acc:8,turn:1,hp:140,mass:3,name:'Kleinflugzeug',plane:{cls:'cessna',vr:24,max:62,acc:9,climb:8,turn:0.62,gturn:0.9}},
   regio:{len:27,wid:3.2,ht:7.5,max:115,acc:10,turn:1,hp:280,mass:12,name:'Turboprop',plane:{cls:'regio',vr:34,max:115,acc:12,climb:10,turn:0.44,gturn:0.5}},
@@ -372,7 +372,9 @@ function updatePed(p,dt){
     else if(p.state==='walk')civSteer(p,dt);
     else if(p.state==='wave'){if(!p.patient)p.a=Math.atan2((player.y-p.y),(player.x-p.x))}
     else if(p.state==='idle'){p.idleT-=dt;if(p.idleT<=0){p.idleT=rand(2,7);p.a=p.face+rand(-0.7,0.7)}}
-    else if(p.state==='board'&&p.target){const dx=p.target.x-p.x,dy=p.target.y-p.y,d=hypot(dx,dy);if(d<1.2){p.alive=false;p.boarded=true}else slide(p,dx/d*3*dt,dy/d*3*dt)}
+    else if(p.state==='board'&&p.target){const c=p.target,dx=c.x-p.x,dy=c.y-p.y,d=hypot(dx,dy);p.boardT=(p.boardT||0)+dt;
+      // reaching the car's side is enough (the body itself blocks the way to its centre); give up walking after a while and just get in
+      if(d<1.2||pointInCar(c,p.x,p.y,1.0)||p.boardT>6){p.alive=false;p.boarded=true;sfx('door',0.7,c.x,c.y)}else slide(p,dx/d*3.4*dt,dy/d*3.4*dt)}
   }else if(p.kind==='cop')copPedAI(p,dt);
   const sp=hypot(p.x-p.lx,p.y-p.ly)/Math.max(dt,1e-4);
   const ss=(p.spdNow||0)+(Math.min(sp,12)-(p.spdNow||0))*Math.min(1,dt*7);
@@ -774,16 +776,18 @@ function aiDrive(c,dt){
   c.honkCD=(c.honkCD===undefined?rand(4,20):c.honkCD)-dt;
   if(c.honkCD<=0){const blockedLong=c.wait>2.6&&lim<9&&!(st.stopD!==null&&st.stopD<lim+2);if(blockedLong||Math.random()<dt/70){sfx('honk',blockedLong?0.5:0.3,c.x,c.y,c.id);c.honkCD=blockedLong?rand(3,7):rand(25,60)}else if(c.honkCD<-1)c.honkCD=0}
 }
+// chase speed by wanted level (share of the patrol car's top speed): low levels are easier to outrun
+const CHASE=[0.8,0.82,0.88,0.94,1,1];
 function copDrive(c,dt){
   const tgt=player.inCar||player;const dx=tgt.x-c.x,dy=tgt.y-c.y,d=hypot(dx,dy);
   c.losT-=dt;if(c.losT<=0){const env=IH.env||{night:0,rain:0};c.los=d<70-22*env.night-12*env.rain&&hasLOS(c.x,c.y,tgt.x,tgt.y);c.losT=0.25}
-  if(c.los)G.seenNow=true;
+  if(c.los){G.seenNow=true;G.lkx=tgt.x;G.lky=tgt.y}
   if(c.backT>0){c.backT-=dt;driveCar(c,-0.85,-c.revSteer,false,dt);return}
   let target,steer;const vf=c.vf||0;
   const tSp=player.inCar?hypot(player.inCar.vx,player.inCar.vy):hypot(player.vx,player.vy);
   if(c.los&&d<55){
     c.mode='direct';const lead=Math.min(0.7,d/40);const ax=tgt.x+(tgt.vx||0)*lead,ay=tgt.y+(tgt.vy||0)*lead;
-    steer=steerTo(c,ax,ay);target=c.t.max;if(d<15&&tSp<7)target=Math.max(0,(d-5.5)*1.6);
+    steer=steerTo(c,ax,ay);target=c.t.max*CHASE[stars()];if(d<15&&tSp<7)target=Math.max(0,(d-5.5)*1.6);
     if(Math.abs(wrapA(Math.atan2(ay-c.y,ax-c.x)-c.a))>1.6&&d<20)target=Math.min(target,12);
     c.exitCD-=dt;
     if(d<14&&Math.abs(vf)<4.5&&tSp<7&&c.exitCD<=0&&countCopPeds()<5+stars()){
@@ -792,10 +796,12 @@ function copDrive(c,dt){
       if(c.copsOut>0){c.driver='copIdle';c.exitCD=8;sfx('door',0.6,c.x,c.y)}else c.exitCD=2;
     }
   }else{
-    c.replan-=dt;
-    if(c.mode!=='nav'||c.replan<=0||!c.q.length){snapToRoad(c,tgt.x,tgt.y);c.mode='nav';c.replan=2.5}
+    // without sight of you they only know where you were last seen: drive there, then search the streets around it
+    c.replan-=dt;const known=(G.sightT||0)<1.5;let gx=known?tgt.x:G.lkx,gy=known?tgt.y:G.lky;
+    if(!known){if(c.search&&hypot(c.x-c.search.x,c.y-c.search.y)>25){gx=c.search.x;gy=c.search.y}else if(hypot(c.x-G.lkx,c.y-G.lky)<30||c.search){const a=rand(0,Math.PI*2),r=rand(40,130);c.search={x:G.lkx+Math.cos(a)*r,y:G.lky+Math.sin(a)*r};gx=c.search.x;gy=c.search.y;c.replan=0}}else c.search=null;
+    if(c.mode!=='nav'||c.replan<=0||!c.q.length){snapToRoad(c,gx,gy);c.mode='nav';c.replan=known?2.5:4}
     const st=followQueue(c);if(!st){driveCar(c,0,0,true,dt);return}
-    steer=steerTo(c,st.tx,st.ty);target=c.t.max*0.86*(1-Math.min(0.6,st.bend*0.75));
+    steer=steerTo(c,st.tx,st.ty);target=c.t.max*(known?0.86:0.62)*(1-Math.min(0.6,st.bend*0.75));
     target=Math.min(target,obstacleLimit(c,10,true)+7);
   }
   const thr=clamp((target-vf)/3,-1,1);driveCar(c,thr,steer,false,dt);
@@ -824,6 +830,8 @@ function policeTick(dt){
   if(s>0&&pursuers<WANT[s]&&G.spawnCD<=0){const c=spawnTraffic(true,player.x,player.y,110,220);if(c){c.driver='cop';c.pursuit=true;c.siren=true;c.mode='x';c.exitCD=2}G.spawnCD=s>=4?2.2:3.2}
   if(s>=4){G.blockCD-=dt;if(G.blockCD<=0){G.blockCD=40;roadblock()}}
   if(s>0){if(G.seenNow)G.lastSeen=0;else G.lastSeen+=dt;if(G.lastSeen>7+s*1.8){G.heat=s-1;G.lastSeen=0;emit('toast',s-1?'Ein Stern weniger':'Fahndung eingestellt')}}else G.lastSeen=0;
+  if(s===0||G.seenNow||G.lkx===undefined){const src=player.inCar||player;G.lkx=src.x;G.lky=src.y}
+  G.sightT=(s===0||G.seenNow)?0:(G.sightT||0)+dt;   // time since any officer actually saw you (a lost star doesn't reveal you)
   G.seenNow=false;
   if(!G.arrestNow)player.arrestT=Math.max(0,player.arrestT-dt*0.6);G.arrestNow=false;
   if(player.arrestT>=1)busted();
@@ -904,8 +912,8 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
       case'flucht':if(stars()===0&&G.time-m.data.t0>5)m.win();break;
       case'taxi':{
         if(pc!==m.data.veh){m.fail('Taxi verlassen – Schicht beendet.',true);return}
-        if(m.stage===0){const p=m.data.fare;if(!p||!p.alive){taxiNext();break}m.tx=p.x;m.ty=p.y;
-          if(hypot(pc.x-p.x,pc.y-p.y)<8&&speed<1.5){p.state='board';p.target=pc;}
+        if(m.stage===0){const p=m.data.fare;if(!p||(!p.alive&&!p.boarded)){taxiNext();break}m.tx=p.x;m.ty=p.y;
+          if(!p.boarded&&hypot(pc.x-p.x,pc.y-p.y)<8&&speed<1.5){p.state='board';p.target=pc;p.wave=false}
           if(p.boarded){m.stage=1;const dest=m.data.dest;m.tx=dest.x;m.ty=dest.y;m.time=hypot(dest.x-pc.x,dest.y-pc.y)/8.5+25;m.data.dist=hypot(dest.x-pc.x,dest.y-pc.y);emit('toast','Fahrgast: „'+pick(['Zum ','Bitte zum ','Schnell zum ','Einmal zum '])+dest.name+'!“')}}
         else{const d=m.data.dest;if(hypot(pc.x-d.x,pc.y-d.y)<10&&speed<2.5){const fare=Math.round(m.data.dist*0.9+m.time*3);addMoney(fare,pc.x,pc.y);m.fares++;sfx('cash');emit('toast','Fahrpreis +$'+fare);taxiNext()}}
         break}
@@ -919,9 +927,18 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
 const JOB_TYPES=['notarzt','feuer','bus','bier'];
 const JOBS={taxi:{type:'taxi',title:'Taxi-Schicht',time:90,intro:'Halte bei winkenden Fahrgästen an und bring sie ans Ziel.'},
   krankenwagen:{type:'notarzt',title:'Rettungsdienst',time:90,intro:'Hol Verletzte ab und bring sie ins Klinikum. Hupe-Taste schaltet die Sirene.'},
-  feuerwehr:{type:'feuer',title:'Feuerwehr',time:90,intro:'Fahr zum brennenden Auto und lösch es: Wasser-Taste gedrückt halten.'},
+  feuerwehr:{type:'feuer',title:'Feuerwehreinsätze',time:90,intro:'Fahr zum brennenden Auto und lösch es: Wasser-Taste gedrückt halten.'},
   bus:{type:'bus',title:'MVG-Linie',time:90,intro:'Fahr die Haltestellen an und halte kurz, bis alle eingestiegen sind.'},
   bierlaster:{type:'bier',title:'Bierlieferung',time:90,intro:'Bring die Fässer heil zum Wirtshaus – jeder Kratzer kostet Trinkgeld.'}};
+// start / end a shift in a job vehicle by button, so the vehicle can also just be driven
+function jobFor(c){return c&&!c.cop&&!(c.t&&c.t.plane)?JOBS[c.type]||null:null}
+function onShift(){const pc=player.inCar;return!!(pc&&mission.active&&mission.data&&mission.data.veh===pc)}
+function toggleJob(){
+  if(G.state!=='play')return;const pc=player.inCar,j=jobFor(pc);if(!j)return;
+  if(onShift()){const n=mission.fares||0,e=mission.earned||0;mission.end();sfx('beep');emit('toast','Schicht beendet'+(n?' · '+n+(n===1?' Auftrag':' Aufträge')+(e?' · +$'+e.toLocaleString('de-DE'):''):''));if(pc.type==='feuerwehr'||pc.type==='krankenwagen')pc.siren=false;return}
+  if(mission.active){emit('toast','Erst den laufenden Auftrag abschließen');return}
+  if(IH.act&&IH.act.busy()){emit('toast','Gerade nicht möglich');return}
+  mission.start(Object.assign({pay:0},j));mission.data.veh=pc;if(pc.type==='feuerwehr')pc.siren=true}
 const PUBS=[['Hofbräuhaus',600,650],['Augustiner',398,648],['Chinesischer Turm',655,312],['Schottenhamel-Festzelt',300,885],['Viktualienmarkt-Biergarten',598,706],['Paulaner am Nockherberg',960,1060],['Löwenbräukeller',372,505],['Hirschgarten',90,600]];
 function roadSpot(cx,cy,rmin,rmax){for(let i=0;i<30;i++){const a=rand(0,Math.PI*2),d=rand(rmin,rmax);const ne=W.nearestEdge(cx+Math.cos(a)*d,cy+Math.sin(a)*d,30);if(!ne||ne.e.bridge||ne.e.oneway)continue;const e=ne.e;if(ne.s<e.clearA+6||ne.s>e.len-e.clearB-6)continue;const p=lanePt(e,true,0,ne.s);const o=e.w/2-1.2;return{x:p.x-p.ty*o,y:p.y+p.tx*o,a:Math.atan2(p.ty,p.tx)}}return null}
 function jobNext(){
@@ -1180,13 +1197,13 @@ function update(dt){
      if(!p)G.propNear=null}
     payIncome();
     // taxi side job
-    {const pc=player.inCar;const j=pc&&!pc.cop?JOBS[pc.type]:null;if(j&&!mission.active&&!pc.air&&!(G.jobCD>0)&&!(IH.act&&IH.act.busy())){mission.start(Object.assign({pay:0},j));mission.data.veh=pc;if(pc.t.emerg&&pc.type!=='feuerwehr'){}if(pc.type==='feuerwehr')pc.siren=true}}
+    // job vehicles (taxi, ambulance, fire engine, bus, beer truck) no longer start a shift by themselves: see toggleJob()
     G.saveT=(G.saveT||0)-dt;if(G.saveT<=0){G.saveT=12;save()}
   }
   if(Math.random()<0.03)fillLots(false);
 }
 
-IH.sim={spawnPlanes,planes,G,cars,peds,bullets,grenades,parts,decals,skids,floaters,player,mission,STORY,SHOP,WEAP,CT,stars,update,newGame,save,loadSave,lightState,shopBuy,shopPrice,nearestCarFor,
+IH.sim={jobFor,onShift,toggleJob,spawnPlanes,planes,G,cars,peds,bullets,grenades,parts,decals,skids,floaters,player,mission,STORY,SHOP,WEAP,CT,stars,update,newGame,save,loadSave,lightState,shopBuy,shopPrice,nearestCarFor,
   spawnTraffic,fillLots,resetWorld,enterExit,get activeCars(){return activeCars},hasLOS,input,remote,remoteShot,remoteGrenade,remoteBoom,leaveRemoteCar,addMoney,pointInCar,
   PAINTS,stats,heli,fires,JOBS,makeCar,createFire,saveData,storeSave,normalizeSave,buyProperty,setHome,restAt,setShirt,inSafeZone,propById,astar,nearestNodeTo,pathPolyline};
 })(window));

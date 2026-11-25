@@ -1112,7 +1112,8 @@ function pedGeometry(p){
   g=mergeGeos(P);pedGeoCache.set(key,g);return g;
 }
 function limbGeometry(kind,a,b,c){const key=kind+a+b+c;let g=pedGeoCache.get(key);if(g)return g;const P=[];const add=(geo,color,m)=>P.push({g:geo,color,m});
-  if(kind==='arm'){add(cyl(0.062,0.055,0.31,8),a,tm(0,-0.155,0));add(cyl(0.052,0.045,0.28,8),c?a:b,tm(0,-0.45,0));add(new THREE.SphereGeometry(0.055,8,6),b,tm(0.005,-0.62,0,0,0.9,1.15,0.8))}
+  if(kind==='uarm'){add(cyl(0.062,0.055,0.31,8),a,tm(0,-0.155,0));add(new THREE.SphereGeometry(0.054,8,6),a,tm(0,-0.31,0))}
+  else if(kind==='farm'){add(cyl(0.052,0.045,0.28,8),c?a:b,tm(0,-0.14,0));add(new THREE.SphereGeometry(0.055,8,6),b,tm(0.005,-0.31,0,0,0.9,1.15,0.8))}
   else if(kind==='thigh'){add(cyl(0.09,0.074,0.46,8),a,tm(0,-0.23,0));add(new THREE.SphereGeometry(0.074,8,6),a,tm(0,-0.46,0))}
   else{add(cyl(0.071,0.058,0.42,8),a,tm(0,-0.21,0));add(new THREE.BoxGeometry(0.26,0.085,0.115),b,tm(0.05,-0.42,0));add(new THREE.SphereGeometry(0.06,8,5),b,tm(0.155,-0.42,0,0,0.9,0.75,1))}
   g=mergeGeos(P);pedGeoCache.set(key,g);return g}
@@ -1133,40 +1134,50 @@ function pedObj(p){
   const tg=limbGeometry('thigh',L.pants,L.shoe,0),sg=limbGeometry('shin',L.pants,L.shoe,0);
   const mkLeg=(z)=>{const t=new THREE.Mesh(tg,pedMat);t.position.set(0,0.92,z);const s=new THREE.Mesh(sg,pedMat);s.position.y=-0.46;t.add(s);t.castShadow=true;t.shin=s;g.add(t);return t};
   const l1=mkLeg(0.095),l2=mkLeg(-0.095);
-  const ag=limbGeometry('arm',p.shirt,L.skin,L.long?1:0);const a1=new THREE.Mesh(ag,pedMat),a2=new THREE.Mesh(ag,pedMat);a1.position.set(0,1.52,0.255);a2.position.set(0,1.52,-0.255);torso.add(a1,a2);   // limbs below the hip and the arms don't cast shadows: invisible from above, saves draw calls
-  let gun=null;if(p.kind!=='civ'){gun=new THREE.Mesh(WGEO.pistol,pedMat);gun.visible=false;a1.add(gun)}
+  const ug=limbGeometry('uarm',p.shirt,L.skin,L.long?1:0),fg=limbGeometry('farm',p.shirt,L.skin,L.long?1:0);
+  const mkArm=(z)=>{const u=new THREE.Mesh(ug,pedMat);u.position.set(0,1.52,z);const f=new THREE.Mesh(fg,pedMat);f.position.y=-0.31;u.add(f);u.fore=f;torso.add(u);return u};
+  const a1=mkArm(0.255),a2=mkArm(-0.255);   // limbs below the hip and the arms don't cast shadows: invisible from above, saves draw calls
+  let gun=null;if(p.kind!=='civ'){gun=new THREE.Mesh(WGEO.pistol,pedMat);gun.visible=false;gun.position.y=0.31;a1.fore.add(gun)}
   let wave=null;if(p.wave){wave=new THREE.Mesh(new THREE.RingGeometry(0.8,1.05,24),new THREE.MeshBasicMaterial({color:'#ffc61a',side:THREE.DoubleSide}));wave.rotation.x=-Math.PI/2;wave.position.y=0.1;g.add(wave)}
   scene.add(g);o={g,torso,body,l1,l2,a1,a2,gun,wave,pool:null,wk:null};pedObjs.set(p.id,o);return o;
 }
 function posePed(o,p,isPlayer){
-  o.g.position.set(p.x,0,p.y);o.g.rotation.set(0,-p.a,0);o.torso.rotation.set(0,0,0);
-  for(const a of[o.a1,o.a2])a.rotation.set(0,0,0);
+  o.g.position.set(p.x,0,p.y);o.g.rotation.set(0,-p.a,0);o.torso.rotation.set(0,0,0);o.torso.position.set(0,0,0);
+  for(const a of[o.a1,o.a2]){a.rotation.set(0,0,0);a.fore.rotation.set(0,0,0)}
   if(p.state==='down'||p.state==='dead'){
     o.g.rotation.set(0,-p.a,Math.PI/2*0.97,'YZX');o.g.position.y=0.13;o.l1.rotation.set(0.12,0,0.05);o.l2.rotation.set(-0.15,0,-0.08);o.l1.shin.rotation.set(0,0,-0.25);o.l2.shin.rotation.set(0,0,-0.05);o.a1.rotation.set(-1.25,0,0.25);o.a2.rotation.set(1.1,0,-0.2);if(o.gun)o.gun.visible=false;
     if(p.state==='dead'){if(!o.pool){o.pool=new THREE.Mesh(bloodGeo,bloodMat);o.pool.renderOrder=3;scene.add(o.pool)}const k=Math.min(1,(p.deadT||0)/6);o.pool.scale.setScalar(0.35+k*0.9);o.pool.position.set(p.x-Math.cos(p.a)*0.7,0.03,p.y-Math.sin(p.a)*0.7)}
     return}
   if(o.pool){scene.remove(o.pool);o.pool=null}
   const sp=p.spdNow||0,moving=sp>0.25,run=sp>3.6;const ph=p.anim||0;
-  // gait: thigh swings with the phase, the knee bends during the swing phase (leg travelling forward)
-  // and stays almost straight while the foot is planted; the hip height follows the planted foot.
-  const f=0.62+0.13*Math.min(sp,9),step=sp/(2*f);const amp=moving?Math.min(run?0.72:0.46,Math.asin(Math.min(0.95,step/1.84))*0.9+0.05):0;
-  const kneeMax=moving?(run?1.45:0.75)*Math.min(1,amp/0.4):0,kneeStance=moving?(run?0.32:0.12):0.04;
-  const leg=(o2,phi)=>{const th=Math.sin(phi)*amp;const c=Math.cos(phi);const sw=Math.max(0,c);const kn=kneeStance*Math.max(0,-Math.sin(phi*2))*(c<0?1:0)+kneeMax*sw*sw*(0.4+0.6*Math.max(0,Math.cos(phi+0.6)));
+  // gait. Thighs swing further forward than back (as in real walking/running), the knee bends while the leg
+  // travels forward and is nearly straight while the foot is planted; the hip height follows the planted foot.
+  // Arms swing opposite to the legs with a bent elbow (more bent when running).
+  const f=0.62+0.13*Math.min(sp,9),step=sp/(2*f);const amp=moving?Math.min(run?0.62:0.42,Math.asin(Math.min(0.95,step/1.84))*0.85+0.05):0;
+  const fwd=moving?(run?0.32:0.06)*Math.min(1,amp/0.4):0;   // bias of the swing towards the front
+  const kneeMax=moving?(run?1.25:0.7)*Math.min(1,amp/0.38):0,kneeStance=moving?(run?0.25:0.1):0;
+  const leg=(o2,phi)=>{const th=fwd+Math.sin(phi)*amp;const c=Math.cos(phi);const sw=Math.max(0,c);
+    const kn=kneeStance*Math.max(0,-Math.sin(phi*2))*(c<0?1:0)+kneeMax*sw*sw*(0.4+0.6*Math.max(0,Math.cos(phi+0.6)));
     o2.rotation.set(0,0,th);o2.shin.rotation.set(0,0,-kn);return 0.46*Math.cos(th)+0.465*Math.cos(th-kn)};
   const h1=leg(o.l1,ph),h2=leg(o.l2,ph+Math.PI);
-  const arm=amp*(run?1.05:0.8);const sa=Math.sin(ph)*arm;
-  o.a1.rotation.set(0.07,0,-sa);o.a2.rotation.set(-0.07,0,sa);
-  o.torso.rotation.set(0,-Math.sin(ph)*amp*0.16,run?-0.16:-0.03*Math.min(1,sp));
-  o.g.position.y=moving?Math.max(h1,h2)-0.925+(run?0.07*Math.max(0,-Math.cos(ph*2)):0):0;
-  if(p.state==='wave'){o.a1.rotation.set(-2.6+Math.sin(S.G.time*8)*0.3,0,0)}
+  const lean=run?0.2*Math.min(1,(sp-3.6)/3+0.4):0.03*Math.min(1,sp);
+  const arm=amp*(run?1.0:0.75),aFwd=run?0.18:0.04,elbow=moving?(run?1.25:0.35):0.12;
+  const sa=Math.sin(ph)*arm;
+  o.a1.rotation.set(0.07,0,aFwd-sa+lean*0.5);o.a2.rotation.set(-0.07,0,aFwd+sa+lean*0.5);
+  o.a1.fore.rotation.set(0,0,elbow+Math.max(0,-Math.sin(ph))*(run?0.25:0.2));o.a2.fore.rotation.set(0,0,elbow+Math.max(0,Math.sin(ph))*(run?0.25:0.2));
+  o.torso.rotation.set(0,-Math.sin(ph)*amp*0.16,-lean);
+  // lean pivots at the hip joint (not at the ground), so the hips stay on top of the legs
+  o.torso.position.set(-Math.sin(lean)*0.95,(1-Math.cos(lean))*0.95,0);
+  o.g.position.y=moving?Math.max(h1,h2)-0.925+(run?0.06*Math.max(0,-Math.cos(ph*2)):0):0;
+  if(p.state==='wave'){o.a1.rotation.set(-2.6+Math.sin(S.G.time*8)*0.3,0,0);o.a1.fore.rotation.set(0,0,0.5)}
   // weapon in hand
   const w=isPlayer?S.player.weapon:p.remote?p.weapon:(p.kind==='cop'&&S.stars()>=2?(S.stars()>=4?3:1):0);const wk=WKIND[w]||null;
   if(o.gun){o.gun.visible=!!wk;if(wk&&o.wk!==wk){o.gun.geometry=WGEO[wk];o.wk=wk}}
   const punch=isPlayer?S.player.punch:0,thr=isPlayer?S.player.throwT:0;
-  if(wk==='bat'){if(punch>0){const u=1-punch/0.3;o.a1.rotation.set(0,1.3-u*2.6,1.25)}else{o.a1.rotation.set(0,0.15,0.35)}}
+  if(wk==='bat'){o.a1.fore.rotation.set(0,0,0);if(punch>0){const u=1-punch/0.3;o.a1.rotation.set(0,1.3-u*2.6,1.25)}else{o.a1.rotation.set(0,0.15,0.35)}}
   else if(wk==='grenade'||wk==='molotov'){if(thr>0){const u=1-thr/0.35;o.a1.rotation.set(0,0,2.9-u*1.6)}}
-  else if(wk){const two=wk!=='pistol';o.a1.rotation.set(0,two?0.12:0.22,1.5);if(two){o.a2.rotation.set(0,-0.62,1.3)}o.torso.rotation.z=0;o.torso.rotation.y=0}
-  else if(punch>0){const u=1-punch/0.18;o.a1.rotation.set(0,0.2,Math.sin(u*Math.PI)*1.6)}
+  else if(wk){const two=wk!=='pistol';o.a1.rotation.set(0,two?0.12:0.22,1.5);o.a1.fore.rotation.set(0,0,0);if(two){o.a2.rotation.set(0,-0.62,1.3);o.a2.fore.rotation.set(0,0,0.35)}o.torso.rotation.z=0;o.torso.rotation.y=0;o.torso.position.set(0,0,0)}
+  else if(punch>0){const u=1-punch/0.18;o.a1.rotation.set(0,0.2,Math.sin(u*Math.PI)*1.6);o.a1.fore.rotation.set(0,0,0.9*(1-Math.sin(u*Math.PI)))}
   if(o.wave)o.wave.visible=!!p.wave&&p.state==='wave';
 }
 function syncPeds(){
@@ -1233,7 +1244,7 @@ function syncGrenades(){while(grenadeMeshes.length<S.grenades.length){const m=ne
 /* ---------- camera ---------- */
 let camPos=new THREE.Vector3(600,60,700),lookPos=new THREE.Vector3(600,0,640),shake=0,lastDist=90,camHD=60,shadowSpan=0;
 R3.shake=v=>{shake=Math.min(1.2,shake+v)};
-let camAlt=0;
+let camAlt=0;const _sF=new THREE.Vector3(),_sR=new THREE.Vector3(),_sU=new THREE.Vector3(),_sC=new THREE.Vector3();
 function updateCamera(dt){
   const P=S.player,G=S.G;let tx,ty,vx=0,vy=0,heading=null,speed=0;
   if(G.state==='menu'){const t=cam.target;tx=t.x;ty=t.y;vx=t.vx||0;vy=t.vy||0;heading=t.a}
@@ -1260,8 +1271,11 @@ function updateCamera(dt){
   camera.lookAt(lookPos);
   cam.target=G.state==='menu'?cam.target:{x:tx,y:ty};
   // sun follows the view; shadow frustum covers what the camera sees
-  const sd=ENV.sunDir;sun.position.set(lookPos.x+sd.x*180,sd.y*180,lookPos.z+sd.z*180);sun.target.position.set(lookPos.x,0,lookPos.z);
   const span=chase?70:clamp(lastDist*0.78,48,130);if(sun.castShadow&&Math.abs(span-shadowSpan)>4){shadowSpan=span;const sc=sun.shadow.camera;sc.left=-span;sc.right=span;sc.top=span;sc.bottom=-span;sc.updateProjectionMatrix()}
+  // sun and shadow camera follow the view, snapped to whole shadow-map texels in light space: shadows don't shimmer or jump while you move
+  {const sd=ENV.sunDir;_sF.set(-sd.x,-sd.y,-sd.z).normalize();_sR.set(0,1,0).cross(_sF);if(_sR.lengthSq()<1e-6)_sR.set(1,0,0);_sR.normalize();_sU.copy(_sF).cross(_sR);
+   _sC.set(lookPos.x,0,lookPos.z);if(sun.castShadow&&shadowSpan>0){const tx=2*shadowSpan/sun.shadow.mapSize.x;const a=Math.round(_sC.dot(_sR)/tx)*tx,b=Math.round(_sC.dot(_sU)/tx)*tx,d=_sC.dot(_sF);_sC.copy(_sR).multiplyScalar(a).addScaledVector(_sU,b).addScaledVector(_sF,d)}
+   sun.target.position.copy(_sC);sun.position.set(_sC.x+sd.x*180,_sC.y+sd.y*180,_sC.z+sd.z*180)}
   if(R3.camOverride){const o=typeof R3.camOverride==="function"?R3.camOverride():R3.camOverride;camera.position.set(o[0],o[1],o[2]);camera.lookAt(o[3],o[4],o[5])}
   if(skyMesh)skyMesh.position.copy(camera.position);
 }
@@ -1344,7 +1358,7 @@ let frameNo=0;const fogBase=[230,600];
 R3.frame=function(dt){
   U.time.value+=dt>0?dt:0.0;envT-=dt;if(envT<=0||dt===0){envUpdate(Math.max(dt,0.25));envT=0.25}
   updateCamera(dt);updateChunks();syncCars();syncPeds();syncParticles();syncSkids();syncDecals();syncGrenades();updateLights(dt);updateMarkers(dt);updateRain();
-  frameNo++;if(renderer.shadowMap.enabled){renderer.shadowMap.autoUpdate=false;if(frameNo%2===0||dt===0)renderer.shadowMap.needsUpdate=true}
+  frameNo++;if(renderer.shadowMap.enabled){renderer.shadowMap.autoUpdate=true}
   if(scene.fog){scene.fog.near=fogBase[0]+camAlt*1.4;scene.fog.far=fogBase[1]+camAlt*2.6}
   renderer.render(scene,camera);adapt(dt);
 };

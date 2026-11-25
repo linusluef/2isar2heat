@@ -197,7 +197,7 @@ function melody(r,o){const{root,sc,cells,lo,hi}=o;const chordAt=o.chordAt;const 
     for(let j=0;j<cell.rh.length;j++){const[i,l]=cell.rh[j];if(j>0)d+=cell.iv[j];const c=chordAt(bar,i);if(i%4===0||l>=4)d=snap(d,c);
       let m=dm(root,sc,d),guard=0;while(m>hi&&guard++<8){d-=2;m=dm(root,sc,d)}while(m<lo&&guard++<16){d+=2;m=dm(root,sc,d)}
       if(cad&&j===cell.rh.length-1){d=snap(d,0);m=dm(root,sc,d)}out.push([i,l,m,d])}return out}}
-function fitBars(bpm,spb,mul){const bar=spb*60/bpm/4;return Math.max(16,Math.min(96,Math.floor((SLOT-14)/bar/(mul||4))*(mul||4)))}
+function fitBars(bpm,spb){const bar=spb*60/bpm/4;return Math.max(16,Math.min(200,Math.floor((SLOT-13)/bar)))}
 function layout(bars,head,loop,tail){const out=[];const push=a=>{for(const[n,l]of a)for(let k=0;k<l;k++)out.push(n)};push(head);const tl=[];for(const[n,l]of tail)for(let k=0;k<l;k++)tl.push(n);
   let g=0;while(out.length<bars-tl.length&&g++<20)push(loop);out.length=Math.max(0,bars-tl.length);return out.concat(tl).slice(0,bars)}
 function newSong(bpm,spb,bars){const s={bpm,spb,sd:60/bpm/4,bars,steps:[]};for(let i=0;i<bars*spb;i++)s.steps.push([]);s.dur=s.steps.length*s.sd;s.half=Math.floor(s.steps.length/2);return s}
@@ -462,27 +462,52 @@ function schedule(){
   const st=playing,AC=A.AC,ahead=AC.currentTime+0.22;let guard=0;
   while(nextT<ahead&&guard++<300){const s=songFor(st,slot);SD=s.sd;
     if(nextT<AC.currentTime-0.05){stepI=Math.ceil((AC.currentTime+0.02-(slot*SLOT-epoch))/s.sd);nextT=slot*SLOT-epoch+stepI*s.sd;continue}  // fell behind (tab hidden): resync silently
-    if(stepI>=s.steps.length){if(!gapDone){gapDone=true;const t0=Math.max(nextT,AC.currentTime);jingle(st,t0);announce(st,s,slot)}
+    if(stepI>=s.steps.length){if(!gapDone){gapDone=true;const t0=Math.max(nextT,AC.currentTime);jingle(st,t0);bed(st,t0+1.5,slot*SLOT-epoch+SLOT-t0-1.5);announce(st,s,slot)}
       slot++;stepI=0;gapDone=false;nextT=slot*SLOT-epoch;continue}
-    if(stepI===0)applySong(s,Math.max(nextT,AC.currentTime));
+    if(stepI===0){applySong(s,Math.max(nextT,AC.currentTime));const sl=slot;setTimeout(()=>{if(playing===st)introTalk(st,s,sl)},Math.max(0,(nextT-AC.currentTime)*1000))}
     if(stepI===s.half)songFor(st,slot+1);
     const i=stepI%s.spb;let t=nextT;if(s.sw16&&i%2===1)t+=s.sw16*s.sd;if(s.sw8&&i%4===2)t+=s.sw8*2*s.sd;
     for(const ev of s.steps[stepI]){const fn=V[ev[0]];if(fn)try{fn.apply(V,[t].concat(ev.slice(1)))}catch(e){}}
     stepI++;nextT=slot*SLOT-epoch+stepI*s.sd}
 }
+// a soft chord bed under the presenter between songs, so there is never dead air
+function bed(st,t,dur){if(dur<1)return;SD=0.12;const L=dur/SD;const ch=st.id==='isar'?[57,64,69,72]:st.id==='lofi'?[60,64,67,71]:[65,69,72];
+  if(st.id==='blas')V.acc(t,ch,L,0.05,{rv:0.3});else V.pad(t,ch,L,0.07,{att:1.2,rel:1.5,cut:1200,rv:0.5})}
 function jingle(st,t){SD=0.12;
   if(st.id==='isar'){V.saw(t,[57,64,69,73],10,0.14,{att:0.05,cut:3500,fenv:0.3,fdec:0.4,rv:0.5});[69,73,76,81].forEach((m,k)=>V.vox(t+0.18*k,m,1.4,0.08,'a',{rv:0.4,dl:0.3}));V.boom(t,0.4)}
   else if(st.id==='lofi'){[60,64,67,71,74].forEach((m,k)=>V.ep(t+k*0.16,[m],6,0.14,{rv:0.4,dl:0.25}));V.mallet(t+0.9,'vib',79,0.12,{rv:0.5})}
   else{const n=[[65,0,2],[65,0.25,1],[69,0.375,1],[72,0.5,3],[77,0.95,6]];for(const[m,o,l]of n){V.lead(t+o,'trp',m,l,0.12,{rv:0.25});V.lead(t+o,'trp',m-4,l,0.07,{pan:0.3,rv:0.25})}V.bass(t+0.95,'tuba',41,6,0.5);V.hit(t+0.95,'becken',0.25)}}
-function announce(st,s,sl){if(talkBusy)return;const r=rnd(sl*977+st.seed);const lines=[];
+/* ---------- presenter: song announcements, station IDs, traffic, weather, time, police news ---------- */
+const TRAFFIC=['Verkehrsservice: Stau auf dem Mittleren Ring Richtung Luise-Kiesselbach-Platz.','Verkehr: Am Stachus geht gerade gar nix. Umfahren, wenn’s geht.','Achtung Autofahrer: Auf der Leopoldstraße wird wieder einmal gerast. Die Polizei ist vor Ort.','Am Flughafen kommt es zu Verzögerungen auf der Terminalstraße.','Auf der Ludwigsbrücke liegt ein umgefallener Maßkrug. Vorsicht!','Der Altstadtring ist frei, nur am Isartor stockt es wie immer.','Im Englischen Garten läuft eine Herde Surfer über den Weg. Langsam fahren!','Rund um die Theresienwiese ist viel los. Parkplätze: keine.'];
+const NEWS=['Nachrichten: Die Stadtwerke testen neue Trambahnen auf der Linie 19.','Kurz notiert: Der Viktualienmarkt hat heute länger offen.','Aus der Stadt: Am Olympiaturm ist die Aussicht heute bis zu den Alpen.','Sport: Die Löwen trainieren heute öffentlich. Der Eintritt ist frei.'];
+function clockLine(){const e=IH.env||{};const h=Math.floor(e.tod||12)%24,m=Math.floor(((e.tod||12)%1)*60);return'Es ist '+h+' Uhr'+(m?' '+m:'')+'.'}
+function weatherLine(r){const e=IH.env||{};if(e.rain>0.5)return pick(r,['Das Wetter: Es regnet in München. Licht an und Abstand halten.','Regen über der Stadt – die Straßen sind rutschig.']);if(e.night>0.6)return pick(r,['Das Wetter: eine klare Nacht über München.','Für alle Nachteulen da draußen: fahrt vorsichtig.']);return pick(r,['Das Wetter: weiß-blauer Himmel über München, so soll’s sein.','Das Wetter: Sonne, ein bisserl Föhn und beste Fernsicht.','Das Wetter: mild und trocken, perfekt für den Biergarten.'])}
+function copLine(r){const n=S.stars?S.stars():0;if(!n)return null;const c=P.inCar;const DAT={kompakt:'einem Kleinwagen',limousine:'einer Limousine',sport:'einem Sportwagen',taxi:'einem Taxi',transporter:'einem Transporter',polizei:'einem gestohlenen Streifenwagen',motorrad:'einem Motorrad',suv:'einem SUV',super:'einem Supersportwagen',bus:'einem MVG-Bus',bierlaster:'einem Bierlaster',krankenwagen:'einem Krankenwagen',feuerwehr:'einem Feuerwehrauto',polsuv:'einem gestohlenen Polizei-SUV'};
+  const what=c?(c.t.plane?'einem Flugzeug':DAT[c.type]||'einem Auto'):'einer Person zu Fuß';
+  const base=c?pick(r,['Eilmeldung: Die Polizei fahndet gerade nach '+what+' in der Innenstadt.','Polizeimeldung: Großfahndung in München! Gesucht wird jemand mit '+what+'.']):pick(r,['Eilmeldung: Die Polizei sucht in der Innenstadt nach einer flüchtigen Person.','Polizeimeldung: Großfahndung in München! Ein Verdächtiger ist zu Fuß unterwegs.']);
+  return base+(n>=4?' Auch ein Hubschrauber ist im Einsatz.':'')}
+let talkBusy=false,lastTalk=-99,unlocked=false;
+function say(st,lines,delay){if(talkBusy)return;talkBusy=true;setTimeout(()=>{talkBusy=false;if(playing!==st)return;const l=typeof lines==='function'?lines():lines;if(l&&l.length)speak(l.join(' '),st)},delay||0)}
+function announce(st,s,sl){const r=rnd(sl*977+st.seed);const lines=[];
   lines.push(pick(r,['Das war ','Ihr habt gehört: ','Gerade lief ','Eben gehört: '])+'„'+s.title+'“ von '+s.artist+'.');
-  if(r()<0.55)lines.push(pick(r,st.talk));
-  const x=r();if(x<0.25)lines.push(pick(r,['Verkehrsservice: Stau auf dem Mittleren Ring Richtung Luise-Kiesselbach-Platz.','Verkehr: Am Stachus geht gerade gar nix. Umfahren, wenn’s geht.','Achtung Autofahrer: Auf der Leopoldstraße wird wieder einmal gerast. Die Polizei ist vor Ort.','Am Flughafen kommt es zu Verzögerungen auf der Terminalstraße.','Auf der Ludwigsbrücke liegt ein umgefallener Maßkrug. Vorsicht!']));
-  else if(x<0.45){const e=IH.env||{};lines.push(e.rain>0.5?'Das Wetter: Es regnet in München. Licht an und Abstand halten.':e.night>0.6?'Für alle Nachteulen da draußen: fahrt vorsichtig.':'Das Wetter: weiß-blauer Himmel über München, so soll’s sein.')}
-  const next=songFor(st,sl+1);if(next&&r()<0.6)lines.push('Und jetzt: '+next.sub+(st.id==='blas'?' – „'+next.title+'“.':'.'));
-  talkBusy=true;setTimeout(()=>{if(playing===st)speak(lines.join(' '));talkBusy=false},1500)}
-let talkBusy=false;
-function speak(txt){try{if(IH.settings.muted||!root.speechSynthesis)return;const u=new SpeechSynthesisUtterance(txt);u.lang='de-DE';u.rate=1.05;u.volume=0.8;const v=speechSynthesis.getVoices().find(x=>/^de/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u)}catch(e){}}
+  lines.push(pick(r,st.talk));
+  const cop=copLine(r);if(cop)lines.push(cop);else{const x=r();lines.push(x<0.4?pick(r,TRAFFIC):x<0.75?weatherLine(r):x<0.9?clockLine():pick(r,NEWS))}
+  const next=songFor(st,sl+1);if(next)lines.push('Und jetzt: '+next.sub+' – „'+next.title+'“ von '+next.artist+'.');
+  say(st,lines,1400)}
+function introTalk(st,s,sl){if(performance.now()/1000-lastTalk<40)return;const r=rnd(sl*313+st.seed);if(r()<0.5)return;const lines=[pick(r,['Hier kommt ','Weiter geht’s mit ','Für euch: '])+'„'+s.title+'“ von '+s.artist+'.'];
+  if(r()<0.5)lines.push(r()<0.5?pick(r,TRAFFIC):weatherLine(r));say(st,lines,600)}
+function tuneInTalk(st){if(performance.now()/1000-lastTalk<25)return;say(st,()=>{const s=shown;const lines=['Ihr hört '+st.name+'.'];if(s)lines.push('Gerade läuft „'+s.title+'“ von '+s.artist+'.');return lines},1200)}
+function speak(txt,st){try{if(IH.settings.muted||!root.speechSynthesis)return;lastTalk=performance.now()/1000;const u=new SpeechSynthesisUtterance(txt);u.lang='de-DE';u.rate=1.05;u.volume=1;const v=pickVoice();if(v)u.voice=v;
+    // music dips under the voice, the text shows in the radio bar
+    const vol=STATIONS[cur].vol*0.75;u.onstart=()=>{if(A&&playing===st){A.st.gain.setTargetAtTime(vol*0.35,A.AC.currentTime,0.15)}subtitle=txt;render()};
+    const end=()=>{if(A&&playing===st){A.st.gain.setTargetAtTime(vol,A.AC.currentTime,0.4)}subtitle=null;render()};u.onend=end;u.onerror=end;
+    speechSynthesis.speak(u)}catch(e){}}
+let voiceCache=null;function pickVoice(){if(voiceCache)return voiceCache;try{const vs=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));voiceCache=vs.find(x=>/Anna|Helena|Markus|Yannick|Google/i.test(x.name))||vs[0]||null}catch(e){}return voiceCache}
+try{root.speechSynthesis&&speechSynthesis.addEventListener&&speechSynthesis.addEventListener('voiceschanged',()=>{voiceCache=null})}catch(e){}
+// iOS only lets a page speak after speech was started once from a tap: do that silently on the first touch
+function unlock(){if(unlocked||!root.speechSynthesis)return;unlocked=true;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;u.lang='de-DE';speechSynthesis.speak(u)}catch(e){}}
+for(const ev of['pointerdown','touchend','keydown'])root.addEventListener(ev,unlock,{capture:true,passive:true});
+let subtitle=null;
 
 /* ======================= UI: swipe or tap the bar at the bottom ======================= */
 const bar=document.createElement('div');bar.id='radio';bar.hidden=true;bar.innerHTML='<button type="button" class="rb" data-d="-1" aria-label="Vorheriger Sender">‹</button><div class="rinfo"><i class="eq"><b></b><b></b><b></b><b></b></i><span><b id="rName"></b><em id="rGenre"></em></span></div><button type="button" class="rb" data-d="1" aria-label="Nächster Sender">›</button>';
@@ -494,10 +519,10 @@ bar.addEventListener('pointerup',e=>{if(e.pointerId!==sid)return;e.stopPropagati
 bar.addEventListener('pointercancel',()=>{sid=null});
 function tune(d){cur=(cur+d+STATIONS.length)%STATIONS.length;IH.settings.radio=cur;try{localStorage.setItem('2isar2heat.radio',String(cur))}catch(e){}
   if(A){const AC=A.AC,t=AC.currentTime;A.st.gain.cancelScheduledValues(t);A.st.gain.setValueAtTime(0,t);A.stat.gain.cancelScheduledValues(t);A.stat.gain.setValueAtTime(0.12,t);A.stat.gain.exponentialRampToValueAtTime(0.0001,t+0.35);playing=null;switchT=t+0.3}
-  shown=null;render();flash();try{root.speechSynthesis&&speechSynthesis.cancel()}catch(e){}talkBusy=false}
+  shown=null;subtitle=null;render();flash();try{root.speechSynthesis&&speechSynthesis.cancel()}catch(e){}talkBusy=false;lastTalk=-99}
 try{const v=localStorage.getItem('2isar2heat.radio');if(v!==null&&!isNaN(+v))cur=Math.min(STATIONS.length-1,Math.max(0,+v))}catch(e){}
 let switchT=0;
-function render(){const st=STATIONS[cur];$('rName').textContent=st.name;$('rGenre').textContent=shown&&playing===st?shown.sub+' · '+shown.artist+' – '+shown.title:st.genre;bar.style.setProperty('--rc',st.color);bar.classList.toggle('off',!st.subs)}
+function render(){const st=STATIONS[cur];$('rName').textContent=st.name;$('rGenre').textContent=subtitle&&playing===st?'🎙 '+subtitle:shown&&playing===st?shown.sub+' · '+shown.artist+' – '+shown.title:st.genre;bar.style.setProperty('--rc',st.color);bar.classList.toggle('off',!st.subs)}
 function flash(){bar.classList.add('flash');setTimeout(()=>bar.classList.remove('flash'),350)}
 render();
 root.addEventListener('keydown',e=>{if(!P.inCar||e.repeat)return;if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;if(e.code==='Period'||e.code==='KeyM')tune(1);else if(e.code==='Comma')tune(-1)});
@@ -511,13 +536,13 @@ function tick(){
   if(!ensure())return;const AC=A.AC;
   if(warmQ.length)warmStep();
   const want=inVeh&&!G.paused&&!!STATIONS[cur].subs&&!IH.settings.muted&&AC.state==='running'&&AC.currentTime>=switchT;
-  if(want&&!playing){startStation(cur);A.st.gain.cancelScheduledValues(AC.currentTime);A.st.gain.setTargetAtTime(STATIONS[cur].vol*0.75,AC.currentTime,0.25)}
-  if(!want&&playing){A.st.gain.cancelScheduledValues(AC.currentTime);A.st.gain.setTargetAtTime(0,AC.currentTime,0.08);playing=null;shown=null;render();try{root.speechSynthesis&&speechSynthesis.cancel()}catch(e){}talkBusy=false}
+  if(want&&!playing){startStation(cur);if(playing)tuneInTalk(playing);A.st.gain.cancelScheduledValues(AC.currentTime);A.st.gain.setTargetAtTime(STATIONS[cur].vol*0.75,AC.currentTime,0.25)}
+  if(!want&&playing){subtitle=null;A.st.gain.cancelScheduledValues(AC.currentTime);A.st.gain.setTargetAtTime(0,AC.currentTime,0.08);playing=null;shown=null;render();try{root.speechSynthesis&&speechSynthesis.cancel()}catch(e){}talkBusy=false}
   if(playing)schedule();
   bar.classList.toggle('live',!!playing);
 }
 let cost=0,costMax=0;setInterval(()=>{const t0=performance.now();tick();const d=performance.now()-t0;cost+=d;if(d>costMax)costMax=d},30);
-IH.radio={tune,get station(){return STATIONS[cur]},get now(){return shown},_cost(){const r={total:+cost.toFixed(1),max:+costMax.toFixed(1)};cost=0;costMax=0;return r},
+IH.radio={tune,get station(){return STATIONS[cur]},get now(){return shown},_skipToEnd(){if(!playing||!A)return;const s=songFor(playing,slot);epoch+=Math.max(0,(slot*SLOT-epoch+s.dur-2)-A.AC.currentTime)},_cost(){const r={total:+cost.toFixed(1),max:+costMax.toFixed(1)};cost=0;costMax=0;return r},
   // test helper: render `sec` seconds of one sub-genre offline and report the levels
   async _render(i,sub,sec,seed,raw){const OAC=new OfflineAudioContext(2,44100*sec,44100);const nb=OAC.createBuffer(1,44100,44100);const d=nb.getChannelData(0);for(let k=0;k<d.length;k++)d[k]=R()*2-1;
     const saved=A;const g=buildGraph(OAC,OAC.destination);g.noise=nb;g.st.gain.value=0.75*STATIONS[i].vol*0.5;if(raw){g.pre.disconnect();g.pre.connect(g.st);g.st.gain.value=1}A=g;const st=STATIONS[i];const s=st.subs[sub](rnd(seed||7));applySong(s,0);let errs=0,ev=0;const err=[];
