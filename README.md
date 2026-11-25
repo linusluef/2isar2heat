@@ -248,7 +248,7 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - If you take down a player who is wanted by the police, you collect a **bounty** for each wanted star they have.
 - **Riding together:** whoever gets into a car first is the driver. Other players walk up to it and tap **Einsteigen** to ride along as passengers.
   - **Seats:** normal cars take 3 passengers; motorbikes and sports cars take 1; the bus takes 14. Aircraft take passengers too: the small plane 3, the turboprop 24, the jet 40.
-  - **As a passenger:** you sit inside, hear the radio and can shoot out of the window: aim with the joystick and tap Feuer. Your shots never hit your own car. Tap **Aussteigen** to get out, unless the car is going fast.
+  - **As a passenger:** you sit inside the vehicle for everyone (on a motorbike you are visible on the pillion seat behind the driver), hear the radio and can shoot out of the window: aim with the joystick and tap Feuer. Your shots never hit your own car. Tap **Aussteigen** to get out, unless the car is going fast.
   - **When the driver gets out:** all passengers get out too. The car stays there unlocked, so one of them can take the wheel straight away.
   - **The driver sees it:** a message in the feed shows when someone gets in or out.
   - **Wanted levels stay personal:** if a passenger is wanted, the police chase the car they are riding in.
@@ -292,9 +292,15 @@ These work in the global lobby with other players, and alone (offline or nobody 
 | Drift / nitro | Buttons | B / RB | Shift / N |
 | Switch weapon | Button | Y | Q |
 | Camera | Camera icon | LB | C |
+| Look around (follow camera) | Swipe anywhere right of the joystick | – | – |
 | Map | Tap the minimap | – | K |
 | Radio station | Swipe the radio bar | D-pad left / right | , and . |
 | Chat | Speech bubble | Select | T, then 1–8 |
+
+**Free look in the follow camera:** swipe anywhere outside the joystick and the buttons (not on the minimap) to turn and tilt the camera, as in GTA San Andreas.
+- **On foot:** the camera stays where you turned it, and the joystick then walks in the direction you are looking.
+- **In a vehicle:** the camera swings back behind you a moment after you let go, once you are driving.
+- **Top-down view:** swiping does nothing.
 
 Settings are on the start screen and in the pause menu:
 

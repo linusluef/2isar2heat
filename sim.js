@@ -489,7 +489,7 @@ function remoteGrenade(m,att){grenades.push({x:m.x,y:m.y,z:1.6,vx:m.vx,vy:m.vy,v
 function remoteBoom(m,att){explosion(m.x,m.y,false,att);if(m.type&&CT[m.type]){const w=makeCar(m.type,m.x,m.y,m.a||0,{parked:true,color:m.color});w.dead=true;w.hp=0;w.parked=false;w.driver=null;cars.push(w);smoke(m.x,m.y,2,true)}}
 // a remote player got out: their car stays where they left it
 // another player just drove off in a car that also exists here as an empty parked copy (e.g. the one I left): remove the copy
-function takenByRemote(x,y,type){for(let i=cars.length-1;i>=0;i--){const c=cars[i];if(c.driver||c.dead||c===player.inCar||c.home||c.saved)continue;if(c.type!==type&&!(type==='polizei'&&c.type==='limousine'))continue;if(hypot(c.x-x,c.y-y)<3.5){cars.splice(i,1);return true}}return false}
+function takenByRemote(x,y,type,r){let best=-1,bd=r||5;for(let i=0;i<cars.length;i++){const c=cars[i];if(c.driver||c.dead||c===player.inCar||c.home||c.saved||c.mission)continue;if(c.type!==type&&!(type==='polizei'&&c.type==='limousine')&&!(type==='polsuv'&&c.type==='limousine'))continue;const d=hypot(c.x-x,c.y-y);if(d<bd){bd=d;best=i}}if(best<0)return false;const c=cars[best];if(player.breakIn&&player.breakIn.c===c)player.breakIn=null;cars.splice(best,1);return true}
 function leaveRemoteCar(rc){if(!CT[rc.type]||rc.dead)return;if(hypot(rc.x-player.x,rc.y-player.y)>300)return;const c=makeCar(rc.type==='polizei'||rc.type==='polsuv'?'limousine':rc.type,rc.x,rc.y,rc.a,{parked:true,color:rc.color});c.hp=Math.max(10,rc.hp||100)*c.maxHp/100;c.open=true;c.alarm=0;cars.push(c)}   // a car another player just left is unlocked
 function updateBullets(dt,active){
   for(let i=bullets.length-1;i>=0;i--){

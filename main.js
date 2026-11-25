@@ -337,6 +337,15 @@ zone.addEventListener('pointerdown',e=>{if(joyId!==null)return;e.preventDefault(
 zone.addEventListener('pointermove',e=>{if(e.pointerId===joyId){e.preventDefault();joyMove(e)}});
 const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;inp.mx=inp.my=inp.mm=0;joy.classList.remove('on');joyRest()};
 zone.addEventListener('pointerup',joyEnd);zone.addEventListener('pointercancel',joyEnd);zone.addEventListener('lostpointercapture',joyEnd);
+// free look: swipe anywhere outside the joystick and the buttons to turn the follow camera (like GTA San Andreas)
+const lookPtr=new Map();
+for(const el of[$('lookA'),$('lookB')]){
+  el.addEventListener('pointerdown',e=>{if(IH.settings.cam!=='chase'||G.state!=='play')return;e.preventDefault();initAudio();try{el.setPointerCapture(e.pointerId)}catch(_){}lookPtr.set(e.pointerId,{x:e.clientX,y:e.clientY})});
+  el.addEventListener('pointermove',e=>{const q=lookPtr.get(e.pointerId);if(!q)return;e.preventDefault();const dx=e.clientX-q.x,dy=e.clientY-q.y;q.x=e.clientX;q.y=e.clientY;
+    const c=IH.cam,k=3.4/Math.max(600,innerWidth),inVeh=!!(P.inCar||P.ride);
+    if(inVeh)c.look=(c.look||0)+dx*k;else{c.base=(c.base===undefined?c.yaw:c.base)+dx*k;c.freeT=3}
+    c.lookP=clamp((c.lookP||0)+dy*k*0.6,-0.3,0.6);c.lookHold=1.6});
+  const end=e=>{lookPtr.delete(e.pointerId)};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end)}
 function joyMove(e){const dx=e.clientX-joyX,dy=e.clientY-joyY,d=hypot(dx,dy),Rr=joyR();const k=d>Rr?Rr/d:1;knob.style.transform='translate('+dx*k+'px,'+dy*k+'px)';let m=Math.min(1,d/Rr);if(m<0.1)m=0;inp.mm=m;inp.mx=dx/(d||1)*m;inp.my=dy/(d||1)*m}
 function bindPad(id,down,up){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId)}catch(_){}el.classList.add('down');initAudio();down()});const end=()=>{el.classList.remove('down');up&&up()};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end)}
 // pedals: one touch area, the finger can slide between gas and brake

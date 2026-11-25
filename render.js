@@ -1144,6 +1144,10 @@ function pedObj(p){
 function posePed(o,p,isPlayer){
   o.g.position.set(p.x,0,p.y);o.g.rotation.set(0,-p.a,0);o.torso.rotation.set(0,0,0);o.torso.position.set(0,0,0);
   for(const a of[o.a1,o.a2]){a.rotation.set(0,0,0);a.fore.rotation.set(0,0,0)}
+  if(p.state==='sit'){   // pillion passenger: thighs forward, shins down, hands on the driver's hips
+    o.g.position.set(p.x,p.sitZ-0.92,p.y);if(o.pool){scene.remove(o.pool);o.pool=null}
+    for(const l of[o.l1,o.l2]){l.rotation.set(0,0,1.35);l.shin.rotation.set(0,0,-1.5)}o.l1.rotation.x=0.12;o.l2.rotation.x=-0.12;
+    o.a1.rotation.set(0.15,0,0.75);o.a2.rotation.set(-0.15,0,0.75);o.a1.fore.rotation.set(0,0,0.5);o.a2.fore.rotation.set(0,0,0.5);o.torso.rotation.set(0,0,-0.12);if(o.gun)o.gun.visible=false;return}
   if(p.state==='down'||p.state==='dead'){
     o.g.rotation.set(0,-p.a,Math.PI/2*0.97,'YZX');o.g.position.y=0.13;o.l1.rotation.set(0.12,0,0.05);o.l2.rotation.set(-0.15,0,-0.08);o.l1.shin.rotation.set(0,0,-0.25);o.l2.shin.rotation.set(0,0,-0.05);o.a1.rotation.set(-1.25,0,0.25);o.a2.rotation.set(1.1,0,-0.2);if(o.gun)o.gun.visible=false;
     if(p.state==='dead'){if(!o.pool){o.pool=new THREE.Mesh(bloodGeo,bloodMat);o.pool.renderOrder=3;scene.add(o.pool)}const k=Math.min(1,(p.deadT||0)/6);o.pool.scale.setScalar(0.35+k*0.9);o.pool.position.set(p.x-Math.cos(p.a)*0.7,0.03,p.y-Math.sin(p.a)*0.7)}
@@ -1184,7 +1188,12 @@ function syncPeds(){
   const f=camFocus();const alive=new Set();
   for(const p of S.peds){if(Math.abs(p.x-f.x)>140||Math.abs(p.y-f.y)>140)continue;alive.add(p.id);posePed(pedObj(p),p,false)}
   for(const p of IH.remote.peds){if(Math.abs(p.x-f.x)>220||Math.abs(p.y-f.y)>220)continue;alive.add(p.id);posePed(pedObj(p),p,false)}
+  // passengers: hidden inside cars and aircraft, sitting on the pillion of a motorbike
+  const sitOn=(ped,car,seat)=>{if(!car||!car.t||!car.t.bike)return;const o=pedObj(ped);alive.add(ped.id);const u=-0.55,ca=Math.cos(car.a),sa=Math.sin(car.a);
+    ped.x=car.x+ca*u;ped.y=car.y+sa*u;ped.a=car.a;ped.state='sit';ped.sitZ=(car.z||0)+0.98;posePed(o,ped,false);ped.state='walk'};
+  for(const r of(IH.remote.riders||[]))sitOn(r.ped,r.car,r.seat);
   const P=S.player;
+  if(S.G.state!=='menu'&&P.ride&&P.rideCar&&P.rideCar.t.bike){const proxy=P._sitProxy||(P._sitProxy=Object.assign({},P,{id:P.id+'_sit',kind:'player'}));proxy.shirt=P.shirt;proxy.weapon=P.weapon;sitOn(proxy,P.rideCar,P.ride.seat)}
   if(S.G.state!=='menu'&&!P.inCar&&!P.ride){alive.add(P.id);const o=pedObj(P);posePed(o,P,true);P.throwT=Math.max(0,(P.throwT||0)-1/60)}
   for(const[id,o]of pedObjs){if(!alive.has(id)){scene.remove(o.g);if(o.pool)scene.remove(o.pool);pedObjs.delete(id)}}
 }
@@ -1251,13 +1260,21 @@ function updateCamera(dt){
   else if(P.inCar||P.rideCar){const c=P.inCar||P.rideCar;tx=c.x;ty=c.y;vx=c.vx;vy=c.vy;heading=c.a;speed=hypot(vx,vy);if(c.t.plane){camAlt=lerp(camAlt,c.z||0,1-Math.exp(-3*dt));speed=Math.min(speed,60)}}
   else{tx=P.x;ty=P.y;vx=P.vx;vy=P.vy;if(hypot(vx,vy)>1)heading=P.a}
   const chase=IH.settings.cam==='chase'&&G.state!=='menu';
-  if(chase&&heading!==null){const want=heading+Math.PI/2;let d=want-cam.yaw;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;cam.yaw+=d*(1-Math.exp(-(P.inCar?3.2:1.6)*dt))}
-  else if(!chase){let d=-cam.yaw;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;cam.yaw+=d*(1-Math.exp(-4*dt))}
+  // follow camera with free look (swipe outside the joystick): the follow direction (cam.base) turns behind you,
+  // a swipe adds an offset (cam.look / cam.lookP). In vehicles the offset springs back after a moment of driving,
+  // on foot a swipe turns the camera for good and pauses the auto-follow for a few seconds.
+  if(cam.base===undefined)cam.base=cam.yaw;cam.look=cam.look||0;cam.lookP=cam.lookP||0;cam.lookHold=(cam.lookHold||0)-dt;cam.freeT=(cam.freeT||0)-dt;
+  const inVeh=!!(P.inCar||P.rideCar)&&G.state!=='menu';
+  if(chase&&heading!==null&&!(!inVeh&&cam.freeT>0)){const want=heading+Math.PI/2;let d=want-cam.base;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;cam.base+=d*(1-Math.exp(-(inVeh?3.2:1.6)*dt))}
+  else if(!chase){let d=-cam.base;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;cam.base+=d*(1-Math.exp(-4*dt));cam.look=0;cam.lookP=0}
+  if(chase&&inVeh&&cam.lookHold<=0&&speed>3){const k=Math.exp(-2.2*dt);cam.look*=k;cam.lookP*=k}
+  if(chase&&!inVeh&&cam.lookHold<=0)cam.lookP*=Math.exp(-0.8*dt);
+  cam.yaw=cam.base+cam.look;
   const veh=P.inCar||P.rideCar,foot=!veh&&G.state!=='menu';const zoom=IH.settings.zoom||1;
   const pc=veh&&veh.t.plane?veh:null;if(!pc)camAlt=lerp(camAlt,0,1-Math.exp(-3*dt));
   let dist=chase?(foot?12:pc?pc.t.len*0.9+14:16+speed*0.3):(foot?66:G.state==='menu'?150:(pc?80+pc.t.len*1.2+camAlt*0.5:92+speed*1.25))*zoom;dist=Math.min(dist,chase?(pc?70:32):(pc?260:170));
   lastDist=lerp(lastDist,dist,1-Math.exp(-1.5*dt));if(cam.snap){lastDist=dist}
-  const pitch=chase?(foot?0.42:0.36):G.state==='menu'?0.85:1.13;
+  const pitch=chase?clamp((foot?0.42:0.36)+cam.lookP,0.08,1.05):G.state==='menu'?0.85:1.13;
   const ahead=chase?0:Math.min(18,speed*0.45);
   const sp=hypot(vx,vy)||1;
   const lx=tx+(sp>1?vx/sp*ahead:0),ly=ty+(sp>1?vy/sp*ahead:0);

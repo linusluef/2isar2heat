@@ -106,7 +106,9 @@ net.onMessage=function(topic,payload){
     if(q<=p.lastSeq)return;p.lastSeq=q;p.last=t;
     const nm=cleanName(m.n);if(!p.joined){p.joined=true;p.name=nm;feed(nm+' ist in der Lobby','sys',p.color)}p.name=nm;
     const x=num(m.x,-50,2050,null),y=num(m.y,-50,2050,null);if(x===null||y===null)return;
-    p.mode=m.m==='c'||m.m==='d'||m.m==='r'?m.m:'f';p.rd=p.mode==='r'&&typeof m.rd==='string'&&m.rd.length<=24?m.rd:null;p.seat=num(m.st,0,60,0)|0;
+    const prevMode=p.mode;p.mode=m.m==='c'||m.m==='d'||m.m==='r'?m.m:'f';
+    // just got into a car: remember where (from this message, not the delayed interpolation) so an empty local copy of that car can be removed
+    if(p.mode==='c'&&prevMode!=='c')p.claim={x,y,type:CAR_TYPES[num(m.k,0,CAR_TYPES.length-1,1)|0],t};p.rd=p.mode==='r'&&typeof m.rd==='string'&&m.rd.length<=24?m.rd:null;p.seat=num(m.st,0,60,0)|0;
     // someone gets into my car as a passenger
     {const mine=p.rd===net.id;if(mine&&!p.withMe)feed(nm+' fährt bei dir mit','sys',p.color),IH.on&&IH.on.toast&&IH.on.toast(nm+' ist eingestiegen');else if(!mine&&p.withMe)feed(nm+' ist ausgestiegen','sys',p.color);p.withMe=mine}p.type=CAR_TYPES[num(m.k,0,CAR_TYPES.length-1,1)|0];p.cop=!!m.o;p.carColor=/^#[0-9a-f]{6}$/i.test(m.c)?m.c:'#888888';
     p.stars=num(m.s,0,5,0)|0;p.weapon=num(m.w,0,7,0)|0;p.hp=num(m.h,0,100,100);p.money=num(m.$,0,1e9,0)|0;p.kills=num(m.K,0,1e6,0)|0;p.paused=!!m.p;p.siren=!!m.r;if(/^#[0-9a-f]{6}$/i.test(m.sh||''))p.shirt=m.sh;p.carHp=num(m.ch,0,100,100);p.z=num(m.z,0,400,0);p.liv=/^[a-z]{3,10}$/.test(m.lv||'')?m.lv:null;p.roll=num(m.rl,-1,1,0);p.pitch=num(m.pt,-1,1,0);p.down=!!m.dn;
@@ -155,7 +157,7 @@ net.tick=function(){
     }
   }
   // remote bodies
-  const rc=IH.remote;rc.cars.length=0;rc.peds.length=0;const delay=170;
+  const rc=IH.remote;rc.cars.length=0;rc.peds.length=0;rc.riders=rc.riders||[];rc.riders.length=0;const delay=170;
   for(const p of Array.from(net.peers.values())){
     if(t-p.last>9000){dropPeer(p);continue}
     if(!p.snaps.length||!p.joined)continue;
@@ -164,12 +166,14 @@ net.tick=function(){
     if(b&&b!==a&&b.t>a.t){const k=clamp((rt-a.t)/(b.t-a.t),0,1);x=a.x+(b.x-a.x)*k;y=a.y+(b.y-a.y)*k;let d=b.a-a.a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;ang=a.a+d*k;vx=a.vx+(b.vx-a.vx)*k;vy=a.vy+(b.vy-a.vy)*k}
     else{const last=p.snaps[p.snaps.length-1];const ext=clamp((rt-last.t)/1000,0,0.35);x=last.x+last.vx*ext;y=last.y+last.vy*ext;ang=last.a;vx=last.vx;vy=last.vy}
     if(p.mode==='c'){
-      if(!p.car&&S.takenByRemote)S.takenByRemote(x,y,p.type);
       if(!p.car||p.car.type!==p.type||p.car.color!==p.carColor||p.car.cop!==p.cop){const CT=S.CT[p.type];p.car={remote:true,peer:p.id,id:'rc_'+p.id+'_'+p.type+(p.cop?'p':''),type:p.type,t:CT,color:p.carColor,cop:p.cop,label:null,x,y,a:ang,vx:0,vy:0,vf:0,vl:0,hp:100,maxHp:100,dead:false,sink:0,driver:'remote',brake:false,rev:false,siren:false}}
       const c=p.car;const fx=Math.cos(ang),fy=Math.sin(ang);const vf=vx*fx+vy*fy;c.brake=vf<(c.vf||0)-0.25&&vf>0.5;c.x=x;c.y=y;c.a=ang;c.vx=vx;c.vy=vy;c.vf=vf;c.vl=-vx*fy+vy*fx;c.rev=vf<-0.4;c.siren=p.siren;c.hp=p.carHp;c.z=c.z===undefined?p.z:c.z+(p.z-c.z)*Math.min(1,dt*6);c.roll=p.roll;c.pitch=p.pitch;c.air=p.z>0.5;c.spd=Math.hypot(vx,vy);c.liv=p.liv||'isar';
       rc.cars.push(c);
     }
     if(p.mode!=='c'&&p.car){if(!p.carBoomed&&S.leaveRemoteCar)S.leaveRemoteCar(p.car);p.car=null;p.carBoomed=false}
+    if(p.claim){if(t-p.claim.t>3000||(S.takenByRemote&&S.takenByRemote(p.claim.x,p.claim.y,p.claim.type)))p.claim=null}
+    // passengers sit in their driver's vehicle (placed from the driver's car, not from their own delayed position)
+    if(p.mode==='r'){const dc=p.rd===net.id?P.inCar:(net.peers.get(p.rd)||{}).car;if(dc)rc.riders.push({ped:p.ped,car:dc,seat:p.seat})}
     if(p.mode==='f'||p.mode==='d'){
       if(p.shirt&&p.ped.shirt!==p.shirt){p.ped=Object.assign({},p.ped,{shirt:p.shirt,id:'rp_'+p.id+p.shirt})}
       const q=p.ped;const sp=Math.hypot(vx,vy);q.anim+=dt*6.2832*(0.62+0.13*Math.min(sp,9))*(sp>0.3?1:0);q.x=x;q.y=y;q.a=sp>0.3?Math.atan2(vy,vx):ang;q.spdNow=sp;q.weapon=p.weapon;q.state=p.mode==='d'?'down':'walk';
