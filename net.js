@@ -105,7 +105,7 @@ net.onMessage=function(topic,payload){
   if(kind==='s'){
     if(q<=p.lastSeq)return;p.lastSeq=q;p.last=t;
     const nm=cleanName(m.n);if(!p.joined){p.joined=true;p.name=nm;feed(nm+' ist in der Lobby','sys',p.color)}p.name=nm;
-    const x=num(m.x,-50,1650,null),y=num(m.y,-50,1650,null);if(x===null||y===null)return;
+    const x=num(m.x,-50,2050,null),y=num(m.y,-50,2050,null);if(x===null||y===null)return;
     p.mode=m.m==='c'||m.m==='d'?m.m:'f';p.type=CAR_TYPES[num(m.k,0,CAR_TYPES.length-1,1)|0];p.cop=!!m.o;p.carColor=/^#[0-9a-f]{6}$/i.test(m.c)?m.c:'#888888';
     p.stars=num(m.s,0,5,0)|0;p.weapon=num(m.w,0,7,0)|0;p.hp=num(m.h,0,100,100);p.money=num(m.$,0,1e9,0)|0;p.kills=num(m.K,0,1e6,0)|0;p.paused=!!m.p;p.siren=!!m.r;if(/^#[0-9a-f]{6}$/i.test(m.sh||''))p.shirt=m.sh;p.carHp=num(m.ch,0,100,100);p.z=num(m.z,0,400,0);p.liv=/^[a-z]{3,10}$/.test(m.lv||'')?m.lv:null;p.roll=num(m.rl,-1,1,0);p.pitch=num(m.pt,-1,1,0);p.down=!!m.dn;
     p.snaps.push({t,x,y,a:num(m.a,-10,10,0),vx:num(m.vx,-80,80,0),vy:num(m.vy,-80,80,0)});if(p.snaps.length>5)p.snaps.shift();
@@ -114,7 +114,7 @@ net.onMessage=function(topic,payload){
   if(kind!=='e')return;
   if(p.evSeen.includes(q))return;p.evSeen.push(q);if(p.evSeen.length>80)p.evSeen.shift();
   p.last=t;p.tokens=Math.min(40,p.tokens+(t-(p.tokT||t))/1000*25);p.tokT=t;if(p.tokens<1)return;p.tokens--;
-  const S=IH.sim,P=S.player;const ex=num(m.x,-50,1650,null),ey=num(m.y,-50,1650,null);
+  const S=IH.sim,P=S.player;const ex=num(m.x,-50,2050,null),ey=num(m.y,-50,2050,null);
   const near=ex!==null&&ey!==null&&Math.hypot(ex-P.x,ey-P.y)<260;
   switch(m.e){
     case'shot':net.rx=(net.rx||0)+1;if(near)S.remoteShot({x:ex,y:ey,a:num(m.a,-10,10,0),w:num(m.w,1,6,1)|0,r:num(m.r,0,4294967295,1)},p.id);break;
@@ -168,7 +168,7 @@ net.tick=function(){
     if(p.mode!=='c'&&p.car){if(!p.carBoomed&&S.leaveRemoteCar)S.leaveRemoteCar(p.car);p.car=null;p.carBoomed=false}
     if(p.mode==='f'||p.mode==='d'){
       if(p.shirt&&p.ped.shirt!==p.shirt){p.ped=Object.assign({},p.ped,{shirt:p.shirt,id:'rp_'+p.id+p.shirt})}
-      const q=p.ped;const sp=Math.hypot(vx,vy);q.anim+=dt*sp*2.4;q.x=x;q.y=y;q.a=sp>0.3?Math.atan2(vy,vx):ang;q.spdNow=sp;q.weapon=p.weapon;q.state=p.mode==='d'?'down':'walk';
+      const q=p.ped;const sp=Math.hypot(vx,vy);q.anim+=dt*6.2832*(0.62+0.13*Math.min(sp,9))*(sp>0.3?1:0);q.x=x;q.y=y;q.a=sp>0.3?Math.atan2(vy,vx):ang;q.spdNow=sp;q.weapon=p.weapon;q.state=p.mode==='d'?'down':'walk';
       rc.peds.push(q);
     }
   }

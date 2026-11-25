@@ -8,7 +8,7 @@ A 2.5D top-down action game set in Munich (Frauenkirche to Allianz Arena), built
 
 No build tools are needed. GitHub Pages serves the files exactly as they are.
 
-1. **Unzip.** In the Files app, tap `2isar2heat.zip`. You get a folder called `2isar2heat` with 22 files.
+1. **Unzip.** In the Files app, tap `2isar2heat.zip`. You get a folder called `2isar2heat` with 23 files.
 2. **Create the repository.** On github.com, tap **+ → New repository**.
    - Name: `2isar2heat`
    - Visibility: **Public** (Pages is free for public repositories)
@@ -22,9 +22,26 @@ No build tools are needed. GitHub Pages serves the files exactly as they are.
    - Branch: **main**, folder: **/ (root)**.
    - Tap **Save**.
 5. **Wait for the build.** GitHub builds and deploys the site by itself, which takes 1–2 minutes. Under **Actions** you will see "pages build and deployment" with a green tick when it's done. **Settings → Pages** then shows the link, for example `https://linusluef.github.io/2isar2heat/`.
-6. **Install it on the iPad.** Open the link in Safari, then tap **Share → Add to Home Screen**. The game now starts full screen like an app, without browser bars.
+6. **Install it on the iPad.** Open the link in Safari. Instead of the game you see an install screen: tap **Share → Zum Home-Bildschirm → Hinzufügen**, then start the game from the new icon. It now runs full screen like an app, without browser bars.
+
+### Sharing the link with friends
+
+Send the Pages link as it is. On phones and tablets the game **only runs as an installed app**. Opened in the browser, it shows an install screen in German instead of the game. The screen has no close button, and the game does not load behind it.
+
+| Device | What the install screen does |
+|---|---|
+| Android (Chrome, Edge) | A **Jetzt installieren** button installs the app in one tap. Then start it from the home screen. |
+| Android (other browsers, or no prompt) | Step-by-step instructions for the browser menu (Samsung Internet and Firefox included). |
+| iPhone / iPad | Step-by-step instructions: Teilen → Zum Home-Bildschirm → Hinzufügen, with an arrow pointing to the share button. In apps like Instagram it first asks you to open the link in Safari. |
+| Computer | Not gated: the game runs in the browser as before. |
+
+- The one-tap install on Android needs the HTTPS link from GitHub Pages; it does not appear on a local test server.
+- On iPhone and iPad, the installed app keeps its own save and settings, separate from Safari. Log in with your account to bring your progress over.
 
 **Updating later:** upload the changed files again with the same names, so they overwrite the old ones. Pages redeploys automatically, and the app loads the new version the next time it starts.
+
+- **Do not upload `config.js` again** if you have already put your Firebase keys into it. The zip contains an empty one that would overwrite yours.
+- For this update, also upload the new file `install.js`.
 
 ## Accounts: keep your progress on every device (one-time, about 10 minutes)
 
@@ -161,7 +178,8 @@ These work in the global lobby with other players, and alone (offline or nobody 
 - **Siegestor:** it now stands free in a roundabout.
 - **University:** the Ludwig-Maximilians-Universität with Geschwister-Scholl-Platz and its fountains lies between the Siegestor and Odeonsplatz.
 - **Theresienwiese:** the Bavaria and the Ruhmeshalle stand clear of the road. The beer tents are rebuilt with towers, signs and beer gardens, and there is a new Ferris wheel that lights up at night.
-- **Flughafen München:** the airport lies east of the city. It has two runways, both terminals, a satellite, the tower, the Munich Airport Center, hangars and parked aircraft. Planes take off and land on the same schedule for every player, so watch out on the runway. Drive there via the Erdinger Landstraße and the small suburb Hallbergmoos.
+- **Flughafen München:** the airport lies well east of the city, about 350 m further out than before. It has two runways, both terminals, a satellite, the tower, the Munich Airport Center, hangars and parked aircraft. Planes take off and land on the same schedule for every player, so watch out on the runway. Departing planes turn north before they reach the city, and arrivals come in from the east, so no plane flies through buildings. Drive there via the Erdinger Landstraße and the small suburb Hallbergmoos.
+- **Airport fence:** a fence runs around the whole airside area (runways, taxiways, apron). The only way in by car is the guarded gate on the Terminalstraße next to Terminal 2, and the barrier only lifts when you drive up to it. Pedestrians stay out of the airside area.
 - **Flying:** three aircraft at the airport can be flown:
 
   | Aircraft | Where |
@@ -171,9 +189,17 @@ These work in the global lobby with other players, and alone (offline or nobody 
   | Passagierjet | At the east end of the apron |
 
   - **Get in:** walk up to the aircraft and tap Einsteigen.
-  - **Take off:** taxi onto a runway, give full gas and hold **Steigen** once you are fast enough. The aircraft shows its take-off speed when you try too early.
-  - **In the air:** steer with the joystick and use **Steigen** / **Sinken** to change height. Without either button the aircraft holds its altitude.
-  - **Land:** let go of the gas and hold **Sinken**. Close to the ground the descent flattens out by itself, and you can land on runways, roads, fields and meadows.
+  - **Gas and brake:** use the pedals exactly as in a car. The aircraft speeds up smoothly while you hold gas, keeps its speed when you let go, and slows down with the brake.
+  - **Take off:** taxi onto a runway and hold gas. When the aircraft reaches its take-off speed, a message says so. Then **pull the joystick down** to lift off. Every aircraft reaches that speed comfortably before the runway ends.
+
+    | Aircraft | Take-off speed |
+    |---|---|
+    | Kleinflugzeug | about 86 km/h |
+    | Turboprop | about 122 km/h |
+    | Passagierjet | about 173 km/h |
+
+  - **In the air:** the joystick works like a real control stick (inverted). Push it **down to climb** and **up to descend**, and left or right to turn. **Steigen** / **Sinken** also still work. Without any input the aircraft holds its altitude.
+  - **Land:** brake or let go of the gas, then push the joystick up (or hold **Sinken**). Close to the ground the descent flattens out by itself, and you can land on runways, roads, fields and meadows.
   - **Danger:** too slow means a stall, and buildings, the Olympiaturm and a steep touchdown destroy the aircraft.
   - **Keyboard:** R or N = Steigen, F or Shift = Sinken. **Controller:** RB = Steigen, B = Sinken.
   - **Online:** other players see your aircraft at its real height.
@@ -181,12 +207,17 @@ These work in the global lobby with other players, and alone (offline or nobody 
 
   | Station | Music |
   |---|---|
-  | Isar FM | Dance and house |
-  | Lo-Fi Lehel | Chillhop |
-  | Radio Weißwurst | Bavarian brass band |
+  | Isar FM | House, trance and electro-pop |
+  | Lo-Fi Lehel | Lo-fi hip-hop, jazz-hop and ambient |
+  | Radio Weißwurst | Polka, Landler (waltz time) and march |
   | Radio aus | Off |
 
-  The music is generated live by the game, so there are no recordings or licences. Each station keeps playing in the background, so when you switch back you land in the middle of a song. Between songs the presenter speaks, using the iPad's German voice.
+  - **Every song is new:** each one gets its own key, tempo, chord progression, melody and arrangement, with intros, breaks, fills and endings. Each station rotates through its three styles.
+  - **Real-sounding instruments:** plucked guitar, zither and double bass, piano, electric piano, supersaw synths, vocal pads, trumpets, tuba, accordion, clarinet, vibraphone and a full drum kit. They play in stereo with reverb and echo, dance tracks pump with the kick, and lo-fi has vinyl crackle and tape wobble.
+  - **Song info:** the radio bar shows the style, artist and title. All artists and titles are made up.
+  - **Presenter:** between songs the presenter names the last song and sometimes adds a traffic or weather note or announces what comes next, using the iPad's German voice.
+
+  The music is generated live by the game, so there are no recordings or licences. Each station keeps playing in the background, so when you switch back you land in the middle of a song.
   - **Keyboard:** , and . switch stations. **Controller:** d-pad left / right.
 - **Online cars:** when another player's car explodes, you now see it, and the wreck stays. Cars that other players get out of stay parked.
 
@@ -202,11 +233,18 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - These public brokers come with no uptime guarantee.
   - Anyone can read the game messages, which contain only names and positions. Don't use your real name.
 
+## Graphics and performance
+
+- **Smooth while flying:** the ground textures of the city are reused from a fixed pool instead of being created anew as you fly, so memory stays flat and the iPad no longer runs out of it. At height the game draws the whole city from one detailed overview map, so nothing loads in patches and no buildings look see-through.
+- **Far view:** fog and view distance grow with altitude, and shadows update every second frame. The picture quality stays the same.
+- **Walking:** people walk with bending knees, planted feet and natural arm swing, and their steps match their speed.
+
 ## Controls
 
 | | Touch | Controller | Keyboard |
 |---|---|---|---|
 | Steer / walk | Joystick (left) | Left stick | WASD / arrow keys |
+| Aircraft climb / descend | Joystick down / up, or Steigen / Sinken | Left stick down / up, RB / B | R or N / F or Shift |
 | Gas / brake | Pedals (right). Slide your thumb between them. Hold brake while stopped to reverse. | RT / LT | W / S |
 | Fire / horn / siren / water | Fire button / horn button | X | Space |
 | Sprint (on foot) | Push the joystick fully | B | Shift |
@@ -240,6 +278,7 @@ Settings are on the start screen and in the pause menu:
 | `activities.js` | Races, bank heist and casino (blackjack, Texas Hold'em), online and offline |
 | `account.js`, `config.js` | Accounts and cloud saves (Firebase), save codes |
 | `main.js` | Input (touch, controller, keyboard), sound, HUD, lobby UI |
+| `install.js` | Install screen: on phones and tablets the game only runs from the home screen |
 | `sw.js`, `manifest.webmanifest`, `icon-*.png`, `apple-touch-icon.png` | Home-screen app and offline cache |
 | `three.min.js` | three.js r128 (MIT licence) |
 | `*.ttf`, `OFL-*.txt` | Fonts Bungee and Barlow Condensed (SIL Open Font License) |

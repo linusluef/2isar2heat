@@ -14,6 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="install.js"></script>
 <style>
 @font-face{font-family:'Bungee';src:url('Bungee-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
 @font-face{font-family:'Barlow Condensed';src:url('BarlowCondensed-SemiBold.ttf') format('truetype');font-weight:500 600;font-display:swap}
@@ -261,7 +262,7 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
 #radio[hidden]{display:none}#radio.flash{box-shadow:0 0 0 3px var(--rc)}
 #radio .rb{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.08);font-size:28px;line-height:1;color:var(--paper);font-weight:700}
 #radio .rinfo{flex:1;display:flex;align-items:center;gap:10px;justify-content:center;padding:0 6px;min-width:0}
-#radio .rinfo span{display:flex;flex-direction:column;line-height:1.05;min-width:0}#radio .rinfo b{font-family:var(--font-display);font-weight:400;font-size:15px;color:var(--rc);white-space:nowrap}#radio .rinfo em{font-style:normal;font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap}
+#radio .rinfo span{display:flex;flex-direction:column;line-height:1.05;min-width:0}#radio .rinfo b{font-family:var(--font-display);font-weight:400;font-size:15px;color:var(--rc);white-space:nowrap}#radio .rinfo em{font-style:normal;font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(400px,60vw)}#radio{max-width:min(560px,94vw)}
 #radio .eq{display:flex;align-items:flex-end;gap:2px;height:20px;width:18px}#radio .eq b{display:block;width:3px;height:4px;background:var(--rc);border-radius:1px}
 #radio.live .eq b{animation:eqb .9s ease-in-out infinite alternate}#radio.live .eq b:nth-child(2){animation-delay:-.3s}#radio.live .eq b:nth-child(3){animation-delay:-.6s}#radio.live .eq b:nth-child(4){animation-delay:-.15s}
 @keyframes eqb{0%{height:3px}100%{height:18px}}
@@ -347,7 +348,6 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
       <div class="row"><button id="codeOut" class="btn2 alt" type="button">Spielstand-Code erstellen</button><button id="codeIn" class="btn2 alt" type="button">Code eingeben</button></div>
       <p class="msg" id="acctMsg"></p>
     </div>
-    <p class="note" id="installHint" hidden>Tipp fürs iPad: Teilen-Symbol → „Zum Home-Bildschirm“. Dann startet 2Isar2Heat wie eine App im Vollbild.</p>
     <details class="more"><summary>Einstellungen</summary><div>
       <div class="seg" role="group" aria-label="Kamera"><span>Kamera</span><button type="button" data-set="cam" data-val="top">Draufsicht</button><button type="button" data-set="cam" data-val="chase">Verfolger</button></div>
       <div class="seg" role="group" aria-label="Lenkung"><span>Lenkung</span><button type="button" data-set="steer" data-val="dir">Richtung zeigen</button><button type="button" data-set="steer" data-val="lr">Links / Rechts</button></div>

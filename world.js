@@ -10,12 +10,13 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const smooth=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
 const hypot=Math.hypot;
 
-const MAP=1600;   // city 0–1200; to the east the airport and Hallbergmoos, around it open country
+const MAP=2000;   // city 0–1200; to the east the airport and Hallbergmoos, around it open country
 const TY={GRASS:0,ROAD:1,WALK:2,BUILD:3,WATER:4,BRIDGE:5,PARK:6,PLAZA:7,LOT:8,BANK:9,RAIL:10,SOLID:11,FIELD:12};
 const RES=99;
 const grid=new Uint8Array(MAP*MAP);
 const cross=new Uint8Array(MAP*MAP);     // zebra crossing cells
 const waterMask=new Uint8Array(MAP*MAP);
+const airside=new Uint8Array(MAP*MAP);   // inside the airport fence
 function at(x,y){x=Math.floor(x);y=Math.floor(y);return(x<0||y<0||x>=MAP||y>=MAP)?TY.SOLID:grid[y*MAP+x]}
 
 /* ---------- rasterisers ---------- */
@@ -149,12 +150,12 @@ road('Wiesn-Zufahrt',[[414,866],[452,861]],{w:7});
 road('Hansastraße',[[290,949],[293,1060]],{w:8});
 road('Herzog-Wilhelm-Straße',[[364,720],[420,722],[452,724]],{w:7});
 // out of town: Erdinger Landstraße to Hallbergmoos, the Flughafen-Zubringer and the airport loop
-road('Erdinger Landstraße',[[1190,512],[1215,508],[1250,500]],{w:9,country:true,walk:2});
-for(const y of[460,500,540,580])road('Hallbergmoos',[[1250,y],[1290,y],[1330,y],[1370,y],[1410,y]],{w:7,suburb:true,walk:2.5});
-for(const x of[1250,1290,1330,1370,1410])road('Hallbergmoos',[[x,460],[x,500],[x,540],[x,580]],{w:7,suburb:true,walk:2.5});
-road('Flughafen-Zubringer',[[1250,460],[1252,430],[1254,400],[1254,360],[1256,340]],{w:12,lanes:2,country:true,walk:1});
-road('Terminalstraße',[[1256,340],[1300,338],[1318,320],[1318,180],[1300,162],[1262,162],[1246,180],[1246,320],[1256,340]],{w:10,country:true,closed:true,walk:3});
-road('Zentralallee',[[1246,250],[1318,250]],{w:8,country:true,walk:3});
+road('Erdinger Landstraße',[[1190,512],[1260,522],[1340,516],[1420,500],[1500,494],[1560,498],[1600,500]],{w:9,country:true,walk:2});
+for(const y of[460,500,540,580])road('Hallbergmoos',[[1600,y],[1640,y],[1680,y],[1720,y],[1760,y]],{w:7,suburb:true,walk:2.5});
+for(const x of[1600,1640,1680,1720,1760])road('Hallbergmoos',[[x,460],[x,500],[x,540],[x,580]],{w:7,suburb:true,walk:2.5});
+road('Flughafen-Zubringer',[[1600,460],[1602,430],[1604,400],[1604,360],[1606,340]],{w:12,lanes:2,country:true,walk:1});
+road('Terminalstraße',[[1606,340],[1650,338],[1668,320],[1668,180],[1650,162],[1612,162],[1596,180],[1596,320],[1606,340]],{w:10,country:true,closed:true,walk:3});
+road('Zentralallee',[[1596,250],[1668,250]],{w:8,country:true,walk:3});
 const MAJOR_COUNT=roads.length;
 
 /* ---------- infill districts ---------- */
@@ -346,12 +347,12 @@ for(let i=0;i<MAP*MAP;i++)if(grid[i]===RES)grid[i]=TY.PLAZA;
 
 /* ---------- Flughafen München ---------- */
 const airport=(()=>{
-  const A={runways:[{x0:1268,x1:1588,y:80,w:14,name:['08L','26R']},{x0:1268,x1:1588,y:380,w:14,name:['08R','26L']}],
-    taxis:[[[1290,100],[1580,100]],[[1290,360],[1580,360]],[[1296,80],[1296,124]],[[1432,80],[1432,124]],[[1574,80],[1574,124]],[[1296,336],[1296,380]],[[1432,336],[1432,380]],[[1574,336],[1574,380]],[[1410,124],[1410,336]],[[1296,100],[1296,124]]],
-    apron:[1352,122,1586,338],terminals:[{box:[1330,140,1352,236],name:'Terminal 2'},{box:[1330,244,1352,340],name:'Terminal 1'}],satellite:[1468,170,1486,290],
-    tower:{x:1290,y:226,r:3.4},mac:[1262,262,1306,300],garages:[[1258,168,1306,200]],hotel:[1258,306,1306,332],hangars:[[1420,18,1470,56],[1482,18,1532,56]],hangarApron:[1414,56,1540,70],stands:[]};
+  const A={runways:[{x0:1618,x1:1938,y:80,w:14,name:['08L','26R']},{x0:1618,x1:1938,y:380,w:14,name:['08R','26L']}],
+    taxis:[[[1640,100],[1930,100]],[[1640,360],[1930,360]],[[1646,80],[1646,124]],[[1782,80],[1782,124]],[[1924,80],[1924,124]],[[1646,336],[1646,380]],[[1782,336],[1782,380]],[[1924,336],[1924,380]],[[1760,124],[1760,336]],[[1646,100],[1646,124]]],
+    apron:[1702,122,1936,338],terminals:[{box:[1680,140,1702,236],name:'Terminal 2'},{box:[1680,244,1702,340],name:'Terminal 1'}],satellite:[1818,170,1836,290],
+    tower:{x:1640,y:226,r:3.4},mac:[1612,262,1656,300],garages:[[1608,168,1656,200]],hotel:[1608,306,1656,332],hangars:[[1770,18,1820,56],[1832,18,1882,56]],hangarApron:[1764,56,1890,70],stands:[]};
   const set2=v=>(i)=>{const g=grid[i];if(g===TY.GRASS||g===TY.FIELD||g===TY.PARK)grid[i]=v};
-  fillPoly(rect(1232,10,1598,420),set2(TY.FIELD));                         // mown airfield grass, no trees
+  fillPoly(rect(1582,4,1998,420),set2(TY.FIELD));                         // mown airfield grass, no trees
   for(const r of A.runways){fillPoly(rect(r.x0,r.y-r.w/2,r.x1,r.y+r.w/2),set2(TY.PLAZA));draw.zones.push({t:'runway',pts:rect(r.x0,r.y-r.w/2,r.x1,r.y+r.w/2),rw:r})}
   for(const t of A.taxis){fillThick(t,4.5,set2(TY.PLAZA),true);draw.zones.push({t:'taxi',pts:t,w:9})}
   const ap=A.apron;fillPoly(rect(ap[0],ap[1],ap[2],ap[3]),set2(TY.PLAZA));draw.zones.push({t:'apron',pts:rect(ap[0],ap[1],ap[2],ap[3])});
@@ -365,19 +366,24 @@ const airport=(()=>{
   const stand=(x,y,a,type)=>{const T={narrow:{len:38,span:35},wide:{len:64,span:62},regio:{len:27,span:27}}[type];const st={x,y,a,type,len:T.len,span:T.span,liv:LIV[li++%LIV.length]};A.stands.push(st);
     const c=Math.cos(a),s2=Math.sin(a);fillThick([[x-c*T.len*0.46,y-s2*T.len*0.46],[x+c*T.len*0.48,y+s2*T.len*0.48]],T.len>50?3.2:2.1,(i)=>{grid[i]=TY.SOLID},false);
     for(const sd of[-1,1]){const ex=x+c*T.len*0.08-s2*sd*T.span*(T.len>50?0.18:0.17),ey=y+s2*T.len*0.08+c*sd*T.span*(T.len>50?0.18:0.17);fillCircle(ex,ey,T.len>50?1.8:1.2,(i)=>{grid[i]=TY.SOLID})}};
-  for(const y of[160,200,280,320])stand(1352+4+19,y,Math.PI,'narrow');
-  for(const y of[192,232,270])stand(1468-4-19,y,0,'narrow');
-  for(const y of[196,266])stand(1486+4+32,y,Math.PI,'wide');
-  stand(1395,40,Math.PI/2,'regio');
+  for(const y of[160,200,280,320])stand(1702+4+19,y,Math.PI,'narrow');
+  for(const y of[192,232,270])stand(1818-4-19,y,0,'narrow');
+  for(const y of[196,266])stand(1836+4+32,y,Math.PI,'wide');
+  stand(1745,40,Math.PI/2,'regio');
   // aircraft you can fly: small plane at the hangars, turboprop and airliner on the apron
-  A.flyable=[{id:'f1',type:'cessna',liv:'bavaria',x:1452,y:63,a:0},{id:'f2',type:'regio',liv:'isar',x:1375,y:240,a:0},{id:'f3',type:'jet',liv:'nordlicht',x:1555,y:150,a:Math.PI/2}];
-  L({k:'airport',name:'Flughafen München',x:1300,y:250,A});
+  A.flyable=[{id:'f1',type:'cessna',liv:'bavaria',x:1802,y:63,a:0},{id:'f2',type:'regio',liv:'isar',x:1915,y:320,a:Math.PI},{id:'f3',type:'jet',liv:'nordlicht',x:1905,y:150,a:Math.PI/2}];
+  A.fence=[[1585,8],[1995,8],[1995,412],[1614,412],[1614,352],[1677,352],[1677,150],[1585,150],[1585,8]];A.gate={x:1677,y0:237,y1:243,cells:[]};
+  for(let k=0;k+1<A.fence.length;k++){const a=A.fence[k],b=A.fence[k+1];const L2=Math.hypot(b[0]-a[0],b[1]-a[1]);for(let d=0;d<=L2;d+=0.5){const x=Math.floor(a[0]+(b[0]-a[0])*d/L2),y=Math.floor(a[1]+(b[1]-a[1])*d/L2);
+    const inGate=Math.abs(x-A.gate.x)<=1&&y>=A.gate.y0&&y<=A.gate.y1;const i=y*MAP+x;if(inGate){if(!A.gate.cells.includes(i))A.gate.cells.push(i);continue}if(grid[i]!==TY.ROAD)grid[i]=TY.RAIL}}
+  for(const i of A.gate.cells)grid[i]=TY.RAIL;   // closed until a player drives up
+  fillPoly(A.fence,(i)=>{airside[i]=1});
+  L({k:'airport',name:'Flughafen München',x:1650,y:250,A});
   return A})();
 // farmland around the city edge
-for(const r of[[1440,440,1590,600],[1220,640,1380,780],[1400,640,1590,760],[1220,1220,1400,1380],[60,1230,280,1380],[450,1240,640,1400],[920,1230,1120,1360],[1420,1000,1590,1180],[1250,1430,1450,1580],[100,1440,330,1580]]){
+for(const r of[[1250,600,1450,780],[1480,640,1700,800],[1790,460,1980,640],[1250,820,1500,1000],[1600,900,1950,1150],[1220,1220,1400,1380],[60,1230,280,1380],[450,1240,640,1400],[920,1230,1120,1360],[1450,1250,1700,1450],[1250,1500,1500,1700],[100,1500,330,1700],[700,1500,950,1750],[1700,1600,1950,1900],[300,1800,600,1950],[1250,40,1420,200]]){
   fillPoly(rect(...r),(i)=>{if(grid[i]===TY.GRASS)grid[i]=TY.FIELD});draw.zones.push({t:'acker',pts:rect(...r),ang:((r[0]*7+r[1])%4)*0.4})}
 // Hallbergmoos: a church on the square
-L({k:'kirche',name:'Hallbergmoos',x:1350,y:520});stamp(rect(1342,512,1358,528),TY.BUILD);
+L({k:'kirche',name:'Hallbergmoos',x:1700,y:520});stamp(rect(1692,512,1708,528),TY.BUILD);
 /* ---------- buildings along streets ---------- */
 const RING_POLY=RING_A,MR_POLY=MRING;
 const WALLS=['#d9cfbd','#cdb99a','#bfc3c6','#e6dcc6','#ab9c88','#d3c9ba','#a7aeb3','#dbc6a3','#e5d1a8','#c7ab8b','#e0c9b9','#b9c2b0'];
@@ -461,7 +467,7 @@ for(let y=8;y<MAP-8;y+=7)for(let x=8;x<MAP-8;x+=7){
 const props=[];
 function addProp(p){props.push(p)}
 const okTree=(x,y)=>{const g=at(x,y);return g===TY.PARK||g===TY.GRASS||g===TY.BANK||g===TY.WALK||g===TY.PLAZA||g===TY.FIELD};
-const treeAt=new Set();const FOREST=[[1250,880,70],[1480,860,90],[1320,1080,80],[1520,1330,90],[380,1460,100],[760,1300,70],[1060,1480,90],[1200,1300,55],[1530,470,40]];
+const treeAt=new Set();const FOREST=[[1300,440,60],[1480,300,70],[1500,880,90],[1900,880,80],[1330,1090,80],[1760,1350,100],[380,1460,100],[760,1300,70],[1060,1480,90],[1200,1300,55],[1100,1800,120],[1850,1750,90],[500,1850,90],[1890,480,40],[1560,1050,60]];
 function tree(x,y,s){const k=Math.floor(x/3)*1000+Math.floor(y/3);if(treeAt.has(k))return;treeAt.add(k);addProp({k:'tree',x,y,r:0.45,s:s||R(0.8,1.25),hue:rng()})}
 for(let y=2;y<MAP-2;y+=3)for(let x=2;x<MAP-2;x+=3){
   const g=grid[y*MAP+x];const h=rng();
@@ -530,7 +536,7 @@ for(const[id,name,price,anchor,nslots,income]of PROP_DEFS){
 }
 const phoneDefs=[[520,671],[345,630],[532,330],[1000,700],[335,205],[600,905],[200,742],[880,1060],[1000,400]];
 const phones=phoneDefs.map(([x,y])=>{const c=nearestCell(x,y,t=>t===TY.WALK);return{x:c.x,y:c.y}});
-const placesDef=[['Flughafen München',1300,250],['Hallbergmoos',1330,520],['Universität',505,366],['Marienplatz',520,668],['Hauptbahnhof',345,640],['Siegestor',530,320],['Friedensengel',RB.x,RB.y+30],['Maximilianeum',864,640],['Deutsches Museum',riverX(860),846],['Olympiapark',336,200],['BMW-Welt',440,212],['Allianz Arena',1010,112],['Theresienwiese',290,790],['Viktualienmarkt',600,668],['Chinesischer Turm',610,300],['Sendlinger Tor',432,780],['Isartor',690,662],['Odeonsplatz',520,490],['Giesinger Berg',960,1080],['Haidhausen',1040,700],['Bogenhausen',1000,380],['Westend',150,740],['Schwabing',515,180],['Glockenbachviertel',600,920]];
+const placesDef=[['Flughafen München',1650,250],['Hallbergmoos',1680,520],['Universität',505,366],['Marienplatz',520,668],['Hauptbahnhof',345,640],['Siegestor',530,320],['Friedensengel',RB.x,RB.y+30],['Maximilianeum',864,640],['Deutsches Museum',riverX(860),846],['Olympiapark',336,200],['BMW-Welt',440,212],['Allianz Arena',1010,112],['Theresienwiese',290,790],['Viktualienmarkt',600,668],['Chinesischer Turm',610,300],['Sendlinger Tor',432,780],['Isartor',690,662],['Odeonsplatz',520,490],['Giesinger Berg',960,1080],['Haidhausen',1040,700],['Bogenhausen',1000,380],['Westend',150,740],['Schwabing',515,180],['Glockenbachviertel',600,920]];
 const places=placesDef.map(([name,x,y])=>{const c=nearestCell(x,y,t=>t===TY.WALK||t===TY.PLAZA||t===TY.ROAD);return{name,x:c.x,y:c.y}});
 const pickupKinds=['health','health','health','health','health','armor','armor','armor','pistol','pistol','pistol','pistol','smg','smg','shotgun','grenade','health','pistol'];
 const pickups=pickupKinds.map(k=>{for(let i=0;i<50;i++){const x=R(60,MAP-60),y=R(60,MAP-60);const g=at(x,y);if(g===TY.WALK||g===TY.PLAZA||g===TY.PARK){return{k,x:Math.floor(x)+0.5,y:Math.floor(y)+0.5}}}return null}).filter(Boolean);
@@ -549,7 +555,7 @@ const casino=(()=>{const b=pickBuilding(532,236,12);if(!b)return null;b.casino=t
 const raceDefs=[
   {id:'ring',name:'Altstadtring-Rallye',x:600,y:481,road:'Altstadtring',laps:1},
   {id:'leo',name:'Leopold-Sprint',x:521,y:262,via:[[521,180],[523,60],[700,110],[1000,112]]},
-  {id:'muc',name:'Flughafen-Run',x:1290,y:560,pts:[[1290,540],[1270,500],[1250,470],[1252,420],[1254,370],[1256,340],[1300,338],[1318,300],[1318,252],[1342,240],[1380,240],[1400,270],[1410,320],[1432,360],[1450,380],[1520,380],[1584,380]]}];
+  {id:'muc',name:'Flughafen-Run',x:1640,y:560,pts:[[1640,540],[1620,500],[1600,470],[1602,420],[1604,370],[1606,340],[1650,338],[1668,300],[1668,252],[1692,240],[1730,240],[1750,270],[1760,320],[1782,360],[1800,380],[1870,380],[1934,380]]}];
 /* ---------- life on the squares ---------- */
 const drng=mulberry32(0xD3C0);
 const DR=(a,b)=>a+(b-a)*drng();
@@ -617,7 +623,7 @@ const PCS=8,PGW=Math.ceil(MAP/PCS),pgrid=new Array(PGW*PGW);
 props.forEach((p,i)=>{p.i=i;const k=Math.floor(p.y/PCS)*PGW+Math.floor(p.x/PCS);(pgrid[k]||(pgrid[k]=[])).push(p)});
 function propsNear(x,y,r){const out=[];const x0=Math.max(0,Math.floor((x-r)/PCS)),x1=Math.min(PGW-1,Math.floor((x+r)/PCS)),y0=Math.max(0,Math.floor((y-r)/PCS)),y1=Math.min(PGW-1,Math.floor((y+r)/PCS));for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++){const a=pgrid[yy*PGW+xx];if(a)for(const p of a)out.push(p)}return out}
 
-IH.world={MAP,TY,grid,cross,waterMask,at,nodes,edges,roads,buildings,lots,props,propsNear,landmarks,zones,shops,phones,places,pickups,zebras,draw,properties,ramps,packages,crowds,pigeons,xmas,
+IH.world={MAP,TY,grid,cross,waterMask,airside,at,nodes,edges,roads,buildings,lots,props,propsNear,landmarks,zones,shops,phones,places,pickups,zebras,draw,properties,ramps,packages,crowds,pigeons,xmas,
   riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
 IH.util={mulberry32,clamp,hypot,pointAt,cumLen};
 })(window));

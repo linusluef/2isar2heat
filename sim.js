@@ -30,9 +30,9 @@ const CT={
   feuerwehr:{len:7.6,wid:2.5,ht:3.1,max:28,acc:10,turn:1.7,hp:280,mass:4,name:'Feuerwehr',emerg:true},
   polsuv:{len:4.9,wid:2.0,ht:1.85,max:37,acc:17,turn:2.4,hp:190,mass:1.9,name:'Polizei-SUV',offroad:0.85},
   // aircraft (flyable): vr = rotation speed, climb = best climb rate m/s, turn = turn rate in the air
-  cessna:{len:8.3,wid:2.2,ht:2.7,max:62,acc:8,turn:1,hp:140,mass:3,name:'Kleinflugzeug',plane:{cls:'cessna',vr:26,max:62,acc:8,climb:8,turn:0.6,gturn:0.9}},
-  regio:{len:27,wid:3.2,ht:7.5,max:115,acc:10,turn:1,hp:280,mass:12,name:'Turboprop',plane:{cls:'regio',vr:40,max:115,acc:10,climb:10,turn:0.42,gturn:0.5}},
-  jet:{len:38,wid:4.2,ht:11.5,max:185,acc:12,turn:1,hp:420,mass:25,name:'Passagierjet',plane:{cls:'narrow',vr:56,max:185,acc:12,climb:14,turn:0.32,gturn:0.36}},
+  cessna:{len:8.3,wid:2.2,ht:2.7,max:62,acc:8,turn:1,hp:140,mass:3,name:'Kleinflugzeug',plane:{cls:'cessna',vr:24,max:62,acc:9,climb:8,turn:0.62,gturn:0.9}},
+  regio:{len:27,wid:3.2,ht:7.5,max:115,acc:10,turn:1,hp:280,mass:12,name:'Turboprop',plane:{cls:'regio',vr:34,max:115,acc:12,climb:10,turn:0.44,gturn:0.5}},
+  jet:{len:38,wid:4.2,ht:11.5,max:185,acc:12,turn:1,hp:420,mass:25,name:'Passagierjet',plane:{cls:'narrow',vr:48,max:185,acc:15,climb:14,turn:0.34,gturn:0.36}},
 };
 const CIV_COLORS=['#2c3e70','#8e1b1b','#d9d9d4','#1d1f22','#5b6b4a','#6a7b8c','#b5b9bd','#7a3b6a','#c96b28','#264e4a','#3a3f47','#9b8f6a','#2f5d8a','#e2e2de'];
 const SHIRTS=['#3d6fb6','#b33a3a','#e0d6c2','#2f2f35','#6a9a52','#c58b2b','#7c4f9e','#3c8f8a','#d15b8f','#8a8f96','#556b2f','#e8e1d0'];
@@ -340,7 +340,7 @@ function fillLots(all){
     }
   }
 }
-function walkPointNear(cx,cy,rmin,rmax){for(let i=0;i<20;i++){const a=rand(0,Math.PI*2),d=rand(rmin,rmax);const x=cx+Math.cos(a)*d,y=cy+Math.sin(a)*d;const t=at(x,y);if(t===TY.WALK||t===TY.PLAZA||(t===TY.PARK&&Math.random()<0.25))return{x:Math.floor(x)+0.5,y:Math.floor(y)+0.5}}return null}
+function walkPointNear(cx,cy,rmin,rmax){for(let i=0;i<20;i++){const a=rand(0,Math.PI*2),d=rand(rmin,rmax);const x=cx+Math.cos(a)*d,y=cy+Math.sin(a)*d;const t=at(x,y);if(W.airside[Math.floor(y)*W.MAP+Math.floor(x)])continue;if(t===TY.WALK||t===TY.PLAZA||(t===TY.PARK&&Math.random()<0.25))return{x:Math.floor(x)+0.5,y:Math.floor(y)+0.5}}return null}
 
 /* ================= peds ================= */
 function pedBlocked(x,y,civ){
@@ -354,7 +354,7 @@ function slide(p,dx,dy){if(!movePed(p,dx,dy,false)){const s=hypot(dx,dy);if(!mov
 function civSteer(p,dt){
   // walk with a heading; turn away from anything that is not pavement
   const look=1.4;
-  const ok=a=>{const x=p.x+Math.cos(a)*look,y=p.y+Math.sin(a)*look;const t=at(x,y);if(!civOK(t)&&!(t===TY.ROAD&&W.cross[Math.floor(y)*W.MAP+Math.floor(x)]))return false;return!pedBlocked(x,y,true)};
+  const ok=a=>{const x=p.x+Math.cos(a)*look,y=p.y+Math.sin(a)*look;const t=at(x,y);if(W.airside[Math.floor(y)*W.MAP+Math.floor(x)]&&!W.airside[Math.floor(p.y)*W.MAP+Math.floor(p.x)])return false;if(!civOK(t)&&!(t===TY.ROAD&&W.cross[Math.floor(y)*W.MAP+Math.floor(x)]))return false;return!pedBlocked(x,y,true)};
   p.turnT-=dt;if(p.turnT<=0){p.turnT=rand(3,8);p.h=(p.h??p.a)+rand(-0.9,0.9)}
   let h=p.h??p.a;
   if(!ok(h)){let found=false;for(const d of[0.5,-0.5,1,-1,1.6,-1.6,2.3,-2.3,Math.PI]){const s=Math.random()<0.5?1:-1;if(ok(h+d*s)){h+=d*s;found=true;break}}if(!found)h+=Math.PI}
@@ -373,8 +373,9 @@ function updatePed(p,dt){
     else if(p.state==='board'&&p.target){const dx=p.target.x-p.x,dy=p.target.y-p.y,d=hypot(dx,dy);if(d<1.2){p.alive=false;p.boarded=true}else slide(p,dx/d*3*dt,dy/d*3*dt)}
   }else if(p.kind==='cop')copPedAI(p,dt);
   const sp=hypot(p.x-p.lx,p.y-p.ly)/Math.max(dt,1e-4);
-  if(sp>0.2){p.a=Math.atan2(p.y-p.ly,p.x-p.lx);p.anim+=dt*sp*2.6}
-  p.lx=p.x;p.ly=p.y;p.spdNow=sp;
+  const ss=(p.spdNow||0)+(Math.min(sp,12)-(p.spdNow||0))*Math.min(1,dt*7);
+  if(sp>0.2){p.a=Math.atan2(p.y-p.ly,p.x-p.lx)}if(ss>0.2)p.anim+=dt*gaitW(ss);
+  p.lx=p.x;p.ly=p.y;p.spdNow=ss;
 }
 function copPedAI(p,dt){
   const tgt=player.inCar||player;const dx=tgt.x-p.x,dy=tgt.y-p.y,d=hypot(dx,dy)||1;
@@ -406,15 +407,19 @@ function crowdTick(f){
   for(const cr of W.crowds){if(hypot(cr.x-f.x,cr.y-f.y)>150)continue;let n=0;for(const p of peds)if(p.crowd===cr)n++;
     if(n<cr.n&&Math.random()<0.4){for(let k=0;k<6;k++){const a=rand(0,Math.PI*2),d=rand(1,cr.r);const x=cr.x+Math.cos(a)*d,y=cr.y+Math.sin(a)*d;if(pedBlocked(x,y,true))continue;const p=makePed(x,y,'civ');p.state='idle';p.crowd=cr;p.face=cr.face;p.a=cr.face+rand(-0.7,0.7);p.idleT=rand(1,6);peds.push(p);break}}}
 }
+// stride frequency: ~0.8 Hz when walking, ~1.4 Hz when running (one stride = two steps)
+function gaitW(sp){return 6.2832*(0.62+0.13*Math.min(sp,9))}
 const heli=IH.heli={on:false,x:0,y:0,z:42,a:0,vx:0,vy:0,hp:220,cool:0,fireCD:3,leaving:0};
 function heliDown(){heli.on=false;heli.cool=45;explosion(heli.x,heli.y,true);addMoney(1500,heli.x,heli.y);G.heat=Math.min(5.99,G.heat+0.6);emit('banner','Hubschrauber abgeschossen!','+$1.500 – jetzt wird’s ernst','#ffc61a')}
 /* ================= airport traffic (same schedule for every player: driven by the wall clock) ================= */
 const planes=[{type:'narrow',liv:'isar',vis:false,x:0,y:0,z:0,a:0},{type:'wide',liv:'alpen',vis:false,x:0,y:0,z:0,a:0},{type:'regio',liv:'bavaria',vis:false,x:0,y:0,z:0,a:0}];
 // keyframes [t, x, y, z, ease]; ease: 0 linear, 1 accelerate, 2 decelerate
 const FLIGHTS=[
-  {p:0,per:120,off:0,kf:[[0,1410,292,0],[14,1410,348,0],[20,1430,360,0],[48,1556,360,0],[54,1574,368,0],[60,1582,380,0],[64,1572,380,0],[72,1330,380,0,1],[78,900,380,24],[92,40,380,150],[93,-200,380,170]]},
-  {p:1,per:120,off:58,kf:[[0,2500,80,180],[13,1650,80,26],[15.5,1525,80,0],[23,1305,80,0,2],[28,1296,94,0],[32,1312,100,0],[52,1400,100,0],[57,1410,122,0],[72,1410,196,0],[119,1410,197,0]]},
-  {p:2,per:150,off:30,kf:[[0,1560,140,0],[6,1560,104,0],[12,1574,100,0],[18,1578,90,0],[22,1572,80,0],[29,1360,80,0,1],[34,1000,80,30],[46,200,80,200],[47,0,80,210]]},
+  // departure on 26L: taxi from the apron, roll west, climb hard and turn north well before the city
+  {p:0,per:120,off:0,kf:[[0,1760,292,0],[14,1760,348,0],[20,1780,360,0],[48,1906,360,0],[54,1924,368,0],[60,1932,380,0],[64,1922,380,0],[72,1690,380,0,1],[74,1600,380,14],[78,1430,372,62],[83,1340,292,104],[88,1305,150,140],[94,1300,-150,190],[95,1300,-260,200]]},
+  // arrival on 26R from the east (never over the city), taxi to the apron
+  {p:1,per:120,off:58,kf:[[0,2850,80,180],[13,2000,80,26],[15.5,1875,80,0],[23,1655,80,0,2],[28,1646,94,0],[32,1662,100,0],[52,1750,100,0],[57,1760,122,0],[72,1760,196,0],[119,1760,197,0]]},
+  {p:2,per:150,off:30,kf:[[0,1827,140,0],[6,1827,106,0],[10,1840,100,0],[24,1916,100,0],[28,1926,90,0],[31,1918,80,0],[38,1690,80,0,1],[42,1560,80,25],[47,1430,30,80],[53,1390,-130,140],[54,1390,-220,150]]},
 ];
 function kfAt(kf,t){if(t<kf[0][0]||t>kf[kf.length-1][0])return null;for(let i=0;i<kf.length-1;i++){const a=kf[i],b=kf[i+1];if(t<=b[0]){let u=(t-a[0])/Math.max(1e-3,b[0]-a[0]);const e=b[4];if(e===1)u=u*u;else if(e===2)u=1-(1-u)*(1-u);return[a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u,a[3]+(b[3]-a[3])*u]}}return null}
 function planeTick(dt){
@@ -618,7 +623,8 @@ function updatePlayer(dt){
       if(input.steerMode==='dir'){const v=joyWorld();const want=Math.atan2(v.y,v.x);const diff=wrapA(want-c.a);steer=clamp(diff*2.2,-1,1)*Math.min(1,input.mm*1.3);if(vf<-0.5)steer=-steer}
       else{const x=input.mx*Math.min(1,input.mm/Math.max(0.01,Math.hypot(input.mx,input.my))*1);steer=Math.sign(x)*Math.pow(Math.min(1,Math.abs(x)),1.35)}
     }
-    if(c.t.plane){c.ctl={gas,brake,steer,up:input.up||k.KeyR||k.KeyN,down:input.hb||k.KeyF||k.ShiftLeft||k.ShiftRight};c.hornT-=dt;return}
+    if(c.t.plane){const dz=v=>Math.abs(v)<0.14?0:v;const ps=kb?steer:clamp(dz(input.mx)*1.2,-1,1),pp=kb?0:clamp(dz(input.my)*1.25,-1,1);
+      c.ctl={gas,brake,steer:ps,pitch:pp,up:input.up||k.KeyR||k.KeyN,down:input.hb||k.KeyF||k.ShiftLeft||k.ShiftRight};c.hornT-=dt;return}
     if(!c.air)driveCar(c,thr,steer,input.hb||k.ShiftLeft||k.ShiftRight,dt,thr===0);
     if(thr<0&&vf<=0.6&&!(gas&&brake))c.rev=true;
     rampCheck(c,dt);
@@ -641,7 +647,7 @@ function updatePlayer(dt){
   const sp=player.stun>0?0:(sprinting?9.8:6.6)*Math.min(1,mm*1.15);
   player.vx=lerp(player.vx,mx*sp,1-Math.exp(-14*dt));player.vy=lerp(player.vy,my*sp,1-Math.exp(-14*dt));
   movePed(player,player.vx*dt,player.vy*dt,false);
-  const msp=hypot(player.vx,player.vy);if(mm>0.1)player.a=Math.atan2(my,mx);if(msp>0.3)player.anim+=dt*msp*2.4;player.spdNow=msp;
+  const msp=hypot(player.vx,player.vy);if(mm>0.1)player.a=Math.atan2(my,mx);if(msp>0.3)player.anim+=dt*gaitW(msp);player.spdNow=msp;
   if(at(player.x,player.y)===TY.WATER)wasted('In die Isar gefallen.');
   const fireKey=input.fire||k.Space;
   if(fireKey&&player.fireCD<=0&&!player.breakIn){
@@ -673,23 +679,24 @@ function planeStep(c,dt){
   const T=c.t.plane,ctl=c.driver==='player'?(c.ctl||{}):{};c.spd=c.spd||0;c.z=c.z||0;c.vz=c.vz||0;c.roll=c.roll||0;
   if(c.dead){c.spd*=Math.exp(-1.5*dt);c.x+=Math.cos(c.a)*c.spd*dt;c.y+=Math.sin(c.a)*c.spd*dt;c.vx=c.vy=0;return}
   if(c.driver!=='player'&&!c.air&&c.spd<0.1){c.vx=c.vy=0;return}
-  c.thr=clamp((c.thr||0)+(ctl.gas?0.55:ctl.brake?-0.9:0)*dt,0,1);if(c.driver!=='player')c.thr=Math.max(0,c.thr-dt*0.5);
-  const steer=ctl.steer||0;
+  const steer=ctl.steer||0,pitch=clamp((ctl.pitch||0)+(ctl.up?1:0)-(ctl.down?1:0),-1,1);
+  const push=T.acc*Math.max(0,1-c.spd/T.max);
   if(!c.air){
-    c.spd+=(c.thr*T.acc-c.spd*T.acc/T.max)*dt;
-    if(ctl.brake&&c.thr<0.02){if(c.spd>0.2)c.spd=Math.max(0,c.spd-9*dt);else c.spd=Math.max(-3,c.spd-2*dt)}else if(c.spd<0)c.spd=Math.min(0,c.spd+3*dt);
-    if(!ctl.gas&&c.thr<0.02&&c.spd>0)c.spd=Math.max(0,c.spd-0.6*dt);
+    if(ctl.gas)c.spd+=push*dt;
+    else if(ctl.brake){if(c.spd>0.2)c.spd=Math.max(0,c.spd-9*dt);else c.spd=Math.max(-3,c.spd-2*dt)}
+    else c.spd=c.spd>0?Math.max(0,c.spd-0.9*dt):Math.min(0,c.spd+3*dt);
     const rate=steer*T.gturn*clamp(Math.abs(c.spd)/3+0.25,0,1)/(1+Math.abs(c.spd)/25);c.a+=rate*dt*(c.spd<-0.1?-1:1);c.roll*=Math.exp(-6*dt);
-    if(ctl.up&&c.spd>=T.vr){c.air=true;c.vz=2.5;c.z=0.3;sfx('nitro',0.4,c.x,c.y)}
-    else if(ctl.up&&c.spd>T.vr*0.6&&c===player.inCar&&!c.toldVr){c.toldVr=1;emit('toast','Mehr Tempo zum Abheben: '+Math.round(T.vr*3.6)+' km/h')}
+    if(c===player.inCar&&c.spd>=T.vr&&!c.toldVr){c.toldVr=1;emit('toast','Abhebegeschwindigkeit – jetzt hochziehen (Joystick nach unten)')}
+    if(pitch>0.3&&c.spd>=T.vr){c.air=true;c.vz=2.5;c.z=0.3;sfx('nitro',0.4,c.x,c.y)}
     // nose into something solid on the ground
     const nx=c.x+Math.cos(c.a)*c.t.len*0.5,ny=c.y+Math.sin(c.a)*c.t.len*0.5,g=at(nx,ny);
     if((g===TY.BUILD||g===TY.SOLID||g===TY.RAIL)&&c.spd>0){if(c.spd>14){planeCrash(c);return}damageCar(c,c.spd*4,false);c.spd=-0.5;sfx('crash',0.6,nx,ny)}
     if(at(c.x,c.y)===TY.WATER&&!c.sink){c.sink=0.01;if(c===player.inCar)wasted('Ins Wasser gestürzt.');return}
   }else{
     const stall=c.spd<T.vr*0.72;
-    c.spd+=(c.thr*T.acc*1.1-c.spd*T.acc/T.max)*dt-c.vz*0.22*dt;c.spd=Math.max(0,c.spd);
-    let vt=ctl.up?T.climb*clamp(c.spd/T.vr,0,1.3):ctl.down?-T.climb*1.3:0;if(c.z<14&&vt<0&&!stall)vt=Math.max(vt,-2.6-c.z*0.25);if(stall){vt=c.z<12?-4.5:-14;if(c===player.inCar&&!c.toldStall){c.toldStall=1;emit('toast','Strömungsabriss! Gas geben')}}else c.toldStall=0;
+    if(ctl.gas)c.spd+=push*dt;else if(ctl.brake)c.spd-=6*dt;
+    c.spd=Math.max(0,c.spd-c.vz*0.12*dt);
+    let vt=pitch>0?pitch*T.climb*clamp(c.spd/T.vr,0,1.3):pitch*T.climb*1.3;if(c.z<14&&vt<0&&!stall)vt=Math.max(vt,-2.6-c.z*0.25);if(stall){vt=c.z<12?-4.5:-14;if(c===player.inCar&&!c.toldStall){c.toldStall=1;emit('toast','Strömungsabriss! Gas geben')}}else c.toldStall=0;
     c.vz+=(vt-c.vz)*Math.min(1,dt*1.6);c.z+=c.vz*dt;if(c.z>320){c.z=320;c.vz=Math.min(0,c.vz)}
     c.roll+=(steer*0.65-c.roll)*Math.min(1,dt*3);c.a+=steer*T.turn*dt*clamp(c.spd/T.vr,0.5,1.2);
     const h=W.heightAt(c.x+Math.cos(c.a)*c.t.len*0.4,c.y+Math.sin(c.a)*c.t.len*0.4),hc=W.heightAt(c.x,c.y);
@@ -701,7 +708,8 @@ function planeStep(c,dt){
   }
   c.vx=Math.cos(c.a)*c.spd;c.vy=Math.sin(c.a)*c.spd;c.vf=c.spd;c.vl=0;
   c.x=clamp(c.x+c.vx*dt,2,W.MAP-2);c.y=clamp(c.y+c.vy*dt,2,W.MAP-2);
-  c.pitch=c.air?clamp(Math.atan2(c.vz,Math.max(8,c.spd))*1.4+0.04,-0.35,0.4):(ctl.up&&c.spd>T.vr*0.85?0.1:0);
+  c.thr=c.driver==='player'?(ctl.gas?1:0.45):0;
+  c.pitch=c.air?clamp(Math.atan2(c.vz,Math.max(8,c.spd))*1.4+0.04,-0.35,0.4):(pitch>0.3&&c.spd>T.vr*0.85?0.1:0);
 }
 // aircraft at the airport come back when they are gone and nobody is near
 function spawnPlanes(force){const A=W.airport;if(!A||!A.flyable)return;for(const f of A.flyable){if(cars.some(c=>c.flyId===f.id&&!c.dead))continue;if(!force&&hypot(player.x-f.x,player.y-f.y)<160)continue;
@@ -1109,6 +1117,7 @@ function update(dt){
     collideCarProps(c);
   }
   {const ground=activeCars.filter(c=>!(c.t.plane&&(c.z||0)>2));collideCars(ground);collideRemote(ground)}
+  {const A=W.airport;if(A&&A.gate){const src=player.inCar||player;const open=G.state==='play'&&hypot(src.x-A.gate.x,src.y-(A.gate.y0+A.gate.y1)/2)<18;if(open!==!!A.gateOpen){A.gateOpen=open;for(const i of A.gate.cells)W.grid[i]=open?TY.FIELD:TY.RAIL}}}
   G.planeT=(G.planeT||0)-dt;if(G.planeT<=0){G.planeT=5;spawnPlanes(!G.planesOnce);G.planesOnce=true}
   for(let i=cars.length-1;i>=0;i--){
     const c=cars[i];if(c.sink>1.6){if(c===player.inCar){player.inCar=null;emit('carchange')}cars.splice(i,1);continue}

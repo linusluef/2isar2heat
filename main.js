@@ -189,7 +189,7 @@ function drawMini(){
   const icon=(x,y,kind,r,clampIt)=>{const q=at(x,y,r,clampIt);if(q)drawIcon(mctx,kind,q[0],q[1],r)};
   for(const p of W.properties){const own=S.G.owned.has(p.id);icon(p.x,p.y,own?'home':'sale',own?15:12,own&&p.id===S.G.home)}
   for(const z of W.zones)if(ZONE_ICON[z.kind])icon(z.x,z.y,ZONE_ICON[z.kind],13,false);
-  if(IH.act)for(const mk of IH.act.markers())icon(mk.x,mk.y,mk.k,13,false);icon(1300,250,'airport',14,false);
+  if(IH.act)for(const mk of IH.act.markers())icon(mk.x,mk.y,mk.k,13,false);icon(1650,250,'airport',14,false);
   for(const s2 of W.shops)icon(s2.x,s2.y,s2.k,12,false);
   if(!S.mission.active)for(const ph of W.phones)if((ph.cd||0)<=0)icon(ph.x,ph.y,'phone',12,false);
   if(NET.enabled)for(const p of NET.playerList()){const b=p.mode==='c'&&p.car?p.car:p.ped;if(!b||!p.snaps.length)continue;const q=at(b.x,b.y,8,true);mctx.fillStyle=p.color;mctx.strokeStyle='#000';mctx.lineWidth=3;mctx.beginPath();mctx.arc(q[0],q[1],8,0,7);mctx.fill();mctx.stroke()}
@@ -385,7 +385,7 @@ function drawMap(){
   for(const z of W.zones)if(ZONE_ICON[z.kind]){const q=ic(z.x,z.y,ZONE_ICON[z.kind],11);if(mapS>1.6)label(q[0],q[1]+24,z.name)}
   for(const s2 of W.shops){const q=ic(s2.x,s2.y,s2.k,10);if(mapS>2.2)label(q[0],q[1]+22,s2.name)}
   if(IH.act)for(const mk of IH.act.markers()){const q=ic(mk.x,mk.y,mk.k,11);if(mapS>1.2)label(q[0],q[1]+24,mk.k==='casino'?'Casino':mk.k==='bank'?'Bankraub':'Rennen')}
-  {const q=ic(1300,250,'airport',13);label(q[0],q[1]+26,'Flughafen')}
+  {const q=ic(1650,250,'airport',13);label(q[0],q[1]+26,'Flughafen')}
   if(!S.mission.active)for(const ph of W.phones)if((ph.cd||0)<=0)ic(ph.x,ph.y,'phone',10);
   for(const p of W.properties){const own=G.owned.has(p.id);const q=ic(p.x,p.y,own?'home':'sale',own?14:12);label(q[0],q[1]+26,own?p.name+(G.home===p.id?' ★':''):p.name+' · $'+p.price.toLocaleString('de-DE'),own?'#ffc61a':'#f1ede2')}
   if(NET.enabled)for(const p of NET.playerList()){const b=p.mode==='c'&&p.car?p.car:p.ped;if(!b||!p.snaps.length)continue;const[x,y]=w2s(b.x,b.y);g.fillStyle=p.color;g.strokeStyle='#000';g.lineWidth=3;g.beginPath();g.arc(x,y,8,0,7);g.fill();g.stroke();label(x,y-14,p.name,p.color)}
@@ -520,7 +520,7 @@ async function boot(){
 }
 // install hint for iPad/iPhone Safari (real full screen comes from "Add to Home Screen")
 const iOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-if(iOS&&!standalone)$('installHint').hidden=false;
+// phones/tablets: the game only boots when started from the home screen (install.js shows the install screen)
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
-setTimeout(boot,60);
+if(!(window.IH_GATE&&IH_GATE.blocked))setTimeout(boot,60);
 })();

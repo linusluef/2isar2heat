@@ -3,6 +3,7 @@
   "short_name": "2Isar2Heat",
   "description": "2.5D-Actionspiel in München mit globaler Online-Lobby",
   "lang": "de",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
