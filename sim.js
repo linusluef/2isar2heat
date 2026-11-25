@@ -8,7 +8,7 @@ const wrapA=a=>{while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;retur
 const emit=(t,a,b,c,d)=>{const h=IH.on&&IH.on[t];if(h)h(a,b,c,d)};
 const sfx=(k,v,x,y,a)=>emit('sfx',k,v,x,y,a);
 // story missions, jobs, pickups and shops only react on foot or in a ground vehicle, never in an aircraft
-const inPlane=()=>!!(player.inCar&&player.inCar.t.plane);
+const inPlane=()=>!!(player.inCar&&player.inCar.t.plane)||!!player.ride;   // (also true while riding as a passenger)
 
 /* ================= state ================= */
 const G=IH.G={state:'menu',paused:false,heat:0,lastSeen:0,viol:0,time:0,spawnCD:0,blockCD:20,deadT:0,deadKind:'',story:0,jobs:0,best:0,seenNow:false,shopNear:null,zoneIn:null,hint:''};
@@ -52,7 +52,7 @@ const WEAP=[
 let carId=0;
 
 /* ================= helpers ================= */
-const onFoot=()=>!player.inCar;
+const onFoot=()=>!player.inCar&&!player.ride;
 const solidCar=t=>t===TY.BUILD||t===TY.RAIL||t===TY.SOLID;
 const solidPed=t=>t===TY.BUILD||t===TY.RAIL||t===TY.SOLID||t===TY.WATER;
 const civOK=t=>t===TY.WALK||t===TY.PLAZA||t===TY.PARK||t===TY.LOT||t===TY.FIELD||t===TY.BANK;
@@ -77,7 +77,7 @@ function makePed(x,y,kind){
     shirt:kind==='cop'?'#22406f':kind==='player'?'#ff8a1c':pick(SHIRTS),hair:kind==='cop'?'#14223a':pick(HAIR),
     hp:kind==='cop'?140:100,deadT:0,downT:0,fleeT:0,fx:0,fy:0,fireCD:rand(0.6,1.5),home:null,alive:true,turnT:rand(2,6),lx:x,ly:y,wave:false,id:++carId};
 }
-const player=IH.player=Object.assign(makePed(0,0,'player'),{hp:100,armor:0,inCar:null,weapon:0,ammo:[Infinity,36,0,0,0,0,0,0],money:0,fireCD:0,arrestT:0,stun:0,hitFlash:0,punch:0,throwT:0,stam:1,breakIn:null});
+const player=IH.player=Object.assign(makePed(0,0,'player'),{hp:100,armor:0,inCar:null,ride:null,rideCar:null,weapon:0,ammo:[Infinity,36,0,0,0,0,0,0],money:0,fireCD:0,arrestT:0,stun:0,hitFlash:0,punch:0,throwT:0,stam:1,breakIn:null});
 
 /* ================= traffic lights ================= */
 function lightState(n,ang){
@@ -488,16 +488,18 @@ function remoteShot(m,att){
 function remoteGrenade(m,att){grenades.push({x:m.x,y:m.y,z:1.6,vx:m.vx,vy:m.vy,vz:5,t:1.7,att,molotov:!!m.molotov});sfx('throw',0.6,m.x,m.y)}
 function remoteBoom(m,att){explosion(m.x,m.y,false,att);if(m.type&&CT[m.type]){const w=makeCar(m.type,m.x,m.y,m.a||0,{parked:true,color:m.color});w.dead=true;w.hp=0;w.parked=false;w.driver=null;cars.push(w);smoke(m.x,m.y,2,true)}}
 // a remote player got out: their car stays where they left it
-function leaveRemoteCar(rc){if(!CT[rc.type]||rc.dead)return;if(hypot(rc.x-player.x,rc.y-player.y)>300)return;const c=makeCar(rc.type==='polizei'||rc.type==='polsuv'?'limousine':rc.type,rc.x,rc.y,rc.a,{parked:true,color:rc.color});c.hp=Math.max(10,rc.hp||100)*c.maxHp/100;cars.push(c)}
+// another player just drove off in a car that also exists here as an empty parked copy (e.g. the one I left): remove the copy
+function takenByRemote(x,y,type){for(let i=cars.length-1;i>=0;i--){const c=cars[i];if(c.driver||c.dead||c===player.inCar||c.home||c.saved)continue;if(c.type!==type&&!(type==='polizei'&&c.type==='limousine'))continue;if(hypot(c.x-x,c.y-y)<3.5){cars.splice(i,1);return true}}return false}
+function leaveRemoteCar(rc){if(!CT[rc.type]||rc.dead)return;if(hypot(rc.x-player.x,rc.y-player.y)>300)return;const c=makeCar(rc.type==='polizei'||rc.type==='polsuv'?'limousine':rc.type,rc.x,rc.y,rc.a,{parked:true,color:rc.color});c.hp=Math.max(10,rc.hp||100)*c.maxHp/100;c.open=true;c.alarm=0;cars.push(c)}   // a car another player just left is unlocked
 function updateBullets(dt,active){
   for(let i=bullets.length-1;i>=0;i--){
     const b=bullets[i];let dead=false;const steps=Math.ceil(hypot(b.vx,b.vy)*dt/0.7);
     for(let s=0;s<steps&&!dead;s++){
       b.x+=b.vx*dt/steps;b.y+=b.vy*dt/steps;
       const t=at(b.x,b.y);if(t===TY.BUILD||t===TY.SOLID){spark(b.x,b.y,1.2);spark(b.x,b.y,1.2);dead=true;break}
-      for(const c of active){if(c.sink||c===b.src||(b.owner==='player'&&c===player.inCar))continue;if(pointInCar(c,b.x,b.y)){spark(b.x,b.y,1);if(!c.dead){damageCar(c,b.dmg,b.owner==='player');if(b.owner==='player'&&c.cop&&c.driver&&c.driver!=='player')offense('weapon',0.34)}dead=true;break}}
+      for(const c of active){if(c.sink||c===b.src||(b.owner==='player'&&c===player.inCar)||(b.owner==='remote'&&c===player.inCar&&ridesWithMe(b.att)))continue;if(pointInCar(c,b.x,b.y)){spark(b.x,b.y,1);if(!c.dead){damageCar(c,b.dmg,b.owner==='player');if(b.owner==='player'&&c.cop&&c.driver&&c.driver!=='player')offense('weapon',0.34)}dead=true;break}}
       if(dead)break;
-      for(const c of remote.cars){if(c.peer===b.att)continue;if(pointInCar(c,b.x,b.y)){spark(b.x,b.y,1);dead=true;break}}
+      for(const c of remote.cars){if(c.peer===b.att||(b.owner==='player'&&c===player.rideCar))continue;if(pointInCar(c,b.x,b.y)){spark(b.x,b.y,1);dead=true;break}}
       if(!dead&&b.owner==='player'&&heli.on&&hypot(b.x-heli.x,b.y-heli.y)<3.2){heli.hp-=b.dmg;spark(b.x,b.y,2);dead=true;if(heli.hp<=0)heliDown();break}
       if(dead)break;
       for(const p of peds){if(p===b.src||isDown(p))continue;if(Math.abs(p.x-b.x)<0.55&&Math.abs(p.y-b.y)<0.55){knock(p,b.vx*0.04,b.vy*0.04,b.owner==='player'?'weapon':null,b.dmg*3);if(isDown(p))blood(b.x,b.y);dead=true;break}}
@@ -505,7 +507,7 @@ function updateBullets(dt,active){
       for(const p of remote.peds){if(p.peer===b.att)continue;if(Math.abs(p.x-b.x)<0.55&&Math.abs(p.y-b.y)<0.55){blood(b.x,b.y);dead=true;break}}
       if(dead)break;
       if((b.owner==='cop'||b.owner==='remote')&&onFoot()&&Math.abs(player.x-b.x)<0.55&&Math.abs(player.y-b.y)<0.55){if(!(b.owner==='remote'&&inSafeZone()))hurtPlayer(b.dmg,b.owner==='cop'?'cop':'pvp',b.att);blood(b.x,b.y);dead=true;break}
-      if((b.owner==='cop'||b.owner==='remote')&&player.inCar&&pointInCar(player.inCar,b.x,b.y)){if(!(b.owner==='remote'&&inSafeZone()))damageCar(player.inCar,b.dmg*0.6,false);if(b.att){player.lastAtt=b.att;player.lastAttT=G.time}spark(b.x,b.y,1);dead=true;break}
+      if((b.owner==='cop'||b.owner==='remote')&&player.inCar&&!(b.owner==='remote'&&ridesWithMe(b.att))&&pointInCar(player.inCar,b.x,b.y)){if(!(b.owner==='remote'&&inSafeZone()))damageCar(player.inCar,b.dmg*0.6,false);if(b.att){player.lastAtt=b.att;player.lastAttT=G.time}spark(b.x,b.y,1);dead=true;break}
       for(const p of W.propsNear(b.x,b.y,1))if(!p.broken&&(p.k==='hydrant'||p.k==='bin')&&hypot(p.x-b.x,p.y-b.y)<p.r+0.2){breakProp(p,b.owner==='player',b.vx,b.vy);dead=true;break}
     }
     b.life-=dt;if(dead||b.life<=0)bullets.splice(i,1);
@@ -597,8 +599,27 @@ function collidePedsCars(active){
 
 /* ================= player ================= */
 function nearestCarFor(x,y,maxD){let best=null,bd=maxD;for(const c of cars){if(c.dead||c.sink||(c.z||0)>1)continue;const dx=x-c.x,dy=y-c.y,lim=c.t.len/2+7;if(Math.abs(dx)>lim||Math.abs(dy)>lim)continue;const ca=Math.cos(c.a),sa=Math.sin(c.a);const u=dx*ca+dy*sa,v=-dx*sa+dy*ca;const cu=clamp(u,-c.t.len/2,c.t.len/2),cv=clamp(v,-c.t.wid/2,c.t.wid/2);const d=hypot(u-cu,v-cv);if(d<bd){bd=d;best=c}}return best}
+/* ---------- riding along with other online players (whoever gets in first drives) ---------- */
+const SEATS={motorrad:1,sport:1,super:1,transporter:2,bierlaster:1,krankenwagen:2,feuerwehr:4,bus:14,polsuv:4,cessna:3,regio:24,jet:40};
+const seatCount=c=>SEATS[c.type]||3;
+function seatPos(c,s){const L=c.t.len,Wd=c.t.wid;if(c.t.bike)return[-0.45,0];if(s===0)return[L*0.05,Wd*0.25];const row=Math.floor((s+1)/2),side=s%2?1:-1;return[L*0.05-row*Math.min(1.1,L/(seatCount(c)+2)),side*Wd*0.25]}
+function ridersOf(peer){const out=[];const N=IH.net;if(!N||!N.peers)return out;for(const p of N.peers.values())if(p.mode==='r'&&p.rd===peer)out.push(p);return out}
+function rideCar(){if(!player.ride)return null;for(const c of remote.cars)if(c.peer===player.ride.peer&&!c.dead)return c;return null}
+function remoteCarFor(x,y){let best=null,bd=1e9;for(const c of remote.cars){if(c.dead||(c.z||0)>1||hypot(c.vx||0,c.vy||0)>4)continue;if(!pointInCar(c,x,y,1.8))continue;const d=hypot(c.x-x,c.y-y);if(d<bd){bd=d;best=c}}return best}
+function ridesWithMe(id){const N=IH.net;const p=N&&N.peers&&N.peers.get(id);return!!(p&&p.mode==='r'&&p.rd===N.id)}
+function joinRide(c){const used=new Set(ridersOf(c.peer).map(p=>p.seat));let seat=-1;for(let s=0;s<seatCount(c);s++)if(!used.has(s)){seat=s;break}
+  const N=IH.net,dp=N&&N.peers&&N.peers.get(c.peer),nm=dp?dp.name:'Mitspieler';
+  if(seat<0){emit('toast','Bei '+nm+' ist kein Platz mehr frei');return}
+  player.ride={peer:c.peer,seat};player.rideCar=c;player.breakIn=null;sfx('door');emit('toast','Du fährst bei '+nm+' mit · Aussteigen mit dem Einsteigen-Knopf');emit('carchange')}
+function leaveRide(forced){const c=player.rideCar;player.ride=null;player.rideCar=null;
+  if(c){const ca=Math.cos(c.a),sa=Math.sin(c.a);for(const[u,v]of[[0,c.t.wid/2+0.9],[0,-(c.t.wid/2+0.9)],[-(c.t.len/2+0.9),0],[c.t.len/2+0.9,0]]){const x=c.x+ca*u-sa*v,y=c.y+sa*u+ca*v;if(!pedBlocked(x,y,false)){player.x=x;player.y=y;break}}}
+  player.lx=player.x;player.ly=player.y;player.vx*=0.3;player.vy*=0.3;
+  if(at(player.x,player.y)===TY.WATER){const b=nearestBankWalk(player.x,player.y);player.x=b.x;player.y=b.y;player.lx=b.x;player.ly=b.y}
+  sfx('door');emit('carchange');if(forced)emit('toast','Die Fahrt ist zu Ende – du bist ausgestiegen')}
 function enterExit(){
   if(G.state!=='play')return;
+  if(player.ride){const c=player.rideCar;if(c&&hypot(c.vx||0,c.vy||0)>9){emit('toast','Zu schnell zum Aussteigen');return}leaveRide(false);return}
+  if(!player.inCar){const rc=remoteCarFor(player.x,player.y);if(rc){joinRide(rc);return}}
   if(player.inCar){
     const c=player.inCar;if(c.t.plane&&(c.air||Math.abs(c.spd||0)>4)){emit('toast',c.air?'Erst landen!':'Erst anhalten');return}const ca=Math.cos(c.a),sa=Math.sin(c.a);
     for(const[u,v]of[[0,-(c.t.wid/2+0.9)],[0,c.t.wid/2+0.9],[-(c.t.len/2+0.9),0],[c.t.len/2+0.9,0]]){
@@ -608,7 +629,7 @@ function enterExit(){
     emit('toast','Hier kannst du nicht aussteigen');return;
   }
   const c=nearestCarFor(player.x,player.y,2.2);if(!c)return;
-  if(c.parked&&!c.driver&&!c.saved&&!c.home&&!c.depot&&!c.dead&&!c.t.plane){if(!player.breakIn){player.breakIn={c,t:c.t.bike?0.5:1.1,T:c.t.bike?0.5:1.1,x:player.x,y:player.y};sfx('door',0.5)}return}
+  if(c.parked&&!c.driver&&!c.saved&&!c.home&&!c.depot&&!c.dead&&!c.t.plane&&!c.open){if(!player.breakIn){player.breakIn={c,t:c.t.bike?0.5:1.1,T:c.t.bike?0.5:1.1,x:player.x,y:player.y};sfx('door',0.5)}return}
   takeCar(c);
 }
 function takeCar(c){
@@ -627,7 +648,7 @@ function kbActive(){const k=input.kb;return k.KeyW||k.KeyA||k.KeyS||k.KeyD||k.Ar
 function updatePlayer(dt){
   player.fireCD-=dt;player.stun-=dt;player.hitFlash-=dt;player.punch-=dt;
   if(input.enterQ){input.enterQ=false;enterExit()}
-  if(input.altQ){input.altQ=false;if(onFoot()){let w=player.weapon;const N=WEAP.length;for(let i=0;i<N;i++){w=(w+1)%N;if(w===0||player.ammo[w]>0)break}player.weapon=w;sfx('pick',0.4)}}
+  if(input.altQ){input.altQ=false;if(onFoot()||player.ride){let w=player.weapon;const N=WEAP.length;for(let i=0;i<N;i++){w=(w+1)%N;if(w===0||player.ammo[w]>0)break}player.weapon=w;sfx('pick',0.4)}}
   if(player.breakIn){const b=player.breakIn;b.t-=dt;if(hypot(player.x-b.x,player.y-b.y)>1.4||b.c.dead||!cars.includes(b.c)||b.c.driver)player.breakIn=null;else if(b.t<=0){player.breakIn=null;const c=b.c;if(Math.random()<0.45&&!c.mission){c.alarm=9;emit('toast','Alarmanlage!');if(copsClose(45))offense('alarm');for(const p of peds)if(p.kind==='civ'&&hypot(p.x-c.x,p.y-c.y)<25&&(p.state==='walk'||p.state==='idle')){p.state='flee';p.fleeT=rand(3,6);p.fx=c.x;p.fy=c.y}}stats.cars++;takeCar(c)}}
   const k=input.kb,kb=kbActive();
   if(player.inCar){
@@ -655,20 +676,26 @@ function updatePlayer(dt){
     if(!emerg&&input.fire&&c.hornT<=0){c.hornT=0.6;sfx('horn');emit('net','horn',{x:c.x,y:c.y});for(const p of peds)if(p.kind==='civ'&&(p.state==='walk'||p.state==='idle')&&hypot(p.x-c.x,p.y-c.y)<12){p.state='flee';p.fleeT=1.5;p.fx=c.x;p.fy=c.y}}
     c.hornT-=dt;return;
   }
+  // riding along in another player's car: stay in the seat, aim with the stick, shoot out of the window
+  if(player.ride){const rc=rideCar();if(!rc){leaveRide(true);return}
+    const ca=Math.cos(rc.a),sa=Math.sin(rc.a),[u,v]=seatPos(rc,player.ride.seat);player.x=rc.x+ca*u-sa*v;player.y=rc.y+sa*u+ca*v;player.lx=player.x;player.ly=player.y;player.vx=rc.vx||0;player.vy=rc.vy||0;player.spdNow=0;player.rideCar=rc;
+    let ax=0,ay=0;if(kb){ax=(k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0);ay=(k.KeyS||k.ArrowDown?1:0)-(k.KeyW||k.ArrowUp?1:0)}else if(input.mm>0.1){const jv=joyWorld();ax=jv.x;ay=jv.y}if(ax||ay)player.a=Math.atan2(ay,ax)}
+  else{
   // on foot
-  let mx=0,my=0,mm=0;
-  if(kb){mx=(k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0);my=(k.KeyS||k.ArrowDown?1:0)-(k.KeyW||k.ArrowUp?1:0);const y=IH.cam.yaw||0,cc=Math.cos(y),s=Math.sin(y);const wx=cc*mx-s*my,wy=s*mx+cc*my;mx=wx;my=wy;const m=hypot(mx,my);if(m){mx/=m;my/=m;mm=1}}
-  else if(input.mm>0.1){const v=joyWorld();const l=hypot(v.x,v.y)||1;mx=v.x/l;my=v.y/l;mm=input.mm}
-  if(input.mm>0.96&&!kb)player.fullT=(player.fullT||0)+dt;else player.fullT=0;
-  const wantSprint=mm>0.5&&(k.ShiftLeft||k.ShiftRight||input.sprint||player.fullT>0.35);
-  const sprinting=wantSprint&&player.stam>0.03&&!player.breakIn;player.sprinting=sprinting;
-  player.stam=clamp(player.stam+(sprinting?-dt/5.5:dt/7),0,1);
-  if(player.breakIn)mm=0;
-  const sp=player.stun>0?0:(sprinting?9.8:6.6)*Math.min(1,mm*1.15);
-  player.vx=lerp(player.vx,mx*sp,1-Math.exp(-14*dt));player.vy=lerp(player.vy,my*sp,1-Math.exp(-14*dt));
-  movePed(player,player.vx*dt,player.vy*dt,false);
-  const msp=hypot(player.vx,player.vy);if(mm>0.1)player.a=Math.atan2(my,mx);if(msp>0.3)player.anim+=dt*gaitW(msp);player.spdNow=msp;
-  if(at(player.x,player.y)===TY.WATER)wasted('In die Isar gefallen.');
+    let mx=0,my=0,mm=0;
+    if(kb){mx=(k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0);my=(k.KeyS||k.ArrowDown?1:0)-(k.KeyW||k.ArrowUp?1:0);const y=IH.cam.yaw||0,cc=Math.cos(y),s=Math.sin(y);const wx=cc*mx-s*my,wy=s*mx+cc*my;mx=wx;my=wy;const m=hypot(mx,my);if(m){mx/=m;my/=m;mm=1}}
+    else if(input.mm>0.1){const v=joyWorld();const l=hypot(v.x,v.y)||1;mx=v.x/l;my=v.y/l;mm=input.mm}
+    if(input.mm>0.96&&!kb)player.fullT=(player.fullT||0)+dt;else player.fullT=0;
+    const wantSprint=mm>0.5&&(k.ShiftLeft||k.ShiftRight||input.sprint||player.fullT>0.35);
+    const sprinting=wantSprint&&player.stam>0.03&&!player.breakIn;player.sprinting=sprinting;
+    player.stam=clamp(player.stam+(sprinting?-dt/5.5:dt/7),0,1);
+    if(player.breakIn)mm=0;
+    const sp=player.stun>0?0:(sprinting?9.8:6.6)*Math.min(1,mm*1.15);
+    player.vx=lerp(player.vx,mx*sp,1-Math.exp(-14*dt));player.vy=lerp(player.vy,my*sp,1-Math.exp(-14*dt));
+    movePed(player,player.vx*dt,player.vy*dt,false);
+    const msp=hypot(player.vx,player.vy);if(mm>0.1)player.a=Math.atan2(my,mx);if(msp>0.3)player.anim+=dt*gaitW(msp);player.spdNow=msp;
+    if(at(player.x,player.y)===TY.WATER)wasted('In die Isar gefallen.');
+  }
   const fireKey=input.fire||k.Space;
   if(fireKey&&player.fireCD<=0&&!player.breakIn){
     const w=player.weapon,Wp=WEAP[w];
@@ -1072,7 +1099,7 @@ function payIncome(){
 
 /* ================= game flow ================= */
 function placePlayer(x,y){player.x=x;player.y=y;player.lx=x;player.ly=y;player.vx=player.vy=0;player.inCar=null;player.hp=100;player.arrestT=0;player.stun=0;IH.cam.snap=true}
-function resetWorld(){
+function resetWorld(){player.ride=null;player.rideCar=null;
   cars.length=0;peds.length=0;bullets.length=0;grenades.length=0;parts.length=0;skids.length=0;floaters.length=0;decals.length=0;G.planeT=0.3;G.planesOnce=false;
   for(const l of W.lots)for(const s of l.slots){s.car=null;s.reserved=!!s.prop}
   for(const p of W.props){if(p.k!=='tree'){p.broken=false;p.spray=0}}
@@ -1104,14 +1131,14 @@ function newGame(cont,given){
   emit('banner',s?'Willkommen zurück':'Servus in 2Isar2Heat',s?'Dein Spielstand ist geladen.':'Deine Wohnung und Garage sind gleich hier. Grüne Telefonzellen bringen Aufträge.','#ffc61a');
 }
 function clearPolice(){for(let i=cars.length-1;i>=0;i--){const c=cars[i];if(c.cop&&(c.driver==='cop'||c.driver==='copIdle'||c.driver==='block'))cars.splice(i,1)}for(let i=peds.length-1;i>=0;i--)if(peds[i].kind==='cop')peds.splice(i,1);G.heat=0;G.callT=0;G.lastSeen=0;G.viol=0}
-function busted(){
+function busted(){if(player.ride){player.ride=null;player.rideCar=null}
   if(G.state!=='play')return;G.state='dead';G.deadKind='busted';G.deadT=3.4;
   const loss=Math.min(player.money,300);addMoney(-loss);player.ammo=[Infinity,0,0,0,0,0,0,0];player.weapon=0;player.armor=0;
   if(player.inCar){player.inCar.driver=null;player.inCar=null;emit('carchange')}
   if(mission.active){mission.end()}
   stats.busted++;emit('banner','Verhaftet!','−$'+loss+' Kaution · Waffen beschlagnahmt','#3b82ff');sfx('fail');
 }
-function wasted(why){
+function wasted(why){if(player.ride){player.ride=null;player.rideCar=null}
   if(G.state!=='play')return;
   if(player.lastAtt&&G.time-(player.lastAttT||-99)<8){emit('net','kill',{by:player.lastAtt,s:stars()});player.lastAtt=null}G.state='dead';G.deadKind='wasted';G.deadT=3.4;player.hp=0;
   const loss=Math.min(player.money,200);addMoney(-loss);
@@ -1219,7 +1246,7 @@ function update(dt){
   if(Math.random()<0.03)fillLots(false);
 }
 
-IH.sim={jobFor,onShift,toggleJob,spawnPlanes,planes,G,cars,peds,bullets,grenades,parts,decals,skids,floaters,player,mission,STORY,SHOP,WEAP,CT,stars,update,newGame,save,loadSave,lightState,shopBuy,shopPrice,nearestCarFor,
+IH.sim={takenByRemote,remoteCarFor,ridersOf,jobFor,onShift,toggleJob,spawnPlanes,planes,G,cars,peds,bullets,grenades,parts,decals,skids,floaters,player,mission,STORY,SHOP,WEAP,CT,stars,update,newGame,save,loadSave,lightState,shopBuy,shopPrice,nearestCarFor,
   spawnTraffic,fillLots,resetWorld,enterExit,get activeCars(){return activeCars},hasLOS,input,remote,remoteShot,remoteGrenade,remoteBoom,leaveRemoteCar,addMoney,pointInCar,
   PAINTS,stats,heli,fires,JOBS,makeCar,createFire,saveData,storeSave,normalizeSave,buyProperty,setHome,restAt,setShirt,inSafeZone,propById,astar,nearestNodeTo,pathPolyline};
 })(window));

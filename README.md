@@ -246,6 +246,12 @@ These work in the global lobby with other players, and alone (offline or nobody 
 - The globe icon shows the player list: money, kills and distance. The speech-bubble icon opens the quick chat, which has fixed phrases.
 - Shots, grenades, explosions and collisions between players are real.
   - If you take down a player who is wanted by the police, you collect a **bounty** for each wanted star they have.
+- **Riding together:** whoever gets into a car first is the driver. Other players walk up to it and tap **Einsteigen** to ride along as passengers.
+  - **Seats:** normal cars take 3 passengers; motorbikes and sports cars take 1; the bus takes 14. Aircraft take passengers too: the small plane 3, the turboprop 24, the jet 40.
+  - **As a passenger:** you sit inside, hear the radio and can shoot out of the window: aim with the joystick and tap Feuer. Your shots never hit your own car. Tap **Aussteigen** to get out, unless the car is going fast.
+  - **When the driver gets out:** all passengers get out too. The car stays there unlocked, so one of them can take the wheel straight away.
+  - **The driver sees it:** a message in the feed shows when someone gets in or out.
+  - **Wanted levels stay personal:** if a passenger is wanted, the police chase the car they are riding in.
 - Each player still runs their own traffic, police and missions. You play your own game in a shared city.
 - **How it works without a server:** the game connects to three free public MQTT brokers at once over secure WebSockets (EMQX, HiveMQ and the Mosquitto test server). It sends to all three and ignores duplicates, so the lobby keeps working if one of them is down. No account or server setup is needed.
 - **Things to know:**

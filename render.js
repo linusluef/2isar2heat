@@ -1185,7 +1185,7 @@ function syncPeds(){
   for(const p of S.peds){if(Math.abs(p.x-f.x)>140||Math.abs(p.y-f.y)>140)continue;alive.add(p.id);posePed(pedObj(p),p,false)}
   for(const p of IH.remote.peds){if(Math.abs(p.x-f.x)>220||Math.abs(p.y-f.y)>220)continue;alive.add(p.id);posePed(pedObj(p),p,false)}
   const P=S.player;
-  if(S.G.state!=='menu'&&!P.inCar){alive.add(P.id);const o=pedObj(P);posePed(o,P,true);P.throwT=Math.max(0,(P.throwT||0)-1/60)}
+  if(S.G.state!=='menu'&&!P.inCar&&!P.ride){alive.add(P.id);const o=pedObj(P);posePed(o,P,true);P.throwT=Math.max(0,(P.throwT||0)-1/60)}
   for(const[id,o]of pedObjs){if(!alive.has(id)){scene.remove(o.g);if(o.pool)scene.remove(o.pool);pedObjs.delete(id)}}
 }
 
@@ -1248,13 +1248,13 @@ let camAlt=0;const _sF=new THREE.Vector3(),_sR=new THREE.Vector3(),_sU=new THREE
 function updateCamera(dt){
   const P=S.player,G=S.G;let tx,ty,vx=0,vy=0,heading=null,speed=0;
   if(G.state==='menu'){const t=cam.target;tx=t.x;ty=t.y;vx=t.vx||0;vy=t.vy||0;heading=t.a}
-  else if(P.inCar){const c=P.inCar;tx=c.x;ty=c.y;vx=c.vx;vy=c.vy;heading=c.a;speed=hypot(vx,vy);if(c.t.plane){camAlt=lerp(camAlt,c.z||0,1-Math.exp(-3*dt));speed=Math.min(speed,60)}}
+  else if(P.inCar||P.rideCar){const c=P.inCar||P.rideCar;tx=c.x;ty=c.y;vx=c.vx;vy=c.vy;heading=c.a;speed=hypot(vx,vy);if(c.t.plane){camAlt=lerp(camAlt,c.z||0,1-Math.exp(-3*dt));speed=Math.min(speed,60)}}
   else{tx=P.x;ty=P.y;vx=P.vx;vy=P.vy;if(hypot(vx,vy)>1)heading=P.a}
   const chase=IH.settings.cam==='chase'&&G.state!=='menu';
   if(chase&&heading!==null){const want=heading+Math.PI/2;let d=want-cam.yaw;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;cam.yaw+=d*(1-Math.exp(-(P.inCar?3.2:1.6)*dt))}
   else if(!chase){let d=-cam.yaw;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;cam.yaw+=d*(1-Math.exp(-4*dt))}
-  const foot=!P.inCar&&G.state!=='menu';const zoom=IH.settings.zoom||1;
-  const pc=P.inCar&&P.inCar.t.plane?P.inCar:null;if(!pc)camAlt=lerp(camAlt,0,1-Math.exp(-3*dt));
+  const veh=P.inCar||P.rideCar,foot=!veh&&G.state!=='menu';const zoom=IH.settings.zoom||1;
+  const pc=veh&&veh.t.plane?veh:null;if(!pc)camAlt=lerp(camAlt,0,1-Math.exp(-3*dt));
   let dist=chase?(foot?12:pc?pc.t.len*0.9+14:16+speed*0.3):(foot?66:G.state==='menu'?150:(pc?80+pc.t.len*1.2+camAlt*0.5:92+speed*1.25))*zoom;dist=Math.min(dist,chase?(pc?70:32):(pc?260:170));
   lastDist=lerp(lastDist,dist,1-Math.exp(-1.5*dt));if(cam.snap){lastDist=dist}
   const pitch=chase?(foot?0.42:0.36):G.state==='menu'?0.85:1.13;
@@ -1297,7 +1297,7 @@ function updateMarkers(dt){
   const wp=IH.waypoint;wpBeacon.visible=!!wp&&G.state==='play';if(wp)wpBeacon.position.set(wp.x,15,wp.y);
   {let hidden=false;if(G.state==='play'&&IH.settings.cam!=='chase'){const dx=camPos.x-src.x,dz=camPos.z-src.y,l=hypot(dx,dz)||1;for(let d=1.5;d<=11;d+=1.5)if(W.at(src.x+dx/l*d,src.y+dz/l*d)===W.TY.BUILD){hidden=true;break}}
    playerMark.visible=hidden;if(hidden)playerMark.position.set(src.x,(P.inCar?P.inCar.t.ht:1.8)+1.6+Math.sin(t*5)*0.15,src.y)}
-  playerRing.visible=G.state==='play'&&!P.inCar;playerRing.position.set(P.x,0.12,P.y);
+  playerRing.visible=G.state==='play'&&!P.inCar&&!P.ride;playerRing.position.set(P.x,0.12,P.y);
   for(const pm of pkgMeshes){const got=S.G.pkgs&&S.G.pkgs.has(pm.p.i);pm.m.visible=!got;pm.beam.visible=!got&&hypot(pm.p.x-src.x,pm.p.y-src.y)<40;if(!got){pm.m.rotation.y=t*1.2+pm.p.i;pm.m.position.y=0.15+Math.sin(t*2.5+pm.p.i)*0.1}}
   updateHeli(dt,t);updatePigeons(dt,src);
   for(const im of runwayLights)im.visible=ENV.night>0.08||ENV.rain>0.4;

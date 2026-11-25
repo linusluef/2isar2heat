@@ -106,7 +106,9 @@ net.onMessage=function(topic,payload){
     if(q<=p.lastSeq)return;p.lastSeq=q;p.last=t;
     const nm=cleanName(m.n);if(!p.joined){p.joined=true;p.name=nm;feed(nm+' ist in der Lobby','sys',p.color)}p.name=nm;
     const x=num(m.x,-50,2050,null),y=num(m.y,-50,2050,null);if(x===null||y===null)return;
-    p.mode=m.m==='c'||m.m==='d'?m.m:'f';p.type=CAR_TYPES[num(m.k,0,CAR_TYPES.length-1,1)|0];p.cop=!!m.o;p.carColor=/^#[0-9a-f]{6}$/i.test(m.c)?m.c:'#888888';
+    p.mode=m.m==='c'||m.m==='d'||m.m==='r'?m.m:'f';p.rd=p.mode==='r'&&typeof m.rd==='string'&&m.rd.length<=24?m.rd:null;p.seat=num(m.st,0,60,0)|0;
+    // someone gets into my car as a passenger
+    {const mine=p.rd===net.id;if(mine&&!p.withMe)feed(nm+' fährt bei dir mit','sys',p.color),IH.on&&IH.on.toast&&IH.on.toast(nm+' ist eingestiegen');else if(!mine&&p.withMe)feed(nm+' ist ausgestiegen','sys',p.color);p.withMe=mine}p.type=CAR_TYPES[num(m.k,0,CAR_TYPES.length-1,1)|0];p.cop=!!m.o;p.carColor=/^#[0-9a-f]{6}$/i.test(m.c)?m.c:'#888888';
     p.stars=num(m.s,0,5,0)|0;p.weapon=num(m.w,0,7,0)|0;p.hp=num(m.h,0,100,100);p.money=num(m.$,0,1e9,0)|0;p.kills=num(m.K,0,1e6,0)|0;p.paused=!!m.p;p.siren=!!m.r;if(/^#[0-9a-f]{6}$/i.test(m.sh||''))p.shirt=m.sh;p.carHp=num(m.ch,0,100,100);p.z=num(m.z,0,400,0);p.liv=/^[a-z]{3,10}$/.test(m.lv||'')?m.lv:null;p.roll=num(m.rl,-1,1,0);p.pitch=num(m.pt,-1,1,0);p.down=!!m.dn;
     p.snaps.push({t,x,y,a:num(m.a,-10,10,0),vx:num(m.vx,-80,80,0),vy:num(m.vy,-80,80,0)});if(p.snaps.length>5)p.snaps.shift();
     return;
@@ -140,11 +142,12 @@ net.tick=function(){
   if(net.status==='online'&&G.state!=='menu'){
     net.sendT-=dt;
     if(net.sendT<=0){
-      const c=P.inCar;const mode=G.state==='dead'?'d':c?'c':'f';const src=c||P;
+      const c=P.inCar;const mode=G.state==='dead'?'d':c?'c':P.ride?'r':'f';const src=c||P;
       const m={i:net.id,q:++net.seq,n:net.name,x:+src.x.toFixed(2),y:+src.y.toFixed(2),a:+(c?c.a:P.a).toFixed(3),m:mode,z:c&&c.z?+c.z.toFixed(1):0,rl:c&&c.roll?+c.roll.toFixed(2):0,pt:c&&c.pitch?+c.pitch.toFixed(2):0,vx:+(src.vx||0).toFixed(2),vy:+(src.vy||0).toFixed(2),
         s:S.stars(),w:P.weapon,h:Math.round(P.hp),$:P.money,K:IH.stats.kills,sh:P.shirt};
       if(c){m.k=Math.max(0,CAR_TYPES.indexOf(c.type));m.c=c.color;m.ch=Math.round(c.hp/c.maxHp*100);if(c.cop)m.o=1;if(c.siren)m.r=1;if(c.liv)m.lv=c.liv}
       if(G.paused)m.p=1;
+      if(mode==='r'){m.rd=P.ride.peer;m.st=P.ride.seat}
       const moving=Math.hypot(src.vx||0,src.vy||0)>0.3;const sig=mode+m.k+m.c+m.s+m.w+m.h+m.p+Math.round(m.x*2)+Math.round(m.y*2);
       if(moving||sig!==lastSent||net.idleT<=0){publish('s/'+net.id,m);lastSent=sig;net.idleT=1.5}
       net.idleT=(net.idleT||0)-(c?0.11:0.16)-Math.max(0,-net.sendT);
@@ -161,6 +164,7 @@ net.tick=function(){
     if(b&&b!==a&&b.t>a.t){const k=clamp((rt-a.t)/(b.t-a.t),0,1);x=a.x+(b.x-a.x)*k;y=a.y+(b.y-a.y)*k;let d=b.a-a.a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;ang=a.a+d*k;vx=a.vx+(b.vx-a.vx)*k;vy=a.vy+(b.vy-a.vy)*k}
     else{const last=p.snaps[p.snaps.length-1];const ext=clamp((rt-last.t)/1000,0,0.35);x=last.x+last.vx*ext;y=last.y+last.vy*ext;ang=last.a;vx=last.vx;vy=last.vy}
     if(p.mode==='c'){
+      if(!p.car&&S.takenByRemote)S.takenByRemote(x,y,p.type);
       if(!p.car||p.car.type!==p.type||p.car.color!==p.carColor||p.car.cop!==p.cop){const CT=S.CT[p.type];p.car={remote:true,peer:p.id,id:'rc_'+p.id+'_'+p.type+(p.cop?'p':''),type:p.type,t:CT,color:p.carColor,cop:p.cop,label:null,x,y,a:ang,vx:0,vy:0,vf:0,vl:0,hp:100,maxHp:100,dead:false,sink:0,driver:'remote',brake:false,rev:false,siren:false}}
       const c=p.car;const fx=Math.cos(ang),fy=Math.sin(ang);const vf=vx*fx+vy*fy;c.brake=vf<(c.vf||0)-0.25&&vf>0.5;c.x=x;c.y=y;c.a=ang;c.vx=vx;c.vy=vy;c.vf=vf;c.vl=-vx*fy+vy*fx;c.rev=vf<-0.4;c.siren=p.siren;c.hp=p.carHp;c.z=c.z===undefined?p.z:c.z+(p.z-c.z)*Math.min(1,dt*6);c.roll=p.roll;c.pitch=p.pitch;c.air=p.z>0.5;c.spd=Math.hypot(vx,vy);c.liv=p.liv||'isar';
       rc.cars.push(c);

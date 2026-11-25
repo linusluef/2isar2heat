@@ -450,7 +450,7 @@ const _close=clickers.close;clickers.close=()=>{if(myTable)leaveTable();_close()
 A.busy=()=>!!(race.st&&race.st!=='done')||!!heist.st;
 A.markers=()=>{const out=[];if(W.casino)out.push({x:W.casino.x,y:W.casino.y,k:'casino'});if(BANK)out.push({x:BANK.x,y:BANK.y,k:'bank'});for(const r of RACES)out.push({x:r.x,y:r.y,k:'race'});return out};
 function nearPOI(){
-  if(G.state!=='play'||S.mission.active)return null;const src=P.inCar||P;
+  if(G.state!=='play'||S.mission.active||P.ride)return null;const src=P.inCar||P;
   if(heist.st==='hack'&&!P.inCar){for(let i=0;i<BANK.terms.length;i++){const t=BANK.terms[i];if(!heist.solved[i]&&hypot(P.x-t.x,P.y-t.y)<2.6)return{label:t.name+' knacken',fn:()=>startPuzzle(i)}}}
   if(A.busy())return null;
   if(W.casino&&!P.inCar&&hypot(P.x-W.casino.x,P.y-W.casino.y)<4.5){if(S.stars()>0)return{key:'casinoW',auto:true,label:'Casino (erst Polizei abhängen)',fn:()=>toast('Mit Fahndung kommst du nicht rein')};return{key:'casino',auto:true,label:'Casino betreten',fn:casinoLobby}}

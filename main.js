@@ -161,6 +161,8 @@ function banner(t,s,col){$('bTitle').textContent=t;$('bTitle').style.color=col||
 function toast(t){$('toast').textContent=t;$('toast').classList.add('show');toastT=2.4}
 const TITLES={notarzt:'Rettungsdienst',feuer:'Feuerwehr',bus:'MVG-Linie',bier:'Bierlieferung',kurier:'Kurierfahrt',sportwagen:'Auto besorgen',rennen:'Rennen',randale:'Randale',bombe:'Heiße Ware',fluchtwagen:'Fluchtwagen',flucht:'Flucht',taxi:'Taxi'};
 function fmtTod(h){const hh=Math.floor(h)%24,mm=Math.floor((h%1)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')}
+// where an online player is: their ped, their car, or (as a passenger) the driver's car
+function bodyOf(p){if(p.mode==='c')return p.car;if(p.mode==='r'){if(p.rd===NET.id)return P.inCar||null;const d=NET.peers.get(p.rd);return d&&d.car||null}return p.ped}
 function updateHUD(){
   setTxt('money','$'+P.money.toLocaleString('de-DE'));
   const hp=Math.max(0,Math.round(P.hp));if(cache.hp!==hp){cache.hp=hp;$('hpbar').style.width=hp+'%'}
@@ -200,7 +202,7 @@ function updateHUD(){
   const env=IH.env;setTxt('clock',fmtTod(env.tod)+(env.rain>0.5?'  ·  Regen':env.night>0.6?'  ·  Nacht':env.dusk>0.5?'  ·  Abend':''));
   // pads
   setHidden('footPads',!!c);setHidden('carPads',!c);
-  if(!c){const fl=P.weapon===0?'Schlag':P.weapon===4?'Werfen':'Feuer';setTxt('bFire',fl);const near=!!S.nearestCarFor(P.x,P.y,2.2);if(cache.ed!==!near){cache.ed=!near;$('bEnter').classList.toggle('dim',!near)}}
+  if(!c){const fl=P.weapon===0?'Schlag':P.weapon===4?'Werfen':'Feuer';setTxt('bFire',fl);const near=!!P.ride||!!S.nearestCarFor(P.x,P.y,2.2)||!!S.remoteCarFor(P.x,P.y);if(cache.ed!==!near){cache.ed=!near;$('bEnter').classList.toggle('dim',!near)}setTxt('bEnter',P.ride?'Aus\u00adsteigen':'Ein\u00adsteigen')}
   if(c){const j=S.jobFor(c),on=S.onShift(),show=!!j&&(on||!S.mission.active);setHidden('bJob',!show);if(show){setTxt('bJob',on?'■ Schicht beenden':'▶ '+j.title+' starten');if(cache.jobOn!==on){cache.jobOn=on;$('bJob').classList.toggle('on',on)}}}
   if(!c)setHidden('bJob',true);
   else if(c.t.plane){setHidden('bNitro',true);setHidden('bDrift',true)}   // aircraft: height is on the joystick
@@ -276,7 +278,7 @@ function drawMini(){
   if(IH.act)for(const mk of IH.act.markers())icon(mk.x,mk.y,mk.k,13,false);icon(1650,250,'airport',14,false);
   for(const s2 of W.shops)icon(s2.x,s2.y,s2.k,12,false);
   if(!S.mission.active)for(const ph of W.phones)if((ph.cd||0)<=0)icon(ph.x,ph.y,'phone',12,false);
-  if(NET.enabled)for(const p of NET.playerList()){const b=p.mode==='c'&&p.car?p.car:p.ped;if(!b||!p.snaps.length)continue;const q=at(b.x,b.y,8,true);mctx.fillStyle=p.color;mctx.strokeStyle='#000';mctx.lineWidth=3;mctx.beginPath();mctx.arc(q[0],q[1],8,0,7);mctx.fill();mctx.stroke()}
+  if(NET.enabled)for(const p of NET.playerList()){const b=bodyOf(p);if(!b||!p.snaps.length)continue;const q=at(b.x,b.y,8,true);mctx.fillStyle=p.color;mctx.strokeStyle='#000';mctx.lineWidth=3;mctx.beginPath();mctx.arc(q[0],q[1],8,0,7);mctx.fill();mctx.stroke()}
   if(S.heli&&S.heli.on)icon(S.heli.x,S.heli.y,'heli',13,true);
   const m=S.mission;if(m.active&&m.tx!==null&&m.tx!==undefined)icon(m.tx,m.ty,'mission',15,true);
   if(IH.waypoint)icon(IH.waypoint.x,IH.waypoint.y,'way',15,true);
@@ -284,18 +286,22 @@ function drawMini(){
   mctx.save();mctx.translate(Wd/2,Hh/2);const h=(P.inCar?P.inCar.a:P.a)+rot;mctx.rotate(h);mctx.fillStyle='#fff';mctx.strokeStyle='#000';mctx.lineWidth=3;mctx.beginPath();mctx.moveTo(16,0);mctx.lineTo(-10,-10);mctx.lineTo(-5,0);mctx.lineTo(-10,10);mctx.closePath();mctx.fill();mctx.stroke();mctx.restore();
   mctx.save();mctx.translate(Wd/2,Hh/2);mctx.rotate(rot);mctx.fillStyle='#fff';mctx.font='700 26px "Barlow Condensed",sans-serif';mctx.textAlign='center';mctx.textBaseline='middle';mctx.strokeStyle='#000';mctx.lineWidth=4;mctx.strokeText('N',0,-Hh/2+20);mctx.fillText('N',0,-Hh/2+20);mctx.restore();
 }
-const ov=$('ov'),octx=ov.getContext('2d');
+const ov=$('ov'),octx=ov.getContext('2d');let ovDirty=false;
 function sizeOverlay(){const d=Math.min(window.devicePixelRatio||1,2);ov.width=Math.round(window.innerWidth*d);ov.height=Math.round(window.innerHeight*d);octx.setTransform(d,0,0,d,0,0)}
 function roundRect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.lineTo(x+w-r,y);g.quadraticCurveTo(x+w,y,x+w,y+r);g.lineTo(x+w,y+h-r);g.quadraticCurveTo(x+w,y+h,x+w-r,y+h);g.lineTo(x+r,y+h);g.quadraticCurveTo(x,y+h,x,y+h-r);g.lineTo(x,y+r);g.quadraticCurveTo(x,y,x+r,y);g.closePath()}
 function drawOverlay(){
-  const w=window.innerWidth,h=window.innerHeight;octx.clearRect(0,0,w,h);
+  const w=window.innerWidth,h=window.innerHeight;
+  // keep the overlay the size of the window (iPad: the visible height can change without a resize event) and wipe the
+  // whole backing store, not just the visible part, so nothing drawn near an edge is ever left behind
+  const d=Math.min(window.devicePixelRatio||1,2);if(ov.width!==Math.round(w*d)||ov.height!==Math.round(h*d))sizeOverlay();
+  octx.save();octx.setTransform(1,0,0,1,0,0);octx.clearRect(0,0,ov.width,ov.height);octx.restore();
   if(G.state==='dead'){octx.fillStyle=G.deadKind==='busted'?'rgba(20,40,110,.25)':'rgba(110,10,10,.3)';octx.fillRect(0,0,w,h)}
   if(P.hitFlash>0&&G.state==='play'){octx.fillStyle='rgba(255,40,30,'+(P.hitFlash*0.9)+')';octx.fillRect(0,0,w,h)}
   octx.font='700 18px "Barlow Condensed","Arial Narrow",sans-serif';octx.textAlign='center';
   for(const f of S.floaters){const p=R3.project(f.x,f.y,2+(1.4-f.t)*2);if(p.behind)continue;octx.globalAlpha=Math.min(1,f.t*1.5);octx.fillStyle='#000';octx.fillText(f.txt,p.x+1,p.y+1);octx.fillStyle=f.c;octx.fillText(f.txt,p.x,p.y)}octx.globalAlpha=1;
   // other players: name, wanted level, health and chat bubbles
   if(NET.enabled){const now=performance.now();
-    for(const p of NET.playerList()){const b=p.mode==='c'&&p.car?p.car:p.ped;if(!b||!p.snaps.length)continue;const pr=R3.project(b.x,b.y,p.mode==='c'?3.2:2.6);if(pr.behind||pr.x<-60||pr.x>w+60||pr.y<-60||pr.y>h+60)continue;
+    for(const p of NET.playerList()){const b=bodyOf(p);if(!b||!p.snaps.length)continue;const pr=R3.project(b.x,b.y,p.mode==='c'?3.2:2.6);if(pr.behind||pr.x<-60||pr.x>w+60||pr.y<-60||pr.y>h+60)continue;
       const label=p.name+(p.stars?'  '+'★'.repeat(p.stars):'')+(p.paused?'  (Pause)':'');octx.font='700 16px "Barlow Condensed","Arial Narrow",sans-serif';const tw=octx.measureText(label).width+16;
       octx.fillStyle='rgba(14,16,19,.72)';roundRect(octx,pr.x-tw/2,pr.y-22,tw,22,6);octx.fill();octx.fillStyle=p.color;octx.fillRect(pr.x-tw/2,pr.y-22,4,22);
       octx.fillStyle=p.stars>=3?'#ffc61a':'#f1ede2';octx.fillText(label,pr.x+2,pr.y-6);
@@ -474,7 +480,7 @@ function drawMap(){
   {const q=ic(1650,250,'airport',13);label(q[0],q[1]+26,'Flughafen')}
   if(!S.mission.active)for(const ph of W.phones)if((ph.cd||0)<=0)ic(ph.x,ph.y,'phone',10);
   for(const p of W.properties){const own=G.owned.has(p.id);const q=ic(p.x,p.y,own?'home':'sale',own?14:12);label(q[0],q[1]+26,own?p.name+(G.home===p.id?' ★':''):p.name+' · $'+p.price.toLocaleString('de-DE'),own?'#ffc61a':'#f1ede2')}
-  if(NET.enabled)for(const p of NET.playerList()){const b=p.mode==='c'&&p.car?p.car:p.ped;if(!b||!p.snaps.length)continue;const[x,y]=w2s(b.x,b.y);g.fillStyle=p.color;g.strokeStyle='#000';g.lineWidth=3;g.beginPath();g.arc(x,y,8,0,7);g.fill();g.stroke();label(x,y-14,p.name,p.color)}
+  if(NET.enabled)for(const p of NET.playerList()){const b=bodyOf(p);if(!b||!p.snaps.length)continue;const[x,y]=w2s(b.x,b.y);g.fillStyle=p.color;g.strokeStyle='#000';g.lineWidth=3;g.beginPath();g.arc(x,y,8,0,7);g.fill();g.stroke();label(x,y-14,p.name,p.color)}
   const m=S.mission;if(m.active&&m.tx!==null&&m.tx!==undefined)ic(m.tx,m.ty,'mission',13);
   if(IH.waypoint)ic(IH.waypoint.x,IH.waypoint.y,'way',14);
   const src=P.inCar||P;const[px,py]=w2s(src.x,src.y);g.save();g.translate(px,py);g.rotate(P.inCar?P.inCar.a:P.a);g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;g.beginPath();g.moveTo(14,0);g.lineTo(-9,-9);g.lineTo(-4,0);g.lineTo(-9,9);g.closePath();g.fill();g.stroke();g.restore();
@@ -564,7 +570,8 @@ function frame(now){
   if(G.state==='menu')menuTick();
   NET.tick(dt);
   R3.frame(G.paused?0:dt);
-  if(G.state!=='menu'){updateRoute(dt||0.016);updateHUD();drawOverlay();miniT-=dt;if(miniT<=0){miniT=0.08;drawMini()}}
+  if(G.state==='menu'&&ovDirty){ovDirty=false;octx.save();octx.setTransform(1,0,0,1,0,0);octx.clearRect(0,0,ov.width,ov.height);octx.restore()}
+  if(G.state!=='menu'){ovDirty=true;updateRoute(dt||0.016);updateHUD();drawOverlay();miniT-=dt;if(miniT<=0){miniT=0.08;drawMini()}}
   if(mapOpenNow()){mapT-=1/60;if(mapT<=0){mapT=0.5;drawMap()}}
   feedT-=dt;if(feedT<=0){feedT=0.5;renderFeed()}
   lobbyT-=dt;if(lobbyT<=0){lobbyT=1;if(!$('lobby').hidden)renderLobby()}

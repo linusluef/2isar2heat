@@ -525,11 +525,11 @@ let switchT=0;
 function render(){const st=STATIONS[cur];$('rName').textContent=st.name;$('rGenre').textContent=subtitle&&playing===st?'🎙 '+subtitle:shown&&playing===st?shown.sub+' · '+shown.artist+' – '+shown.title:st.genre;bar.style.setProperty('--rc',st.color);bar.classList.toggle('off',!st.subs)}
 function flash(){bar.classList.add('flash');setTimeout(()=>bar.classList.remove('flash'),350)}
 render();
-root.addEventListener('keydown',e=>{if(!P.inCar||e.repeat)return;if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;if(e.code==='Period'||e.code==='KeyM')tune(1);else if(e.code==='Comma')tune(-1)});
+root.addEventListener('keydown',e=>{if(!(P.inCar||P.ride)||e.repeat)return;if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;if(e.code==='Period'||e.code==='KeyM')tune(1);else if(e.code==='Comma')tune(-1)});
 let padPrev=[false,false];
 
 function tick(){
-  const inVeh=!!P.inCar&&G.state==='play';
+  const inVeh=(!!P.inCar||!!P.ride)&&G.state==='play';
   if(bar.hidden===inVeh){bar.hidden=!inVeh;if(inVeh)render()}
   try{const gp=navigator.getGamepads?[...navigator.getGamepads()].find(g=>g&&g.connected):null;if(gp&&inVeh){const l=!!(gp.buttons[14]&&gp.buttons[14].pressed),r=!!(gp.buttons[15]&&gp.buttons[15].pressed);if(l&&!padPrev[0])tune(-1);if(r&&!padPrev[1])tune(1);padPrev=[l,r]}}catch(e){}
   if(!inVeh&&!playing&&!A)return;
