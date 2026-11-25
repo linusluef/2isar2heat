@@ -136,7 +136,10 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 
   In emergency vehicles and police cars, the horn button switches the siren on and off.
 - **Stealing parked cars:** breaking in takes a moment (bar "AUFBRECHEN"), and some cars set off their alarm, which attracts nearby police.
-- **Police helicopter:** from 4 stars a helicopter follows you with a searchlight, and from 5 stars it shoots. It can be shot down.
+- **Police helicopter:** from 4 stars a helicopter hunts you with a searchlight, and from 5 stars it shoots. It can be shot down.
+  - **It has to see you:** its view reaches about 60 m (less in rain), and buildings block it. It also can't see you under trees in a park (on foot, on a motorbike or driving slowly) or inside your home or garage.
+  - **When it loses you:** the searchlight stops following you and sweeps the streets. The helicopter circles where you were last seen, slowly widening the search, and it only shoots while it can see you.
+  - **Escaping:** break its line of sight between tall buildings or under trees, then get away while it searches. A message tells you when it has lost you or found you again.
 - **Stunt jumps:** 8 yellow-black ramps around the city. Each jump pays by distance and air time, and the first jump off each ramp pays an extra $500.
 - **Hidden packages:** 30 Weißwurst-Tüten are hidden around the city. Each pays $100, and all 30 pay $10,000. Progress is shown in the pause menu.
 - **New weapons (gun shop):** baseball bat, rifle (long range) and Molotov cocktails.

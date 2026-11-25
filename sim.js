@@ -413,7 +413,16 @@ function crowdTick(f){
 }
 // stride frequency: ~0.8 Hz when walking, ~1.4 Hz when running (one stride = two steps)
 function gaitW(sp){return 6.2832*(0.62+0.13*Math.min(sp,9))}
-const heli=IH.heli={on:false,x:0,y:0,z:42,a:0,vx:0,vy:0,hp:220,cool:0,fireCD:3,leaving:0};
+const heli=IH.heli={on:false,x:0,y:0,z:42,a:0,vx:0,vy:0,hp:220,cool:0,fireCD:3,leaving:0,sees:false,seeT:0,lost:0,orbit:0};
+// can the helicopter crew see this spot? Range of the searchlight, line of sight past buildings, cover under trees / indoors
+function heliSees(t,pd){
+  if(inSafeZone())return false;
+  const env=IH.env||{night:0,rain:0};const range=60-10*env.rain;if(pd>range)return false;
+  const g=at(t.x,t.y),slowOrFoot=!player.inCar||player.inCar.t.bike||hypot(t.vx||0,t.vy||0)<4;
+  if(g===TY.PARK&&slowOrFoot&&pd>14)return false;            // under the tree canopy
+  const z0=heli.z,z1=(player.inCar?player.inCar.t.ht:1.7);
+  for(let k=1;k<10;k++){const u=k/10,x=heli.x+(t.x-heli.x)*u,y=heli.y+(t.y-heli.y)*u,z=z0+(z1-z0)*u;if(W.heightAt(x,y)>z)return false}
+  return true}
 function heliDown(){heli.on=false;heli.cool=45;explosion(heli.x,heli.y,true);addMoney(1500,heli.x,heli.y);G.heat=Math.min(5.99,G.heat+0.6);emit('banner','Hubschrauber abgeschossen!','+$1.500 – jetzt wird’s ernst','#ffc61a')}
 /* ================= airport traffic (same schedule for every player: driven by the wall clock) ================= */
 const planes=[{type:'narrow',liv:'isar',vis:false,x:0,y:0,z:0,a:0},{type:'wide',liv:'alpen',vis:false,x:0,y:0,z:0,a:0},{type:'regio',liv:'bavaria',vis:false,x:0,y:0,z:0,a:0}];
@@ -444,13 +453,20 @@ function heliTick(dt){
   const s=stars();heli.cool-=dt;
   if(heli.on){
     if(s<4||G.state!=='play'){heli.leaving+=dt;heli.x+=Math.cos(heli.a)*30*dt;heli.y+=Math.sin(heli.a)*30*dt;if(heli.leaving>9)heli.on=false;return}
-    heli.leaving=0;const tgt=player.inCar||player;const tx=tgt.x+(tgt.vx||0)*1.2,ty=tgt.y+(tgt.vy||0)*1.2;const dx=tx-heli.x,dy=ty-heli.y,d=hypot(dx,dy);
-    const want=Math.min(34,d*0.8),k=1-Math.exp(-1.3*dt);heli.vx+=(dx/(d||1)*want-heli.vx)*k;heli.vy+=(dy/(d||1)*want-heli.vy)*k;heli.x+=heli.vx*dt;heli.y+=heli.vy*dt;
+    heli.leaving=0;const tgt=player.inCar||player;const pd=hypot(tgt.x-heli.x,tgt.y-heli.y);
+    // the crew has to actually see you: within the searchlight's reach, not blocked by buildings, not under trees or indoors
+    heli.seeT-=dt;if(heli.seeT<=0){heli.seeT=0.2;heli.sees=heliSees(tgt,pd)}
+    if(heli.sees){if(!heli.had&&heli.lost>2)emit('toast','Der Hubschrauber hat dich entdeckt!');heli.had=true;heli.lost=0;G.seenNow=true;G.lkx=tgt.x;G.lky=tgt.y}else{heli.lost+=dt;if(heli.had&&heli.lost>3){heli.had=false;emit('toast','Der Hubschrauber hat dich aus den Augen verloren')}}
+    let tx,ty,cruise;
+    if(heli.sees||heli.lost<1){tx=tgt.x+(tgt.vx||0)*1.2;ty=tgt.y+(tgt.vy||0)*1.2;cruise=34}
+    else{// lost you: fly to where you were last seen and circle around it, widening the search
+      const lx=G.lkx===undefined?tgt.x:G.lkx,ly=G.lky===undefined?tgt.y:G.lky;heli.orbit+=dt*0.5;const r=22+Math.min(38,heli.lost*1.2);tx=lx+Math.cos(heli.orbit)*r;ty=ly+Math.sin(heli.orbit)*r;cruise=hypot(heli.x-lx,heli.y-ly)>90?32:18}
+    const dx=tx-heli.x,dy=ty-heli.y,d=hypot(dx,dy);
+    const want=Math.min(cruise,d*0.8),k=1-Math.exp(-1.3*dt);heli.vx+=(dx/(d||1)*want-heli.vx)*k;heli.vy+=(dy/(d||1)*want-heli.vy)*k;heli.x+=heli.vx*dt;heli.y+=heli.vy*dt;
     if(hypot(heli.vx,heli.vy)>2)heli.a=Math.atan2(heli.vy,heli.vx);heli.z=42+Math.sin(G.time*0.7)*2;
-    const pd=hypot(tgt.x-heli.x,tgt.y-heli.y);if(pd<55&&!inSafeZone())G.seenNow=true;
-    if(s>=5){heli.fireCD-=dt;if(heli.fireCD<=0&&pd<50&&G.state==='play'){heli.fireCD=2.4;for(let i=0;i<4;i++){const a=Math.atan2(tgt.y-heli.y,tgt.x-heli.x)+rand(-0.07,0.07);fireBullet(heli.x,heli.y,a,'cop',7,null,0.45)}sfx('mp',0.8,heli.x,heli.y)}}
+    if(s>=5){heli.fireCD-=dt;if(heli.fireCD<=0&&heli.sees&&pd<50&&G.state==='play'){heli.fireCD=2.4;for(let i=0;i<4;i++){const a=Math.atan2(tgt.y-heli.y,tgt.x-heli.x)+rand(-0.07,0.07);fireBullet(heli.x,heli.y,a,'cop',7,null,0.45)}sfx('mp',0.8,heli.x,heli.y)}}
     return}
-  if(s>=4&&G.state==='play'&&heli.cool<=0){const a=rand(0,Math.PI*2);heli.x=player.x+Math.cos(a)*260;heli.y=player.y+Math.sin(a)*260;heli.vx=heli.vy=0;heli.hp=220;heli.on=true;heli.leaving=0;heli.fireCD=3;heli.a=a+Math.PI;emit('toast','Polizeihubschrauber im Anflug!')}
+  if(s>=4&&G.state==='play'&&heli.cool<=0){const a=rand(0,Math.PI*2);heli.x=player.x+Math.cos(a)*260;heli.y=player.y+Math.sin(a)*260;heli.vx=heli.vy=0;heli.hp=220;heli.on=true;heli.leaving=0;heli.fireCD=3;heli.lost=0;heli.sees=false;heli.seeT=0;heli.a=a+Math.PI;emit('toast','Polizeihubschrauber im Anflug!')}
 }
 let depotT=0;
 function depotTick(dt){

@@ -1313,7 +1313,9 @@ function updateHeli(dt,t){
   const h=S.heli;const on=h&&h.on;heliG.visible=on;heliCone.visible=heliPool.visible=on;if(!on){return}
   heliG.position.set(h.x,h.z,h.y);heliG.rotation.set(clamp(-(h.vy*Math.cos(h.a)-h.vx*Math.sin(h.a))*0.01,-0.2,0.2),-h.a,clamp(-hypot(h.vx,h.vy)*0.006,-0.22,0));
   heliRotor.rotation.y+=dt*42;heliTail.rotation.z+=dt*60;heliBlink.visible=Math.floor(t*2)%2===0;
-  const P=S.player,tg=P.inCar||P;const px=lerp(h.x,tg.x,0.92),py=lerp(h.y,tg.y,0.92);
+  // the searchlight locks onto you only while the crew sees you, otherwise it sweeps the streets below
+  const P=S.player,tg=P.inCar||P;const wx=h.sees?tg.x:h.x+Math.cos(t*0.9)*22+h.vx*1.2,wy=h.sees?tg.y:h.y+Math.sin(t*1.27)*22+h.vy*1.2;
+  if(h.lx===undefined){h.lx=wx;h.ly=wy}const kk=1-Math.exp(-(h.sees?8:2.5)*dt);h.lx+=(wx-h.lx)*kk;h.ly+=(wy-h.ly)*kk;const px=lerp(h.x,h.lx,0.92),py=lerp(h.y,h.ly,0.92);
   const dx=px-h.x,dz=py-h.y,hh=h.z-0.6,len=Math.hypot(dx,dz,hh);heliCone.scale.set(1,len,1);heliCone.position.set((h.x+px)/2,(h.z-0.6)/2,(h.y+py)/2);
   heliCone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(-dx,hh,-dz).normalize());
   const nt=ENV.night;heliCone.material.opacity=0.12+0.5*nt;heliPool.material.opacity=0.25+0.75*nt;heliPool.position.set(px,0.16,py)}
