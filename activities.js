@@ -12,6 +12,7 @@ const A=IH.act={};
 
 /* ---------------- messaging ---------------- */
 const online=()=>NET.enabled&&NET.status==='online';
+const others=()=>{try{return online()&&NET.playerList().length>0}catch(e){return false}};
 const myId=()=>online()?NET.id:'local';
 const myName=()=>(NET.name||IH.settings.name||'Du').slice(0,16);
 const handlers={};
@@ -77,10 +78,11 @@ handlers.rcp=(from,m)=>{if(!race.st||race.id!==m.id)return;race.prog[from]={cp:m
 handlers.rcr=(from,m)=>{if(!race.st||race.id!==m.id||from!==race.host)return;finishRace(m.order,m.pay)};
 handlers.rcx=(from,m)=>{if(race.st&&race.id===m.id&&from===race.host)cancelRace(false,'Der Gastgeber hat das Rennen abgesagt.')};
 function adRace(){if(race.host===myId()&&race.st==='open')send({k:'rco',id:race.id,r:race.def.id,fee:race.fee,left:race.left,mem:race.members})}
-function openRace(def,fee){
+function openRace(def,fee,solo){
   if(P.money<fee){toast('Nicht genug Geld für den Einsatz');return}
-  pay(-fee);Object.assign(race,{st:'open',id:uid(),def,fee,host:myId(),members:[myId()],names:{[myId()]:myName()},left:online()?30:3,prog:{},adT:0,paid:true});
-  race.route=routeOf(def);closePanel();toast(online()?'Rennen offen – andere Spieler haben 30 s zum Mitmachen':'Zeitfahren startet …');adRace();
+  solo=solo||!others();
+  pay(-fee);Object.assign(race,{st:'open',id:uid(),def,fee,host:myId(),members:[myId()],names:{[myId()]:myName()},left:solo?3:30,prog:{},adT:solo?1e9:0,paid:true,soloOnly:solo});
+  race.route=routeOf(def);closePanel();toast(solo?'Zeitfahren startet …':'Rennen offen – andere Spieler haben 30 s zum Mitmachen');if(!solo)adRace();
 }
 function joinRace(r){if(P.money<r.fee){toast('Nicht genug Geld für den Einsatz');return}pay(-r.fee);Object.assign(race,{st:'open',id:r.id,def:r.def,fee:r.fee,host:r.host,members:r.mem.slice(),names:{},left:r.left,prog:{},paid:true});race.route=routeOf(r.def);send({k:'rcj',id:r.id,n:myName()});invites.delete('r'+r.id);renderInvites();toast('Angemeldet – gleich geht’s los')}
 function startRace(mem,names){race.members=mem;race.names=Object.assign(race.names||{},names);race.st='count';race.t0=now()+4;race.cpi=0;race.prog={};race.solo=mem.length<2;
@@ -109,7 +111,7 @@ function raceTick(dt){
   if(race.st==='count'){const left=race.t0-now();if(me){me.vx*=0.9;me.vy*=0.9}hud(`<b class="big">${left>0?Math.ceil(left):'LOS!'}</b>`);if(left<=0){race.st='run';race.start=now();sfx('beep')}else return}
   if(race.st==='run'){
     const cps=race.route.cps,cp=cps[race.cpi];const src=me||P;
-    if(hypot(src.x-cp.x,src.y-cp.y)<11){race.cpi++;sfx('pick');const time=now()-race.start;
+    if(!(me&&me.t.plane)&&hypot(src.x-cp.x,src.y-cp.y)<11){race.cpi++;sfx('pick');const time=now()-race.start;
       if(race.cpi>=cps.length){const pr={cp:race.cpi,t:time,fin:true,time};race.prog[myId()]=pr;send({k:'rcp',id:race.id,cp:race.cpi,fin:1,time:+time.toFixed(2)});
         if(race.solo){const L=race.route.len,gold=L/36,silver=L/30,bronze=L/25;const medal=time<gold?'Gold':time<silver?'Silber':time<bronze?'Bronze':null;const prize=medal?Math.round(race.fee*(medal==='Gold'?3:medal==='Silber'?2:1.2)):0;
           race.st='done';race.doneT=now();if(prize)pay(prize);banner(medal?medal+'medaille':'Zu langsam',time.toFixed(1)+' s'+(prize?' · +'+fmt(prize):''),'#ffc61a');IH.waypoint=null;return}
@@ -125,14 +127,16 @@ function raceTick(dt){
 }
 A.target=()=>{if(race.st==='run'||race.st==='count'){const c=race.route.cps;const t=c[race.cpi];return t?{x:t.x,y:t.y,next:c[race.cpi+1]||null}:null}if(race.st==='open'){return{x:race.def.x,y:race.def.y}}
   if(heist.st&&heist.target)return heist.target;return null};
+let panelRace=null,panelRaceSig='';
 function racePanel(def){
-  const r=[...remoteRaces.values()].find(q=>q.def.id===def.id);
+  const r=[...remoteRaces.values()].find(q=>q.def.id===def.id);panelRace=def;panelRaceSig=r?r.id:'';
   openPanel('race',`<p class="kicker">Straßenrennen</p><h2>${esc(def.name)}</h2>
-   <p class="note">${online()?'Andere Spieler in der Lobby werden eingeladen. Wer gewinnt, kassiert den Pott (ab 3 Fahrern: 65 % / 25 % / 10 %).':'Offline: Zeitfahren gegen die Medaillenzeiten.'}</p>
+   <p class="note">${others()?'Rennen ausschreiben: die anderen Spieler in der Lobby werden eingeladen, wer gewinnt, kassiert den Pott (ab 3 Fahrern: 65 % / 25 % / 10 %). Oder fahr allein ein Zeitfahren.':'Zeitfahren gegen die Medaillenzeiten: Gold zahlt das Dreifache deines Einsatzes, Silber das Doppelte, Bronze 1,2-fach.'}</p>
    ${r?`<div class="row"><button class="cta" data-a="rjoin" data-v="${r.id}" type="button">Mitfahren · ${fmt(r.fee)}</button></div><p class="note">${esc(peerName(r.host))} wartet hier schon.</p>`:
-   `<p class="kicker">Einsatz</p><div class="seg">${[100,250,500,1000].map(f=>`<button data-a="rstart" data-v="${f}" type="button">${fmt(f)}</button>`).join('')}</div>`}
+   `<p class="kicker">${others()?'Rennen ausschreiben · Einsatz':'Zeitfahren · Einsatz'}</p><div class="seg">${[100,250,500,1000].map(f=>`<button data-a="rstart" data-v="${f}" type="button">${fmt(f)}</button>`).join('')}</div>
+    ${others()?`<p class="kicker">Allein · Zeitfahren</p><div class="seg">${[100,250,500,1000].map(f=>`<button data-a="rsolo" data-v="${f}" type="button">${fmt(f)}</button>`).join('')}</div>`:''}`}
    <div class="row"><button class="ghost" data-a="close" type="button">Später</button></div>`,false);
-  clickers.rstart=v=>openRace(def,+v);clickers.rjoin=v=>{const q=remoteRaces.get(v);if(q){joinRace(q);closePanel()}};
+  clickers.rstart=v=>openRace(def,+v,!others());clickers.rsolo=v=>openRace(def,+v,true);clickers.rjoin=v=>{const q=remoteRaces.get(v);if(q){joinRace(q);closePanel()}};
 }
 clickers.close=()=>closePanel();
 
@@ -390,7 +394,7 @@ function clientTick(){if(myTable&&myTable.host!==myId()&&now()-myTable.seen>15)c
 function casinoLobby(){
   const list=[...seen.values()].filter(t=>now()-t.t<12);
   openPanel('casino',`<p class="kicker">${esc(W.casino.name)}</p><h2>Casino</h2>
-   <p class="note">Spiel gegen andere Spieler aus der Lobby${online()?'':' (offline: gegen Bots und die Bank)'}. Dein Geld: <b>${fmt(P.money)}</b></p>
+   <p class="note">Spiel mit anderen Spielern aus der Lobby – oder ganz allein: freie Plätze am Pokertisch übernehmen Bots, beim Blackjack spielst du gegen die Bank. Dein Geld: <b>${fmt(P.money)}</b></p>
    ${list.length?`<p class="kicker">Offene Tische</p><div class="tables">${list.map(t=>`<div class="tbl"><span><b>${t.g==='poker'?'Texas Hold’em':'Blackjack'}</b> · ${esc(t.hn)} · ${t.n}/${t.max}${t.g==='poker'?' · Blinds '+t.stake/2+'/'+t.stake:''}</span><button data-a="tjoin" data-v="${t.id}" type="button">Hinsetzen</button></div>`).join('')}</div>`:''}
    <p class="kicker">Neuer Tisch</p>
    <div class="row"><button class="cta" data-a="newbj" type="button">Blackjack</button><button class="cta" data-a="newpk" type="button">Texas Hold’em</button></div>
@@ -449,22 +453,29 @@ function nearPOI(){
   if(G.state!=='play'||S.mission.active)return null;const src=P.inCar||P;
   if(heist.st==='hack'&&!P.inCar){for(let i=0;i<BANK.terms.length;i++){const t=BANK.terms[i];if(!heist.solved[i]&&hypot(P.x-t.x,P.y-t.y)<2.6)return{label:t.name+' knacken',fn:()=>startPuzzle(i)}}}
   if(A.busy())return null;
-  if(W.casino&&!P.inCar&&hypot(P.x-W.casino.x,P.y-W.casino.y)<3){if(S.stars()>0)return{label:'Casino (erst Polizei abhängen)',fn:()=>toast('Mit Fahndung kommst du nicht rein')};return{label:'Casino betreten',fn:casinoLobby}}
-  if(BANK&&!P.inCar&&hypot(P.x-BANK.x,P.y-BANK.y)<3){return{label:remoteHeist&&now()-remoteHeist.t<10?'Bankraub mitmachen':'Bankraub planen',fn:()=>{if(remoteHeist&&now()-remoteHeist.t<10)joinHeist();else openPanel('heist',`<p class="kicker">${esc(BANK.name)}</p><h2>Bankraub</h2>
+  if(W.casino&&!P.inCar&&hypot(P.x-W.casino.x,P.y-W.casino.y)<4.5){if(S.stars()>0)return{key:'casinoW',auto:true,label:'Casino (erst Polizei abhängen)',fn:()=>toast('Mit Fahndung kommst du nicht rein')};return{key:'casino',auto:true,label:'Casino betreten',fn:casinoLobby}}
+  if(BANK&&!P.inCar&&hypot(P.x-BANK.x,P.y-BANK.y)<4){return{key:'bank',auto:true,label:remoteHeist&&now()-remoteHeist.t<10?'Bankraub mitmachen':'Bankraub planen',fn:()=>{if(remoteHeist&&now()-remoteHeist.t<10)joinHeist();else openPanel('heist',`<p class="kicker">${esc(BANK.name)}</p><h2>Bankraub</h2>
      <p class="note">Bis zu 4 Spieler. Schaltet an drei Stellen rund um die Bank die Sicherheitssysteme aus (Kabel, Funkfrequenz, Tresorcode), bohrt den Tresor auf, während die Polizei anrückt, und bringt die Beute ins Versteck. Mehr Crew = mehr Beute insgesamt.</p>
      <div class="row"><button class="cta" data-a="hplan" type="button">${online()?'Crew zusammenstellen':'Loslegen'}</button><button class="ghost" data-a="close" type="button">Lieber nicht</button></div>`,false)}}}
-  if(P.inCar)for(const r of RACES){if(hypot(src.x-r.x,src.y-r.y)<16&&Math.hypot(P.inCar.vx,P.inCar.vy)<6)return{label:'Rennen: '+r.name,fn:()=>racePanel(r)}}
-  for(const r of remoteRaces.values()){if(P.inCar&&hypot(src.x-r.def.x,src.y-r.def.y)<14)return{label:'Mitfahren: '+r.def.name+' ('+fmt(r.fee)+')',fn:()=>joinRace(r)}}
+  const ground=P.inCar&&!P.inCar.t.plane;
+  if(ground)for(const r of RACES){if(hypot(src.x-r.x,src.y-r.y)<16&&Math.hypot(P.inCar.vx,P.inCar.vy)<9)return{key:'race'+r.id,auto:true,label:'Rennen: '+r.name,fn:()=>racePanel(r)}}
+  if(!P.inCar)for(const r of RACES){if(hypot(P.x-r.x,P.y-r.y)<10)return{key:'raceF'+r.id,auto:true,label:'Rennen: '+r.name+' (nur mit Fahrzeug)',fn:()=>toast('Hol dir ein Auto oder Motorrad und fahr auf die Startlinie')}}
+  for(const r of remoteRaces.values()){if(ground&&hypot(src.x-r.def.x,src.y-r.def.y)<14)return{label:'Mitfahren: '+r.def.name+' ('+fmt(r.fee)+')',fn:()=>joinRace(r)}}
   return null}
 clickers.hplan=()=>planHeist();
-let tickT=0,lastT=now();
+let tickT=0,lastT=now(),autoKey=null,lobT=0,lobSig=null;
 function tick(){
   const t=now(),dt=Math.min(0.1,t-lastT);lastT=t;
   try{
     if(G.state!=='menu'){raceTick(dt);heistTick(dt);puzzleTick(dt);clientTick()}
     for(const T of tables.values()){T.annT-=dt;if(T.annT<=0){T.annT=4;announce(T)}if(T.game==='poker')pokerTick(T);else bjTick(T)}
-    tickT-=dt;if(tickT<=0){tickT=0.25;const poi=panelOpen?null:nearPOI();btnAction=poi?poi.fn:null;const b=$('actBtn');b.hidden=!poi;if(poi&&b.textContent!==poi.label)b.textContent=poi.label;renderInvites()}
-    if(panelOpen==='casino'&&Math.floor(t)%3===0&&!A._lr){A._lr=1;}if(Math.floor(t)%3)A._lr=0;
+    tickT-=dt;if(tickT<=0){tickT=0.25;const zone=nearPOI();
+      // stepping onto the red carpet / the bank steps / a start line opens the activity by itself (once per visit), the button stays as a fallback
+      if(!zone)autoKey=null;else if(zone.auto&&zone.key!==autoKey&&!panelOpen){autoKey=zone.key;try{zone.fn()}catch(e){console.error(e)}}
+      const poi=panelOpen?null:zone;btnAction=poi?poi.fn:null;const b=$('actBtn');b.hidden=!poi;if(poi&&b.textContent!==poi.label)b.textContent=poi.label;renderInvites()}
+    // the casino lobby keeps its list of open tables up to date while it is open
+    lobT-=dt;if(lobT<=0){lobT=1;if(panelOpen==='race'&&panelRace){const r=[...remoteRaces.values()].find(q=>q.def.id===panelRace.id);if((r?r.id:'')!==panelRaceSig)racePanel(panelRace)}
+      if(panelOpen==='casino'){const sig=[...seen.values()].filter(q=>now()-q.t<12).map(q=>q.id+':'+q.n).join(',');const br=$('buyRow');if(sig!==lobSig&&!(br&&!br.hidden)){lobSig=sig;casinoLobby()}}else lobSig=null}
   }catch(e){console.error(e)}
   requestAnimationFrame(tick);
 }

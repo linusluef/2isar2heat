@@ -6,7 +6,9 @@ const rand=(a,b)=>a+(b-a)*Math.random(),pick=a=>a[Math.floor(Math.random()*a.len
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t,hypot=Math.hypot;
 const wrapA=a=>{while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a};
 const emit=(t,a,b,c,d)=>{const h=IH.on&&IH.on[t];if(h)h(a,b,c,d)};
-const sfx=(k,v,x,y)=>emit('sfx',k,v,x,y);
+const sfx=(k,v,x,y,a)=>emit('sfx',k,v,x,y,a);
+// story missions, jobs, pickups and shops only react on foot or in a ground vehicle, never in an aircraft
+const inPlane=()=>!!(player.inCar&&player.inCar.t.plane);
 
 /* ================= state ================= */
 const G=IH.G={state:'menu',paused:false,heat:0,lastSeen:0,viol:0,time:0,spawnCD:0,blockCD:20,deadT:0,deadKind:'',story:0,jobs:0,best:0,seenNow:false,shopNear:null,zoneIn:null,hint:''};
@@ -534,7 +536,7 @@ function collideCars(active){
           if(pl)emit('shake',Math.min(0.9,imp/28));if(pl&&pl.t.bike&&imp>7)pl.eject=imp;
           sfx('crash',Math.min(1,imp/25),best.px,best.py);for(let k=0;k<4;k++)spark(best.px,best.py,0.6);
         }
-        if(pl&&other.driver==='ai'&&!other.cop)other.hornT=1;
+        if(pl&&other.driver==='ai'&&!other.cop)other.hornT=0.4;
       }
     }
   }
@@ -687,7 +689,7 @@ function planeStep(c,dt){
     else c.spd=c.spd>0?Math.max(0,c.spd-0.9*dt):Math.min(0,c.spd+3*dt);
     const rate=steer*T.gturn*clamp(Math.abs(c.spd)/3+0.25,0,1)/(1+Math.abs(c.spd)/25);c.a+=rate*dt*(c.spd<-0.1?-1:1);c.roll*=Math.exp(-6*dt);
     if(c===player.inCar&&c.spd>=T.vr&&!c.toldVr){c.toldVr=1;emit('toast','Abhebegeschwindigkeit – jetzt hochziehen (Joystick nach unten)')}
-    if(pitch>0.3&&c.spd>=T.vr){c.air=true;c.vz=2.5;c.z=0.3;sfx('nitro',0.4,c.x,c.y)}
+    if(pitch>0.3&&c.spd>=T.vr){c.air=true;c.vz=2.5;c.z=0.3;sfx('liftoff',0.6,c.x,c.y)}
     // nose into something solid on the ground
     const nx=c.x+Math.cos(c.a)*c.t.len*0.5,ny=c.y+Math.sin(c.a)*c.t.len*0.5,g=at(nx,ny);
     if((g===TY.BUILD||g===TY.SOLID||g===TY.RAIL)&&c.spd>0){if(c.spd>14){planeCrash(c);return}damageCar(c,c.spd*4,false);c.spd=-0.5;sfx('crash',0.6,nx,ny)}
@@ -701,7 +703,7 @@ function planeStep(c,dt){
     c.roll+=(steer*0.65-c.roll)*Math.min(1,dt*3);c.a+=steer*T.turn*dt*clamp(c.spd/T.vr,0.5,1.2);
     const h=W.heightAt(c.x+Math.cos(c.a)*c.t.len*0.4,c.y+Math.sin(c.a)*c.t.len*0.4),hc=W.heightAt(c.x,c.y);
     if(c.z<Math.max(h,hc)-0.5&&Math.max(h,hc)>1){planeCrash(c,'Gegen ein Gebäude geflogen');return}
-    if(c.z<=0){c.z=0;const g=at(c.x,c.y);if(c.vz>-7&&Math.abs(c.roll)<0.45&&OKLAND.has(g)){c.air=false;c.vz=0;c.roll=0;sfx('crash',0.35,c.x,c.y);if(c===player.inCar)emit('toast',hypot(c.vx,c.vy)>T.vr*1.3?'Harte Landung!':'Gelandet');c.toldVr=0}
+    if(c.z<=0){c.z=0;const g=at(c.x,c.y);if(c.vz>-7&&Math.abs(c.roll)<0.45&&OKLAND.has(g)){c.air=false;c.vz=0;c.roll=0;sfx('touchdown',Math.min(1,0.4-c.vz*0.1),c.x,c.y);if(c===player.inCar)emit('toast',hypot(c.vx,c.vy)>T.vr*1.3?'Harte Landung!':'Gelandet');c.toldVr=0}
       else{planeCrash(c,'Bruchlandung');return}}
     // out of the map: turn back
     if(c.x<20||c.y<20||c.x>W.MAP-20||c.y>W.MAP-20){c.a+=dt*1.2;if(c===player.inCar&&!c.toldEdge){c.toldEdge=1;emit('toast','Kartenrand – zurück nach München')}}else c.toldEdge=0;
@@ -767,7 +769,10 @@ function aiDrive(c,dt){
   if(target<2)c.wait+=dt;else c.wait=Math.max(0,c.wait-dt*2);
   if(target>3&&Math.abs(vf)<0.7)c.stuck+=dt;else c.stuck=Math.max(0,c.stuck-dt);
   if(c.stuck>2.2){c.stuck=0;c.backT=0.9;c.revSteer=steer||1}
-  if(c.hornT>0){c.hornT-=dt;if(c.hornT<=0.05&&Math.random()<0.5)sfx('horn',0.35,c.x,c.y)}
+  if(c.hornT>0){c.hornT-=dt;if(c.hornT<=0.05&&Math.random()<0.5)sfx('honk',0.4,c.x,c.y,c.id)}
+  // impatient drivers: honk when stuck behind something (a green light, a parked player, a pedestrian), now and then for no reason
+  c.honkCD=(c.honkCD===undefined?rand(4,20):c.honkCD)-dt;
+  if(c.honkCD<=0){const blockedLong=c.wait>2.6&&lim<9&&!(st.stopD!==null&&st.stopD<lim+2);if(blockedLong||Math.random()<dt/70){sfx('honk',blockedLong?0.5:0.3,c.x,c.y,c.id);c.honkCD=blockedLong?rand(3,7):rand(25,60)}else if(c.honkCD<-1)c.honkCD=0}
 }
 function copDrive(c,dt){
   const tgt=player.inCar||player;const dx=tgt.x-c.x,dy=tgt.y-c.y,d=hypot(dx,dy);
@@ -878,6 +883,7 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
     const armedBomb=m.type==='bombe'&&!m.data.armed;
     if(!armedBomb){m.time-=dt;if(m.time<=0){if(m.type==='bombe'){const c=m.data.car;if(c&&!c.dead)explodeCar(c);m.fail('Bumm. Zu spät.');}else m.fail(m.type==='taxi'?'Der Fahrgast ist ausgestiegen.':'Die Zeit ist um.');return}}
     const px=player.x,py=player.y,pc=player.inCar,speed=pc?hypot(pc.vx,pc.vy):0;
+    if(inPlane())return;   // targets, pick-ups and drop-offs only count on the ground
     switch(m.type){
       case'kurier':
         if(hypot(px-m.tx,py-m.ty)<7){if(m.stage===0){m.stage=1;m.tx=m.data.b.x;m.ty=m.data.b.y;sfx('pick');emit('toast','Ware an Bord – ab zum Ziel!')}else m.win()}break;
@@ -1144,11 +1150,11 @@ function update(dt){
   for(let i=floaters.length-1;i>=0;i--){const fl=floaters[i];fl.t-=dt;if(fl.t<=0)floaters.splice(i,1)}
   if(G.state==='play'){
     policeTick(dt);mission.tick(dt);depotTick(dt);G.jobCD=(G.jobCD||0)-dt;
-    {const src=player.inCar||player;for(const pk of W.packages){if(G.pkgs.has(pk.i))continue;if(Math.abs(src.x-pk.x)<2.4&&Math.abs(src.y-pk.y)<2.4){G.pkgs.add(pk.i);const n=G.pkgs.size;addMoney(100,pk.x,pk.y);sfx('pick');if(n===W.packages.length){addMoney(10000,pk.x,pk.y);emit('banner','Alle Weißwurst-Tüten!','+$10.000 · Respekt.','#ffc61a');sfx('win')}else emit('toast','Weißwurst-Tüte '+n+' von '+W.packages.length);save()}}}
+    {const src=player.inCar||player;for(const pk of inPlane()?[]:W.packages){if(G.pkgs.has(pk.i))continue;if(Math.abs(src.x-pk.x)<2.4&&Math.abs(src.y-pk.y)<2.4){G.pkgs.add(pk.i);const n=G.pkgs.size;addMoney(100,pk.x,pk.y);sfx('pick');if(n===W.packages.length){addMoney(10000,pk.x,pk.y);emit('banner','Alle Weißwurst-Tüten!','+$10.000 · Respekt.','#ffc61a');sfx('win')}else emit('toast','Weißwurst-Tüte '+n+' von '+W.packages.length);save()}}}
     // phones
-    for(const ph of W.phones){ph.cd=(ph.cd||0)-dt;if(!mission.active&&ph.cd<=0&&!(IH.act&&IH.act.busy())&&hypot(player.x-ph.x,player.y-ph.y)<(player.inCar?5:2.4)){const def=mission.next()||randomJob();mission.start(def,ph)}}
+    for(const ph of W.phones){ph.cd=(ph.cd||0)-dt;if(!mission.active&&ph.cd<=0&&!inPlane()&&!(IH.act&&IH.act.busy())&&hypot(player.x-ph.x,player.y-ph.y)<(player.inCar?5:2.4)){const def=mission.next()||randomJob();mission.start(def,ph)}}
     // pickups
-    for(const p of W.pickups){p.cd=(p.cd||0)-dt;if(p.cd<=0&&hypot(player.x-p.x,player.y-p.y)<1.8){
+    for(const p of W.pickups){p.cd=(p.cd||0)-dt;if(p.cd<=0&&!inPlane()&&hypot(player.x-p.x,player.y-p.y)<1.8){
       if(p.k==='health'){if(player.hp>=100)continue;player.hp=Math.min(100,player.hp+50);emit('toast','Erste Hilfe +50')}
       else if(p.k==='armor'){if(player.armor>=100)continue;player.armor=100;emit('toast','Schutzweste')}
       else if(p.k==='pistol'){player.ammo[1]+=24;if(player.weapon===0)player.weapon=1;emit('toast','Pistole +24')}
@@ -1159,11 +1165,11 @@ function update(dt){
     // shops and zones
     let near=null;
     if(onFoot()){for(const s of W.shops)if(hypot(player.x-s.x,player.y-s.y)<2)near=s}
-    else{const c=player.inCar;for(const z of W.zones)if((z.kind==='werkstatt'||z.kind==='lack')&&hypot(c.x-z.x,c.y-z.y)<z.r&&hypot(c.vx,c.vy)<2.5)near=z}
+    else if(!inPlane()){const c=player.inCar;for(const z of W.zones)if((z.kind==='werkstatt'||z.kind==='lack')&&hypot(c.x-z.x,c.y-z.y)<z.r&&hypot(c.vx,c.vy)<2.5)near=z}
     if(near&&G.shopNear!==near){G.shopNear=near;emit('shop',near.k||near.kind,near.name)}
     if(!near)G.shopNear=null;
     // own garages: park inside to keep the car
-    {const c=player.inCar;let gz=null;if(c)for(const id of G.owned){const p=propById(id);if(p&&hypot(c.x-p.gx,c.y-p.gy)<p.gr)gz=p}
+    {const c=inPlane()?null:player.inCar;let gz=null;if(c)for(const id of G.owned){const p=propById(id);if(p&&hypot(c.x-p.gx,c.y-p.gy)<p.gr)gz=p}
      if(gz&&hypot(c.vx,c.vy)<1){if(G.zoneIn!==gz){G.zoneIn=gz;const n=cars.filter(o=>o!==c&&!o.dead&&o.saved&&inGarage(o,gz)).length;if(n>=gz.slots)emit('toast','Garage voll ('+gz.slots+' Plätze) – Auto wird nicht gespeichert');else{c.home=gz.id;save();emit('toast','In der Garage – Auto und Spielstand gesichert')}}}
      else if(!gz)G.zoneIn=null}
     // front doors of homes

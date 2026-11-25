@@ -671,6 +671,12 @@ function airportFence(A){
   const sg=labelSprite('FLUGHAFEN · NUR BERECHTIGTE','rgba(20,32,52,.9)','#fff',0.8);sg.position.set(gx-3.5,4.2,gy0-3);scene.add(sg);
 }
 function activitySigns(){
+  // race starts: a chequered ring on the road with two flags and a sign
+  if(W.raceDefs){const tex=canvasTex(256,256,(g)=>{g.clearRect(0,0,256,256);const N=24;for(let k=0;k<N;k++){for(let j=0;j<2;j++){g.beginPath();const a0=k/N*Math.PI*2,a1=(k+1)/N*Math.PI*2,r0=j?112:96,r1=j?126:112;g.arc(128,128,r1,a0,a1);g.arc(128,128,r0,a1,a0,true);g.closePath();g.fillStyle=(k+j)%2?'#111':'#f4f4f4';g.fill()}}});
+    const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3});
+    for(const r of W.raceDefs){const m=new THREE.Mesh(new THREE.PlaneGeometry(16,16),mat);m.rotation.x=-Math.PI/2;m.position.set(r.x,0.07,r.y);m.renderOrder=2;scene.add(m);
+      for(const sd of[-1,1]){addMesh(new THREE.CylinderGeometry(0.06,0.06,4,6),lam('#ddd'),r.x+sd*7.6,2,r.y);const fl=new THREE.Mesh(new THREE.PlaneGeometry(1.2,0.8),new THREE.MeshBasicMaterial({map:canvasTex(32,24,(g)=>{for(let i=0;i<4;i++)for(let j=0;j<3;j++){g.fillStyle=(i+j)%2?'#111':'#fff';g.fillRect(i*8,j*8,8,8)}}),side:THREE.DoubleSide}));fl.position.set(r.x+sd*7.6+0.6,3.6,r.y);scene.add(fl)}
+      const sg=labelSprite('RENNEN · '+r.name.toUpperCase(),'rgba(14,16,19,.85)','#ffc61a',0.9);sg.position.set(r.x,5,r.y);scene.add(sg)}}
   if(W.bank){const b=W.bank;const sg=labelSprite('ISARBANK','rgba(20,40,70,.92)','#e8c96a',1.5);sg.position.set(b.x,b.b.h+3,b.y);scene.add(sg);
     for(const sd of[-1,1]){const fx=b.b.front,tx=-fx.ny,ty=fx.nx;addMesh(new THREE.CylinderGeometry(0.35,0.4,7,10),lam('#e6dfcd'),b.x-fx.nx*1.2+tx*sd*2.4,3.5,b.y-fx.ny*1.2+ty*sd*2.4)}}
   if(W.casino){const c=W.casino;const tex=canvasTex(512,128,(g)=>{g.fillStyle='#14081c';g.fillRect(0,0,512,128);g.strokeStyle='#ff4fd8';g.lineWidth=6;g.strokeRect(6,6,500,116);g.font='64px Bungee, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillStyle='#ffe36a';g.shadowColor='#ff4fd8';g.shadowBlur=18;g.fillText('SPIELBANK',256,66)});

@@ -25,13 +25,14 @@ function initAudio(){
     sirOsc=AC.createOscillator();sirOsc.type='triangle';sirGain=AC.createGain();sirGain.gain.value=0;sirOsc.connect(sirGain);sirGain.connect(master);sirOsc.start();
     const sk=AC.createBufferSource();sk.buffer=noiseBuf;sk.loop=true;const skf=AC.createBiquadFilter();skf.type='bandpass';skf.frequency.value=1800;skf.Q.value=3;skidG=AC.createGain();skidG.gain.value=0;sk.connect(skf);skf.connect(skidG);skidG.connect(master);sk.start();
     const hr=AC.createBufferSource();hr.buffer=noiseBuf;hr.loop=true;const hf=AC.createBiquadFilter();hf.type='lowpass';hf.frequency.value=260;heliG=AC.createGain();heliG.gain.value=0;const lfo=AC.createOscillator();lfo.frequency.value=13;const lfoG=AC.createGain();lfoG.gain.value=0;lfo.connect(lfoG);lfoG.connect(heliG.gain);heliLfo=lfoG;hr.connect(hf);hf.connect(heliG);heliG.connect(master);hr.start();lfo.start();
+    initAudio2();
     const rn=AC.createBufferSource();rn.buffer=noiseBuf;rn.loop=true;const rf=AC.createBiquadFilter();rf.type='highpass';rf.frequency.value=900;const rf2=AC.createBiquadFilter();rf2.type='lowpass';rf2.frequency.value=5200;rainG=AC.createGain();rainG.gain.value=0;rn.connect(rf);rf.connect(rf2);rf2.connect(rainG);rainG.connect(master);rn.start();
   }catch(e){AC=null}
 }
 function distVol(x,y){if(x===undefined)return 1;const t=IH.cam.target;return clamp(1-hypot(x-t.x,y-t.y)/110,0,1)}
 function noise(dur,type,freq,vol,q){const t=AC.currentTime;const s=AC.createBufferSource();s.buffer=noiseBuf;const f=AC.createBiquadFilter();f.type=type;f.frequency.value=freq;if(q)f.Q.value=q;const g=AC.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t,Math.random()*0.4,dur+0.05)}
 function tone(f1,f2,dur,type,vol,delay){const t=AC.currentTime+(delay||0);const o=AC.createOscillator();o.type=type;o.frequency.setValueAtTime(f1,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur);const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.05)}
-function sfx(k,v,x,y){
+function sfx(k,v,x,y,a){
   if(!AC||IH.settings.muted)return;const vol=(v===undefined?1:v)*distVol(x,y);if(vol<0.02)return;
   switch(k){
     case'shot':noise(0.13,'highpass',700,0.55*vol);tone(180,60,0.08,'square',0.12*vol);break;
@@ -54,12 +55,93 @@ function sfx(k,v,x,y){
     case'chat':tone(880,1180,0.09,'sine',0.08*vol);break;
     case'gewehr':noise(0.45,'lowpass',2200,0.9*vol);tone(140,40,0.25,'square',0.18*vol);tone(900,300,0.05,'sawtooth',0.08*vol);break;
     case'alarm':tone(980,0,0.2,'square',0.06*vol);tone(740,0,0.2,'square',0.06*vol,0.22);break;
+    case'honk':{const H=[[349,440],[415,523],[311,392],[466,587],[370,466]][(a|0)%5];const n=((a|0)%3===0)?2:1;const len=0.18+((a|0)%4)*0.07;
+      for(let i=0;i<n;i++){tone(H[0],0,len,'sawtooth',0.035*vol,i*(len+0.08));tone(H[1],0,len,'square',0.03*vol,i*(len+0.08))}break}
+    case'liftoff':noise(1.4,'lowpass',500,0.35*vol);break;
+    case'touchdown':noise(0.09,'bandpass',2400,0.5*vol,4);noise(0.09,'bandpass',2100,0.4*vol,4);setTimeout(()=>noise(0.08,'bandpass',2300,0.3*vol,4),110);tone(70,40,0.25,'sine',0.35*vol);break;
+    case'start':{// starter motor, then the engine catches
+      for(let i=0;i<5;i++)tone(55,48,0.09,'sawtooth',0.07*vol,i*0.11);noise(0.5,'lowpass',300,0.12*vol);tone(40,75,0.35,'sawtooth',0.1*vol,0.55);break}
+    case'spool':tone(400,3200,2.2,'sine',0.025*vol);noise(2.2,'lowpass',700,0.12*vol);break;
+    case'stall':tone(880,0,0.12,'square',0.05*vol);tone(880,0,0.12,'square',0.05*vol,0.18);break;
   }
 }
 let skidV=0,heliG=null,heliLfo=null;
+/* ---------- extended sound: car/bike/aircraft engines, traffic, footsteps, ambience ---------- */
+let X=null;
+function initAudio2(){
+  const mk=v=>{const g=AC.createGain();g.gain.value=v;return g};
+  const loopNoise=(type,f,q)=>{const s=AC.createBufferSource();s.buffer=noiseBuf;s.loop=true;s.playbackRate.value=0.9+Math.random()*0.2;const fl=AC.createBiquadFilter();fl.type=type;fl.frequency.value=f;if(q)fl.Q.value=q;s.connect(fl);s.start(0,Math.random());return fl};
+  X={};
+  // second engine oscillator: a sub "body" one octave down and a rasp for bikes
+  X.eng2=AC.createOscillator();X.eng2.type='square';X.eng2G=mk(0);X.eng2.connect(X.eng2G);X.eng2G.connect(engF);X.eng2.start();
+  // aircraft: propeller buzz, turbine whine, exhaust roar, wind
+  X.prop=AC.createOscillator();X.prop.type='sawtooth';X.prop2=AC.createOscillator();X.prop2.type='square';X.propF=AC.createBiquadFilter();X.propF.type='lowpass';X.propF.frequency.value=700;X.propF.Q.value=2;X.propG=mk(0);
+  const p2g=mk(0.5);X.prop.connect(X.propF);X.prop2.connect(p2g);p2g.connect(X.propF);X.propF.connect(X.propG);X.propG.connect(master);X.prop.start();X.prop2.start();
+  X.whine=AC.createOscillator();X.whine.type='sine';X.whineG=mk(0);X.whine.connect(X.whineG);X.whineG.connect(master);X.whine.start();
+  X.roarF=loopNoise('lowpass',500,0.7);X.roarG=mk(0);X.roarF.connect(X.roarG);X.roarG.connect(master);
+  X.windF=loopNoise('bandpass',900,0.6);X.windG=mk(0);X.windF.connect(X.windG);X.windG.connect(master);
+  // airport traffic heard from the ground
+  X.farF=loopNoise('lowpass',420,0.7);X.farG=mk(0);X.farF.connect(X.farG);X.farG.connect(master);X.farW=AC.createOscillator();X.farW.type='sine';X.farWG=mk(0);X.farW.connect(X.farWG);X.farWG.connect(master);X.farW.start();
+  // other cars: three positional engine voices for the nearest moving vehicles
+  X.tv=[];for(let i=0;i<3;i++){const o=AC.createOscillator();o.type='sawtooth';const o2=AC.createOscillator();o2.type='triangle';const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=320;const g=mk(0);
+    let out=g;if(AC.createStereoPanner){const pn=AC.createStereoPanner();g.connect(pn);pn.connect(master);out=pn;X.tv.push({o,o2,f,g,pn,car:null})}else{g.connect(master);X.tv.push({o,o2,f,g,pn:null,car:null})}
+    const g2=mk(0.6);o.connect(f);o2.connect(g2);g2.connect(f);f.connect(g);o.start();o2.start()}
+  // quiet city bed (distant traffic)
+  X.bedF=loopNoise('lowpass',260,0.5);X.bedG=mk(0);X.bedF.connect(X.bedG);X.bedG.connect(master);
+  X.stepI=null;X.pedSteps=new WeakMap();X.birdT=2;X.stallT=0;X.lastCar=null;
+}
+function surfaceAt(x,y){const t=W.at(x,y),T=W.TY;return t===T.GRASS||t===T.PARK||t===T.FIELD?'soft':t===T.WATER?'water':'hard'}
+function footstep(x,y,vol,run){if(vol<0.01)return;const sf=surfaceAt(x,y),t=AC.currentTime,wet=IH.env&&IH.env.rain>0.4;
+  const burst=(dur,type,f,q,v)=>{const s=AC.createBufferSource();s.buffer=noiseBuf;const fl=AC.createBiquadFilter();fl.type=type;fl.frequency.value=f*(0.9+Math.random()*0.2);fl.Q.value=q;const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.004);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);s.connect(fl);fl.connect(g);g.connect(master);s.start(t,Math.random()*1.2,dur+0.03)};
+  const v=vol*(run?1.35:1);
+  if(sf==='soft'){burst(0.09,'lowpass',650,0.7,0.12*v);burst(0.05,'bandpass',2600,1.5,0.025*v)}
+  else if(sf==='water'){burst(0.18,'bandpass',1200,0.8,0.12*v)}
+  else{burst(0.045,'bandpass',1700,1.3,0.13*v);const o=AC.createOscillator();o.type='sine';o.frequency.setValueAtTime(110,t);o.frequency.exponentialRampToValueAtTime(55,t+0.05);const g=AC.createGain();g.gain.setValueAtTime(0.08*v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.06);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.08);if(wet)burst(0.07,'highpass',3500,0.7,0.04*v)}}
+function chirp(){const t=AC.currentTime;const n=2+Math.floor(Math.random()*5),base=2600+Math.random()*2200;for(let i=0;i<n;i++){const o=AC.createOscillator();o.type='sine';const t0=t+i*(0.09+Math.random()*0.06);o.frequency.setValueAtTime(base*(0.9+Math.random()*0.25),t0);o.frequency.exponentialRampToValueAtTime(base*(1.15+Math.random()*0.4),t0+0.06);const g=AC.createGain();g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.018,t0+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.07);o.connect(g);g.connect(master);o.start(t0);o.stop(t0+0.09)}}
+function cricket(){const t=AC.currentTime;for(let i=0;i<6;i++){const o=AC.createOscillator();o.type='sine';o.frequency.value=4300+Math.random()*200;const g=AC.createGain();const t0=t+i*0.045;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.008,t0+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.035);o.connect(g);g.connect(master);o.start(t0);o.stop(t0+0.05)}}
+function audioTick2(dt){
+  if(!X)return;const t=AC.currentTime,play=G.state==='play'&&!G.paused,c=P&&P.inCar;const lis=IH.cam.target||{x:0,y:0};
+  const yaw=IH.cam.yaw||0,cy=Math.cos(yaw),sy=Math.sin(yaw);
+  // --- own vehicle ---
+  const plane=play&&c&&c.t.plane?c:null,bike=play&&c&&c.t.bike;
+  if(c&&c!==X.lastCar){X.lastCar=c;if(play)sfx(c.t.plane?(c.type==='cessna'?'start':'spool'):'start',c.t.plane?0.9:0.7)}else if(!c)X.lastCar=null;
+  if(play&&c&&!plane){const s=Math.abs(c.vf||0);const base=bike?62:38;const f=base+s*(bike?4.2:3)+((s/9)%1)*(bike?22:14);engOsc.frequency.setTargetAtTime(f,t,0.05);X.eng2.frequency.setTargetAtTime(f*0.5,t,0.05);
+    engF.frequency.setTargetAtTime((bike?520:300)+s*(bike?18:13),t,0.1);engGain.gain.setTargetAtTime(bike?0.045:0.05,t,0.1);X.eng2G.gain.setTargetAtTime(bike?0.35:0.6,t,0.1)}
+  else{engGain.gain.setTargetAtTime(0,t,0.1);X.eng2G.gain.setTargetAtTime(0,t,0.1)}
+  let pG=0,wG=0,rG=0,windG=0;
+  if(plane){const thr=c.thr||0,sp=Math.max(0,c.spd||0),T=c.t.plane,kind=c.type;const air=!!c.air;
+    if(kind==='cessna'){const bpf=48+thr*34+sp*0.5;X.prop.frequency.setTargetAtTime(bpf,t,0.15);X.prop2.frequency.setTargetAtTime(bpf/2,t,0.15);X.propF.frequency.setTargetAtTime(500+thr*600,t,0.2);pG=0.05+thr*0.03;rG=0.01}
+    else if(kind==='regio'){const bpf=68+thr*20;X.prop.frequency.setTargetAtTime(bpf,t,0.3);X.prop2.frequency.setTargetAtTime(bpf*0.5,t,0.3);X.propF.frequency.setTargetAtTime(420+thr*300,t,0.2);pG=0.035+thr*0.02;
+      X.whine.frequency.setTargetAtTime(2400+thr*900,t,0.6);wG=0.006+thr*0.004;X.roarF.frequency.setTargetAtTime(380+thr*300,t,0.4);rG=0.03+thr*0.03}
+    else{X.whine.frequency.setTargetAtTime(2800+thr*2600,t,0.8);wG=0.007+thr*0.007;X.roarF.frequency.setTargetAtTime(350+thr*1100,t,0.6);rG=0.05+thr*0.09}
+    windG=air?Math.min(0.09,(sp/T.max)*(sp/T.max)*0.1+0.01):0;X.windF.frequency.setTargetAtTime(600+sp*12,t,0.3);
+    // stall warning
+    X.stallT-=dt;if(air&&sp<T.vr*0.85&&X.stallT<=0){X.stallT=0.5;sfx('stall',1)}}
+  X.propG.gain.setTargetAtTime(pG,t,0.2);X.whineG.gain.setTargetAtTime(wG,t,0.4);X.roarG.gain.setTargetAtTime(rG,t,0.3);X.windG.gain.setTargetAtTime(windG,t,0.4);
+  // --- airport traffic (scheduled planes), heard when you are not flying yourself ---
+  let fv=0;if(play&&!plane&&S.planes){for(const q of S.planes){if(!q.vis)continue;const d=Math.hypot(q.x-lis.x,q.y-lis.y,(q.z||0)*0.7);const v=Math.max(0,1-d/380);if(v>fv)fv=v}}
+  X.farG.gain.setTargetAtTime(fv*fv*0.16,t,0.4);X.farWG.gain.setTargetAtTime(fv*fv*0.006,t,0.4);X.farW.frequency.setTargetAtTime(3200,t,1);
+  // --- other cars: give the three nearest moving vehicles an engine voice ---
+  const cand=[];if(play){for(const k of S.cars){if(k===c||k.dead||k.parked||k.t.plane)continue;const sp=Math.abs(k.vf||0);if(sp<0.8)continue;const d=Math.hypot(k.x-lis.x,k.y-lis.y);if(d<48)cand.push([d,k,sp])}
+    for(const k of IH.remote.cars){if(k.t&&k.t.plane)continue;const sp=Math.hypot(k.vx||0,k.vy||0);if(sp<0.8)continue;const d=Math.hypot(k.x-lis.x,k.y-lis.y);if(d<48)cand.push([d,k,sp])}}
+  cand.sort((a,b)=>a[0]-b[0]);
+  for(let i=0;i<X.tv.length;i++){const v=X.tv[i],e=cand[i];if(!e){v.g.gain.setTargetAtTime(0,t,0.15);continue}const[d,k,sp]=e;const idn=typeof k.id==='number'?k.id:[...String(k.id)].reduce((h,ch)=>(h*31+ch.charCodeAt(0))>>>0,7),off=(idn%7)*2.3,bk=k.t&&k.t.bike;
+    const f=(bk?58:34)+off+sp*(bk?3.6:2.6)+((sp/9)%1)*10;if(!isFinite(f)){v.g.gain.setTargetAtTime(0,t,0.15);continue}v.o.frequency.setTargetAtTime(f,t,0.08);v.o2.frequency.setTargetAtTime(f*0.5,t,0.08);v.f.frequency.setTargetAtTime(240+sp*10,t,0.1);
+    const q=1-d/48;const gv=q*q*(0.012+Math.min(sp,40)*0.0012);if(!isFinite(f)||!isFinite(gv)){v.g.gain.setTargetAtTime(0,t,0.15);continue}v.g.gain.setTargetAtTime(gv,t,0.12);
+    if(v.pn){const dx=k.x-lis.x,dy=k.y-lis.y;v.pn.pan.setTargetAtTime(clamp((dx*cy+dy*sy)/22,-0.9,0.9),t,0.1)}}
+  // --- city bed: louder with more traffic around ---
+  X.bedG.gain.setTargetAtTime(play?Math.min(0.03,0.008+cand.length*0.0015):0,t,1);
+  // --- footsteps: yours, and the people right next to you ---
+  if(play&&!c&&!P.dead){const sp=P.spdNow||0;const idx=Math.floor((P.anim||0)/Math.PI);if(sp>0.6){if(X.stepI!==null&&idx!==X.stepI)footstep(P.x,P.y,Math.min(1,0.45+sp*0.06),sp>7.5);X.stepI=idx}else X.stepI=null}else X.stepI=null;
+  if(play){let n=0;for(const q of S.peds){if(n>=4)break;if(q.state==='dead'||q.state==='down')continue;const d=Math.hypot(q.x-lis.x,q.y-lis.y);if(d>11||(q.spdNow||0)<0.5)continue;n++;
+    const idx=Math.floor((q.anim||0)/Math.PI);const prev=X.pedSteps.get(q);if(prev!==undefined&&prev!==idx)footstep(q.x,q.y,0.32*(1-d/11),(q.spdNow||0)>3.5);X.pedSteps.set(q,idx)}}
+  // --- birds by day, crickets at night, when there is green around ---
+  X.birdT-=dt;if(play&&X.birdT<=0){X.birdT=1.2+Math.random()*3.5;const env=IH.env||{};let green=0;for(let k=0;k<8;k++){const a=k/8*6.283;if(surfaceAt(lis.x+Math.cos(a)*18,lis.y+Math.sin(a)*18)==='soft')green++}
+    if(green>=3&&!(env.rain>0.4)&&!plane){if(env.night>0.6)cricket();else if(Math.random()<0.75)chirp()}}
+}
+let aT=0;
 function audioTick(){
-  if(!AC)return;const t=AC.currentTime;const c=P&&P.inCar;
-  if(c&&G.state==='play'&&!G.paused){const s=Math.abs(c.vf||0);engOsc.frequency.setTargetAtTime(38+s*3+((s/9)%1)*14,t,0.05);engF.frequency.setTargetAtTime(300+s*13,t,0.1);engGain.gain.setTargetAtTime(0.05,t,0.1)}else engGain.gain.setTargetAtTime(0,t,0.1);
+  if(!AC)return;const t=AC.currentTime;const now=performance.now()/1000,adt=Math.min(0.1,now-(aT||now));aT=now;try{audioTick2(adt)}catch(e){console.error(e)}
   let nd=1e9;for(const k of S.cars)if(k.siren&&!k.dead){const d=hypot(k.x-IH.cam.target.x,k.y-IH.cam.target.y);if(d<nd)nd=d}
   for(const k of IH.remote.cars)if(k.siren){const d=hypot(k.x-IH.cam.target.x,k.y-IH.cam.target.y);if(d<nd)nd=d}
   const sv=(G.paused||G.state==='menu')?0:clamp(1-nd/95,0,1)*0.06;sirGain.gain.setTargetAtTime(sv,t,0.08);sirOsc.frequency.setTargetAtTime((G.time%1.3)<0.65?440:587,t,0.01);
@@ -119,8 +201,8 @@ function updateHUD(){
   // pads
   setHidden('footPads',!!c);setHidden('carPads',!c);
   if(!c){const fl=P.weapon===0?'Schlag':P.weapon===4?'Werfen':'Feuer';setTxt('bFire',fl);const near=!!S.nearestCarFor(P.x,P.y,2.2);if(cache.ed!==!near){cache.ed=!near;$('bEnter').classList.toggle('dim',!near)}}
-  else if(c.t.plane){setHidden('bNitro',false);setTxt('bNitro','Steigen');setTxt('bDrift','Sinken')}
-  else{setHidden('bNitro',!(c.up.nitro>0));setTxt('bNitro','Nitro');setTxt('bDrift','Drift')}
+  else if(c.t.plane){setHidden('bNitro',true);setHidden('bDrift',true)}   // aircraft: height is on the joystick
+  else{setHidden('bNitro',!(c.up.nitro>0));setHidden('bDrift',false);setTxt('bNitro','Nitro');setTxt('bDrift','Drift')}
   // online chip
   const on=NET.enabled;setHidden('bNet',!on);setHidden('bChat',!on||NET.status!=='online');
   if(on){const n=NET.playerList().length+1;const st=NET.status;const lbl=st==='online'?String(n):'…';setTxt('netN',lbl);const cls='ico net '+st;if(cache.netc!==cls){cache.netc=cls;$('bNet').className=cls}}

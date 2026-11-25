@@ -152,12 +152,15 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 
 These work in the global lobby with other players, and alone (offline or nobody around) against bots, the bank or the clock.
 
+- **Starting:** walk onto the casino's red carpet or the bank's steps, or drive onto a race's chequered start ring (it has two flags and a sign). The menu opens by itself. If you close it, the button at the bottom opens it again.
+- **Playing alone:** if nobody else is in the lobby, a race starts straight away as a time trial. When other players are online, the race menu offers both: invite them or drive a time trial alone. In the casino, bots take the free poker seats and blackjack is against the bank, so both work alone too.
+
 - **Street races (chequered flag on the map):** there are three routes:
   - Altstadtring-Rallye
   - Leopold-Sprint from the Siegestor to the Allianz Arena
   - Flughafen-Run from Hallbergmoos across the apron and down the runway
 
-  Drive to the start and pick an entry fee. Everyone in the lobby gets an invitation and has 30 seconds to drive to the start and join. The winner takes the pot; with 3 or more drivers it is split 65 / 25 / 10 %. Alone it is a time trial for gold, silver or bronze.
+  Drive onto the start ring with a car or motorbike (not an aircraft) and pick an entry fee. When you race against others, everyone in the lobby gets an invitation and has 30 seconds to drive to the start and join. The winner takes the pot; with 3 or more drivers it is split 65 / 25 / 10 %. Alone it is a time trial for gold, silver or bronze.
 - **Bank heist (vault symbol, the Isarbank in the Altstadt):** up to 4 players.
   1. **Hack:** knock out three security systems around the bank, each with its own puzzle:
      - connecting wires
@@ -198,10 +201,11 @@ These work in the global lobby with other players, and alone (offline or nobody 
     | Turboprop | about 122 km/h |
     | Passagierjet | about 173 km/h |
 
-  - **In the air:** the joystick works like a real control stick (inverted). Push it **down to climb** and **up to descend**, and left or right to turn. **Steigen** / **Sinken** also still work. Without any input the aircraft holds its altitude.
-  - **Land:** brake or let go of the gas, then push the joystick up (or hold **Sinken**). Close to the ground the descent flattens out by itself, and you can land on runways, roads, fields and meadows.
+  - **In the air:** the joystick works like a real control stick (inverted). Push it **down to climb** and **up to descend**, and left or right to turn. There are no extra climb or descend buttons any more. Without any input the aircraft holds its altitude.
+  - **Land:** brake or let go of the gas, then push the joystick up. Close to the ground the descent flattens out by itself, and you can land on runways, roads, fields and meadows.
   - **Danger:** too slow means a stall, and buildings, the Olympiaturm and a steep touchdown destroy the aircraft.
-  - **Keyboard:** R or N = Steigen, F or Shift = Sinken. **Controller:** RB = Steigen, B = Sinken.
+  - **Keyboard:** R or N = climb, F or Shift = descend. **Controller:** left stick, or RB = climb, B = descend.
+  - **Missions and pick-ups ignore aircraft:** phone booths, story and job targets, packages, health and weapon pick-ups, shops, garages and race checkpoints only react on foot or in a car, motorbike or other ground vehicle. Flying over them does nothing.
   - **Online:** other players see your aircraft at its real height.
 - **Radio:** in every car, bike and aircraft a station bar appears at the bottom. Swipe it left or right, or tap the arrows, to switch.
 
@@ -233,6 +237,19 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - These public brokers come with no uptime guarantee.
   - Anyone can read the game messages, which contain only names and positions. Don't use your real name.
 
+## Sound
+
+- **Your vehicle:** cars rumble, motorbikes sound higher and raspier, and the engine starts with a crank when you get in.
+- **Aircraft:** each type sounds different.
+  - Kleinflugzeug: a buzzing propeller.
+  - Turboprop: propeller drone with a turbine whine.
+  - Passagierjet: rising turbine whine and roar.
+
+  Wind grows with airspeed. You also hear tyre chirps on touchdown and a stall warning when you get too slow. The airport's scheduled planes can be heard from the ground.
+- **Traffic:** the three nearest moving cars have their own engine sound, panned left or right. Drivers honk when they are stuck behind you or a pedestrian, and now and then for no reason. Every car has its own horn.
+- **Footsteps:** your steps follow your walking rhythm and sound different on pavement, grass and in water, wetter in the rain. You also hear people walking close by.
+- **Ambience:** birds by day and crickets at night near parks, and a quiet city hum that grows with the traffic around you.
+
 ## Graphics and performance
 
 - **Smooth while flying:** the ground textures of the city are reused from a fixed pool instead of being created anew as you fly, so memory stays flat and the iPad no longer runs out of it. At height the game draws the whole city from one detailed overview map, so nothing loads in patches and no buildings look see-through.
@@ -244,7 +261,7 @@ These work in the global lobby with other players, and alone (offline or nobody 
 | | Touch | Controller | Keyboard |
 |---|---|---|---|
 | Steer / walk | Joystick (left) | Left stick | WASD / arrow keys |
-| Aircraft climb / descend | Joystick down / up, or Steigen / Sinken | Left stick down / up, RB / B | R or N / F or Shift |
+| Aircraft climb / descend | Joystick down / up | Left stick down / up, RB / B | R or N / F or Shift |
 | Gas / brake | Pedals (right). Slide your thumb between them. Hold brake while stopped to reverse. | RT / LT | W / S |
 | Fire / horn / siren / water | Fire button / horn button | X | Space |
 | Sprint (on foot) | Push the joystick fully | B | Shift |
