@@ -8,7 +8,7 @@ A 2.5D top-down action game set in Munich (Frauenkirche to Allianz Arena), built
 
 No build tools are needed. GitHub Pages serves the files exactly as they are.
 
-1. **Unzip.** In the Files app, tap `2isar2heat.zip`. You get a folder called `2isar2heat` with 20 files.
+1. **Unzip.** In the Files app, tap `2isar2heat.zip`. You get a folder called `2isar2heat` with 22 files.
 2. **Create the repository.** On github.com, tap **+ → New repository**.
    - Name: `2isar2heat`
    - Visibility: **Public** (Pages is free for public repositories)
@@ -89,7 +89,7 @@ Players log in with any **name and password** (at least 6 characters). Using an 
   - **Wardrobe:** change your outfit colour.
 - **Paint shop (spray can):** a new colour costs $250 and clears your wanted level.
 - **Garage (wrench):** repairs and tuning.
-- **Map (map icon, or K):** full-screen map with a legend. Tap to set a waypoint, and a GPS route shows on the minimap. Missions get a route automatically.
+- **Map (tap the minimap, or K):** full-screen map with a legend. Tap to set a waypoint, and a GPS route shows on the minimap. Missions get a route automatically.
 
 ## Vehicles, side jobs and extras
 
@@ -124,6 +124,72 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 - **Sprinting:** push the joystick all the way for a moment, or hold Shift (keyboard) or B (controller). The blue bar shows your stamina.
 - **Livelier squares:** Marienplatz has the Mariensäule, the Fischbrunnen, café terraces, benches, pigeons and tourists. From 20 November to 24 December there is a Christkindlmarkt with a big lit tree. Odeonsplatz, Viktualienmarkt, Stachus and Kaufingerstraße got the same treatment.
 
+## Police, health and bodies
+
+- **Witnesses:** you only get a wanted level if someone sees the crime. Police officers see about 45 m, passers-by about 22 m, and both need a clear line of sight. A passer-by first has to call the police, which takes a few seconds.
+- **Slower stars:** the wanted level rises gradually. Even a long rampage takes well over a minute to reach 5 stars, and fewer police cars chase you at once.
+- **Health:** you take less damage than before. Out of combat, your health slowly recovers on its own up to 60.
+- **Bodies:** people now have health. A light hit knocks them down and they get up again; a deadly one leaves them lying there. Bodies disappear after a while, sooner once you are out of sight, so the police can't pile up.
+
+## Online activities
+
+These work in the global lobby with other players, and alone (offline or nobody around) against bots, the bank or the clock.
+
+- **Street races (chequered flag on the map):** there are three routes:
+  - Altstadtring-Rallye
+  - Leopold-Sprint from the Siegestor to the Allianz Arena
+  - Flughafen-Run from Hallbergmoos across the apron and down the runway
+
+  Drive to the start and pick an entry fee. Everyone in the lobby gets an invitation and has 30 seconds to drive to the start and join. The winner takes the pot; with 3 or more drivers it is split 65 / 25 / 10 %. Alone it is a time trial for gold, silver or bronze.
+- **Bank heist (vault symbol, the Isarbank in the Altstadt):** up to 4 players.
+  1. **Hack:** knock out three security systems around the bank, each with its own puzzle:
+     - connecting wires
+     - matching a radio frequency
+     - cracking the vault code
+
+     Mistakes raise the alarm.
+  2. **Drill:** drill the vault while the police arrive. At least one crew member must stay at the entrance.
+  3. **Escape:** grab your share and bring it to the hideout, or lose the police.
+- **Casino (spade symbol, the Spielbank on Leopoldstraße):**
+  - Blackjack against the bank, up to 4 players at one table.
+  - Texas Hold'em against other players. Empty seats are filled with bots. Your buy-in comes back as money when you stand up.
+  - Open tables from other players appear in the casino's list.
+- **Things to know:** whoever opens a table, race or heist is its host. If the host leaves, the table closes and everyone gets their chips back. The lobby messages are public, so in theory someone could read the poker hole cards.
+
+## New places
+
+- **Siegestor:** it now stands free in a roundabout.
+- **University:** the Ludwig-Maximilians-Universität with Geschwister-Scholl-Platz and its fountains lies between the Siegestor and Odeonsplatz.
+- **Theresienwiese:** the Bavaria and the Ruhmeshalle stand clear of the road. The beer tents are rebuilt with towers, signs and beer gardens, and there is a new Ferris wheel that lights up at night.
+- **Flughafen München:** the airport lies east of the city. It has two runways, both terminals, a satellite, the tower, the Munich Airport Center, hangars and parked aircraft. Planes take off and land on the same schedule for every player, so watch out on the runway. Drive there via the Erdinger Landstraße and the small suburb Hallbergmoos.
+- **Flying:** three aircraft at the airport can be flown:
+
+  | Aircraft | Where |
+  |---|---|
+  | Kleinflugzeug | By the hangars, north of the runways |
+  | Turboprop | On the apron next to Terminal 1 |
+  | Passagierjet | At the east end of the apron |
+
+  - **Get in:** walk up to the aircraft and tap Einsteigen.
+  - **Take off:** taxi onto a runway, give full gas and hold **Steigen** once you are fast enough. The aircraft shows its take-off speed when you try too early.
+  - **In the air:** steer with the joystick and use **Steigen** / **Sinken** to change height. Without either button the aircraft holds its altitude.
+  - **Land:** let go of the gas and hold **Sinken**. Close to the ground the descent flattens out by itself, and you can land on runways, roads, fields and meadows.
+  - **Danger:** too slow means a stall, and buildings, the Olympiaturm and a steep touchdown destroy the aircraft.
+  - **Keyboard:** R or N = Steigen, F or Shift = Sinken. **Controller:** RB = Steigen, B = Sinken.
+  - **Online:** other players see your aircraft at its real height.
+- **Radio:** in every car, bike and aircraft a station bar appears at the bottom. Swipe it left or right, or tap the arrows, to switch.
+
+  | Station | Music |
+  |---|---|
+  | Isar FM | Dance and house |
+  | Lo-Fi Lehel | Chillhop |
+  | Radio Weißwurst | Bavarian brass band |
+  | Radio aus | Off |
+
+  The music is generated live by the game, so there are no recordings or licences. Each station keeps playing in the background, so when you switch back you land in the middle of a song. Between songs the presenter speaks, using the iPad's German voice.
+  - **Keyboard:** , and . switch stations. **Controller:** d-pad left / right.
+- **Online cars:** when another player's car explodes, you now see it, and the wreck stays. Cars that other players get out of stay parked.
+
 ## Online mode: one global lobby
 
 - On the start screen, choose **Online · globale Lobby** and enter a name. Every online player in the world joins the same lobby and sees the others driving and walking around the same Munich.
@@ -148,7 +214,8 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 | Drift / nitro | Buttons | B / RB | Shift / N |
 | Switch weapon | Button | Y | Q |
 | Camera | Camera icon | LB | C |
-| Map | Map icon | – | K |
+| Map | Tap the minimap | – | K |
+| Radio station | Swipe the radio bar | D-pad left / right | , and . |
 | Chat | Speech bubble | Select | T, then 1–8 |
 
 Settings are on the start screen and in the pause menu:
@@ -169,6 +236,8 @@ Settings are on the start screen and in the pause menu:
 | `sim.js` | Game logic: driving physics, traffic, police, weapons, missions, saving |
 | `render.js` | 3D graphics: facades, lit windows, day and night, rain, water, cars |
 | `net.js` | Online lobby (MQTT over WebSocket) |
+| `radio.js` | Car radio with three generated music stations |
+| `activities.js` | Races, bank heist and casino (blackjack, Texas Hold'em), online and offline |
 | `account.js`, `config.js` | Accounts and cloud saves (Firebase), save codes |
 | `main.js` | Input (touch, controller, keyboard), sound, HUD, lobby UI |
 | `sw.js`, `manifest.webmanifest`, `icon-*.png`, `apple-touch-icon.png` | Home-screen app and offline cache |

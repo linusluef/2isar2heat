@@ -9,7 +9,7 @@
 const IH=root.IH;
 const BASE='2isar2heat/v1/';
 const DEFAULT_BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
-const CAR_TYPES=['kompakt','limousine','sport','taxi','transporter','polizei','motorrad','suv','super','bus','bierlaster','krankenwagen','feuerwehr','polsuv'];
+const CAR_TYPES=['kompakt','limousine','sport','taxi','transporter','polizei','motorrad','suv','super','bus','bierlaster','krankenwagen','feuerwehr','polsuv','cessna','regio','jet'];
 const CHAT=['Servus!','Rennen?','Folg mir!','Hilfe!','Gut gemacht!','Pass auf!','Haha 😄','Pfiat di!'];
 const COLORS=['#ff8a1c','#3ddc84','#3b82ff','#ff4fa3','#ffd21a','#20d3d3','#b36bff','#ff5a4f','#9be15d','#f2f2f2'];
 const te=new TextEncoder(),td=new TextDecoder();
@@ -105,21 +105,22 @@ net.onMessage=function(topic,payload){
   if(kind==='s'){
     if(q<=p.lastSeq)return;p.lastSeq=q;p.last=t;
     const nm=cleanName(m.n);if(!p.joined){p.joined=true;p.name=nm;feed(nm+' ist in der Lobby','sys',p.color)}p.name=nm;
-    const x=num(m.x,-50,1250,null),y=num(m.y,-50,1250,null);if(x===null||y===null)return;
+    const x=num(m.x,-50,1650,null),y=num(m.y,-50,1650,null);if(x===null||y===null)return;
     p.mode=m.m==='c'||m.m==='d'?m.m:'f';p.type=CAR_TYPES[num(m.k,0,CAR_TYPES.length-1,1)|0];p.cop=!!m.o;p.carColor=/^#[0-9a-f]{6}$/i.test(m.c)?m.c:'#888888';
-    p.stars=num(m.s,0,5,0)|0;p.weapon=num(m.w,0,4,0)|0;p.hp=num(m.h,0,100,100);p.money=num(m.$,0,1e9,0)|0;p.kills=num(m.K,0,1e6,0)|0;p.paused=!!m.p;p.siren=!!m.r;if(/^#[0-9a-f]{6}$/i.test(m.sh||''))p.shirt=m.sh;p.carHp=num(m.ch,0,100,100);p.down=!!m.dn;
+    p.stars=num(m.s,0,5,0)|0;p.weapon=num(m.w,0,7,0)|0;p.hp=num(m.h,0,100,100);p.money=num(m.$,0,1e9,0)|0;p.kills=num(m.K,0,1e6,0)|0;p.paused=!!m.p;p.siren=!!m.r;if(/^#[0-9a-f]{6}$/i.test(m.sh||''))p.shirt=m.sh;p.carHp=num(m.ch,0,100,100);p.z=num(m.z,0,400,0);p.liv=/^[a-z]{3,10}$/.test(m.lv||'')?m.lv:null;p.roll=num(m.rl,-1,1,0);p.pitch=num(m.pt,-1,1,0);p.down=!!m.dn;
     p.snaps.push({t,x,y,a:num(m.a,-10,10,0),vx:num(m.vx,-80,80,0),vy:num(m.vy,-80,80,0)});if(p.snaps.length>5)p.snaps.shift();
     return;
   }
   if(kind!=='e')return;
   if(p.evSeen.includes(q))return;p.evSeen.push(q);if(p.evSeen.length>80)p.evSeen.shift();
   p.last=t;p.tokens=Math.min(40,p.tokens+(t-(p.tokT||t))/1000*25);p.tokT=t;if(p.tokens<1)return;p.tokens--;
-  const S=IH.sim,P=S.player;const ex=num(m.x,-50,1250,null),ey=num(m.y,-50,1250,null);
+  const S=IH.sim,P=S.player;const ex=num(m.x,-50,1650,null),ey=num(m.y,-50,1650,null);
   const near=ex!==null&&ey!==null&&Math.hypot(ex-P.x,ey-P.y)<260;
   switch(m.e){
     case'shot':net.rx=(net.rx||0)+1;if(near)S.remoteShot({x:ex,y:ey,a:num(m.a,-10,10,0),w:num(m.w,1,6,1)|0,r:num(m.r,0,4294967295,1)},p.id);break;
     case'gren':if(near)S.remoteGrenade({x:ex,y:ey,vx:num(m.vx,-40,40,0),vy:num(m.vy,-40,40,0),molotov:m.m===1},p.id);break;
-    case'boom':if(near)S.remoteBoom({x:ex,y:ey},p.id);break;
+    case'boom':if(near){const ty=CAR_TYPES[num(m.k,0,CAR_TYPES.length-1,0)|0];S.remoteBoom({x:ex,y:ey,a:num(m.a,-10,10,0),type:m.k===undefined?null:ty,color:/^#[0-9a-f]{6}$/i.test(m.c||'')?m.c:'#555555'},p.id);if(p.car)p.carBoomed=true}break;
+    case'act':if(net.onAct)net.onAct(p,m);break;
     case'horn':if(near&&IH.on&&IH.on.sfx)IH.on.sfx('horn',0.8,ex,ey);break;
     case'msg':{const i=num(m.t,0,CHAT.length-1,0)|0;p.bubble={txt:CHAT[i],t};feed(p.name+': '+CHAT[i],'chat',p.color);if(net.onChat)net.onChat(p,i);break}
     case'kill':{const by=typeof m.by==='string'?m.by:'';const st=num(m.s,0,5,0)|0;
@@ -140,9 +141,9 @@ net.tick=function(){
     net.sendT-=dt;
     if(net.sendT<=0){
       const c=P.inCar;const mode=G.state==='dead'?'d':c?'c':'f';const src=c||P;
-      const m={i:net.id,q:++net.seq,n:net.name,x:+src.x.toFixed(2),y:+src.y.toFixed(2),a:+(c?c.a:P.a).toFixed(3),m:mode,vx:+(src.vx||0).toFixed(2),vy:+(src.vy||0).toFixed(2),
+      const m={i:net.id,q:++net.seq,n:net.name,x:+src.x.toFixed(2),y:+src.y.toFixed(2),a:+(c?c.a:P.a).toFixed(3),m:mode,z:c&&c.z?+c.z.toFixed(1):0,rl:c&&c.roll?+c.roll.toFixed(2):0,pt:c&&c.pitch?+c.pitch.toFixed(2):0,vx:+(src.vx||0).toFixed(2),vy:+(src.vy||0).toFixed(2),
         s:S.stars(),w:P.weapon,h:Math.round(P.hp),$:P.money,K:IH.stats.kills,sh:P.shirt};
-      if(c){m.k=Math.max(0,CAR_TYPES.indexOf(c.type));m.c=c.color;m.ch=Math.round(c.hp/c.maxHp*100);if(c.cop)m.o=1;if(c.siren)m.r=1}
+      if(c){m.k=Math.max(0,CAR_TYPES.indexOf(c.type));m.c=c.color;m.ch=Math.round(c.hp/c.maxHp*100);if(c.cop)m.o=1;if(c.siren)m.r=1;if(c.liv)m.lv=c.liv}
       if(G.paused)m.p=1;
       const moving=Math.hypot(src.vx||0,src.vy||0)>0.3;const sig=mode+m.k+m.c+m.s+m.w+m.h+m.p+Math.round(m.x*2)+Math.round(m.y*2);
       if(moving||sig!==lastSent||net.idleT<=0){publish('s/'+net.id,m);lastSent=sig;net.idleT=1.5}
@@ -161,9 +162,11 @@ net.tick=function(){
     else{const last=p.snaps[p.snaps.length-1];const ext=clamp((rt-last.t)/1000,0,0.35);x=last.x+last.vx*ext;y=last.y+last.vy*ext;ang=last.a;vx=last.vx;vy=last.vy}
     if(p.mode==='c'){
       if(!p.car||p.car.type!==p.type||p.car.color!==p.carColor||p.car.cop!==p.cop){const CT=S.CT[p.type];p.car={remote:true,peer:p.id,id:'rc_'+p.id+'_'+p.type+(p.cop?'p':''),type:p.type,t:CT,color:p.carColor,cop:p.cop,label:null,x,y,a:ang,vx:0,vy:0,vf:0,vl:0,hp:100,maxHp:100,dead:false,sink:0,driver:'remote',brake:false,rev:false,siren:false}}
-      const c=p.car;const fx=Math.cos(ang),fy=Math.sin(ang);const vf=vx*fx+vy*fy;c.brake=vf<(c.vf||0)-0.25&&vf>0.5;c.x=x;c.y=y;c.a=ang;c.vx=vx;c.vy=vy;c.vf=vf;c.vl=-vx*fy+vy*fx;c.rev=vf<-0.4;c.siren=p.siren;c.hp=p.carHp;
+      const c=p.car;const fx=Math.cos(ang),fy=Math.sin(ang);const vf=vx*fx+vy*fy;c.brake=vf<(c.vf||0)-0.25&&vf>0.5;c.x=x;c.y=y;c.a=ang;c.vx=vx;c.vy=vy;c.vf=vf;c.vl=-vx*fy+vy*fx;c.rev=vf<-0.4;c.siren=p.siren;c.hp=p.carHp;c.z=c.z===undefined?p.z:c.z+(p.z-c.z)*Math.min(1,dt*6);c.roll=p.roll;c.pitch=p.pitch;c.air=p.z>0.5;c.spd=Math.hypot(vx,vy);c.liv=p.liv||'isar';
       rc.cars.push(c);
-    }else if(p.mode==='f'||p.mode==='d'){
+    }
+    if(p.mode!=='c'&&p.car){if(!p.carBoomed&&S.leaveRemoteCar)S.leaveRemoteCar(p.car);p.car=null;p.carBoomed=false}
+    if(p.mode==='f'||p.mode==='d'){
       if(p.shirt&&p.ped.shirt!==p.shirt){p.ped=Object.assign({},p.ped,{shirt:p.shirt,id:'rp_'+p.id+p.shirt})}
       const q=p.ped;const sp=Math.hypot(vx,vy);q.anim+=dt*sp*2.4;q.x=x;q.y=y;q.a=sp>0.3?Math.atan2(vy,vx):ang;q.spdNow=sp;q.weapon=p.weapon;q.state=p.mode==='d'?'down':'walk';
       rc.peds.push(q);

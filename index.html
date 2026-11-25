@@ -73,7 +73,7 @@ button:focus-visible{outline:3px solid var(--signal);outline-offset:3px}
 #kmh{font-family:var(--font-display);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
 #gear{font-size:14px;font-weight:700;letter-spacing:.16em;color:var(--muted)}
 #nitroInfo{font-size:14px;font-weight:700;letter-spacing:.12em;color:#7fd1ff}
-#mini{position:absolute;right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 66px);width:clamp(118px,14vw,168px);height:clamp(118px,14vw,168px);border-radius:50%;border:2px solid var(--line);box-shadow:0 4px 16px rgba(0,0,0,.45)}
+#mini{position:absolute;right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 66px);width:clamp(118px,14vw,168px);height:clamp(118px,14vw,168px);border-radius:50%;border:2px solid var(--line);box-shadow:0 4px 16px rgba(0,0,0,.45);pointer-events:auto;cursor:pointer;touch-action:none}
 #side{position:absolute;right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 66px + clamp(118px,14vw,168px) + 8px);max-width:190px;text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
 #clock{font-size:15px;font-weight:700;letter-spacing:.1em;color:var(--paper);font-variant-numeric:tabular-nums}
 #nextJob{font-size:14px;font-weight:600;line-height:1.2}
@@ -223,6 +223,50 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
 @media (max-height:640px){.keys span{font-size:15px}.logo{font-size:clamp(44px,8vw,88px)}#feed{top:calc(env(safe-area-inset-top,0px) + 200px)}}
 @media (orientation:portrait){.overlay{background:rgba(14,16,19,.88)}#mission{top:calc(env(safe-area-inset-top,0px) + 120px);width:80vw}}
 @media (prefers-reduced-motion:reduce){#stars.blink svg.on{animation:none}}
+
+/* ---------- online activities ---------- */
+#actBtn{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);z-index:6;font-family:var(--font-display);font-size:18px;background:var(--signal);color:var(--ink);border:0;border-radius:999px;padding:13px 24px;box-shadow:0 4px 0 #a87d00,0 8px 24px rgba(0,0,0,.4)}
+#actBtn[hidden],#actHud[hidden],#actInvite[hidden]{display:none}
+#actHud{position:absolute;top:calc(env(safe-area-inset-top,0px) + 84px);left:50%;transform:translateX(-50%);z-index:5;background:rgba(14,16,19,.78);border:1px solid var(--line);border-radius:10px;padding:8px 16px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:240px;text-align:center;font-weight:700;letter-spacing:.03em}
+#actHud b{font-family:var(--font-display);font-weight:400;font-size:16px;color:var(--signal)}#actHud b.big{font-size:64px;color:#fff}#actHud span{font-size:16px}#actHud .alarm{color:var(--alarm)}
+#actHud button{margin-top:4px;font-family:var(--font-display);font-size:15px;background:var(--signal);color:var(--ink);border:0;border-radius:6px;padding:7px 14px}
+#actHud .bar{display:block;width:200px;height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden}#actHud .bar i{display:block;height:100%;background:var(--alarm)}
+#actInvite{position:absolute;right:calc(env(safe-area-inset-right,0px) + 14px);top:calc(env(safe-area-inset-top,0px) + 300px);z-index:6;display:flex;flex-direction:column;gap:8px;max-width:340px}
+#actInvite .inv{display:flex;align-items:center;gap:8px;background:rgba(14,16,19,.85);border:1px solid var(--signal);border-radius:10px;padding:8px 10px;font-weight:700;font-size:15px}
+#actInvite .inv button{font-weight:700;font-size:15px;background:var(--signal);color:var(--ink);border:0;border-radius:6px;padding:8px 10px;white-space:nowrap}#actInvite .inv .x{background:transparent;color:var(--paper);padding:4px 6px}
+#actPanel .panel{margin:auto;width:min(760px,100%)}
+#actPanel h2{margin:0}
+.tables{display:flex;flex-direction:column;gap:8px}.tbl{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--ink-3);border-radius:8px;padding:10px 12px;font-size:17px}
+.tbl button{font-weight:700;background:var(--paper);color:var(--ink);border:0;border-radius:6px;padding:10px 14px;font-size:15px}
+.felt{background:radial-gradient(ellipse at center,#1f6b45 0%,#124a30 70%,#0d3523 100%);border:6px solid #5a3a22;border-radius:120px;padding:18px 20px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:inset 0 0 30px rgba(0,0,0,.5)}
+.board{display:flex;gap:6px;min-height:76px}.pot{font-family:var(--font-display);font-size:16px;color:#ffe9a8}
+.card{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:52px;height:74px;border-radius:7px;background:#fbfaf6;color:#141416;box-shadow:0 2px 4px rgba(0,0,0,.45);font-style:normal;line-height:1}
+.card b{font-size:22px;font-family:var(--font-display);font-weight:400}.card em{font-style:normal;font-size:24px}.card.red{color:#c0392b}
+.card.back{background:repeating-linear-gradient(45deg,#2a5fb0 0 6px,#f1ede2 6px 12px);border:3px solid #fbfaf6}.card.slot{background:rgba(255,255,255,.08);box-shadow:none;border:1px dashed rgba(255,255,255,.3)}
+.card.sm{width:36px;height:52px}.card.sm b{font-size:15px}.card.sm em{font-size:16px}
+.seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.seat{background:var(--ink-3);border:2px solid transparent;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:3px;font-size:15px;min-height:96px}
+.seat b{font-size:16px}.seat small{font-size:14px;color:var(--muted);font-weight:700}.seat.me{border-color:rgba(255,198,26,.5)}.seat.turn{border-color:var(--signal);box-shadow:0 0 0 2px rgba(255,198,26,.35)}.seat.fold{opacity:.45}
+.seat .hc{display:flex;gap:4px;min-height:52px}.win{color:var(--ok)}.dealer{font-style:normal;background:#fff;color:#000;border-radius:999px;padding:0 5px;font-size:12px}
+.acts{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.acts .cta{font-size:17px;padding:12px 16px}
+.rz{display:inline-flex;gap:6px;align-items:center}.rz button{width:46px;height:46px;border-radius:8px;border:1px solid var(--line);background:var(--ink-3);font-size:20px;font-weight:700}.rz b{min-width:80px;text-align:center;font-size:18px}
+.wires{display:flex;justify-content:space-between;gap:40px;padding:10px 0}.wires>div{display:flex;flex-direction:column;gap:14px}
+.wire,.sock{width:120px;height:44px;border-radius:8px;border:3px solid rgba(255,255,255,.25);background:var(--c)}.wire.sel{border-color:#fff;transform:scale(1.06)}.wire.done,.sock.done{opacity:.3}.sock{border-radius:22px}
+.codehist{display:flex;flex-direction:column;gap:4px;font-size:20px}.codehist div{display:flex;gap:16px}.codehist b{font-family:var(--font-display);font-weight:400;letter-spacing:.2em}.codein{font-family:var(--font-display);font-size:32px;letter-spacing:.2em}
+.keys{display:flex;flex-wrap:wrap;gap:8px}.keys button{width:64px;height:58px;border-radius:8px;background:var(--ink-3);border:1px solid var(--line);font-family:var(--font-display);font-size:24px}
+#fqCv{width:100%;max-width:520px;border-radius:8px;border:1px solid var(--line)}.sl{display:flex;align-items:center;gap:12px;font-weight:700;font-size:17px}.sl input{flex:1;height:36px}
+
+/* ---------- radio ---------- */
+#radio{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:6;display:flex;align-items:center;gap:4px;background:rgba(14,16,19,.72);border:1px solid var(--line);border-radius:999px;padding:5px;min-width:250px;touch-action:none;pointer-events:auto;--rc:#3bd0ff;transition:box-shadow .2s}
+#radio[hidden]{display:none}#radio.flash{box-shadow:0 0 0 3px var(--rc)}
+#radio .rb{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.08);font-size:28px;line-height:1;color:var(--paper);font-weight:700}
+#radio .rinfo{flex:1;display:flex;align-items:center;gap:10px;justify-content:center;padding:0 6px;min-width:0}
+#radio .rinfo span{display:flex;flex-direction:column;line-height:1.05;min-width:0}#radio .rinfo b{font-family:var(--font-display);font-weight:400;font-size:15px;color:var(--rc);white-space:nowrap}#radio .rinfo em{font-style:normal;font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap}
+#radio .eq{display:flex;align-items:flex-end;gap:2px;height:20px;width:18px}#radio .eq b{display:block;width:3px;height:4px;background:var(--rc);border-radius:1px}
+#radio.live .eq b{animation:eqb .9s ease-in-out infinite alternate}#radio.live .eq b:nth-child(2){animation-delay:-.3s}#radio.live .eq b:nth-child(3){animation-delay:-.6s}#radio.live .eq b:nth-child(4){animation-delay:-.15s}
+@keyframes eqb{0%{height:3px}100%{height:18px}}
+#radio.off .eq{opacity:.3}
+@media (max-width:760px){#radio{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 50px);min-width:200px}}
 </style>
 </head>
 <body>
@@ -270,7 +314,6 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
   <div class="top">
     <button class="ico net" id="bNet" type="button" aria-label="Lobby" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg><span id="netN">…</span></button>
     <button class="ico" id="bChat" type="button" aria-label="Schnellchat" hidden><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
-    <button class="ico" id="bMap" type="button" aria-label="Karte"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg></button>
     <button class="ico" id="bCam" type="button" aria-label="Kamera wechseln"><svg viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
     <button class="ico" id="bSound" type="button" aria-label="Ton an/aus"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg></button>
     <button class="ico" id="bFull" type="button" aria-label="Vollbild"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
@@ -389,6 +432,8 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
 <script src="render.js"></script>
 <script src="net.js"></script>
 <script src="account.js"></script>
+<script src="activities.js"></script>
+<script src="radio.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

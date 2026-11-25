@@ -20,6 +20,7 @@ function initAudio(){
   if(AC){if(AC.state==='suspended')AC.resume();return}
   try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=IH.settings.muted?0:0.55;master.connect(AC.destination);
     noiseBuf=AC.createBuffer(1,AC.sampleRate*1.5,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    IH.audio={AC,master,noiseBuf};
     engOsc=AC.createOscillator();engOsc.type='sawtooth';engF=AC.createBiquadFilter();engF.type='lowpass';engF.frequency.value=380;engGain=AC.createGain();engGain.gain.value=0;engOsc.connect(engF);engF.connect(engGain);engGain.connect(master);engOsc.start();
     sirOsc=AC.createOscillator();sirOsc.type='triangle';sirGain=AC.createGain();sirGain.gain.value=0;sirOsc.connect(sirGain);sirGain.connect(master);sirOsc.start();
     const sk=AC.createBufferSource();sk.buffer=noiseBuf;sk.loop=true;const skf=AC.createBiquadFilter();skf.type='bandpass';skf.frequency.value=1800;skf.Q.value=3;skidG=AC.createGain();skidG.gain.value=0;sk.connect(skf);skf.connect(skidG);skidG.connect(master);sk.start();
@@ -89,7 +90,7 @@ function updateHUD(){
   const bi=P.breakIn&&G.state==='play';setHidden('breakin',!bi);if(bi)$('breakBar').style.width=Math.min(100,(1-P.breakIn.t/P.breakIn.T)*100)+'%';
   const ar2=P.arrestT>0.02&&G.state==='play';setHidden('arrest',!ar2);if(ar2)$('arrestBar').style.width=Math.min(100,P.arrestT*100)+'%';
   const c=P.inCar;setHidden('speedo',!c);
-  if(c){setTxt('kmh',String(Math.round(Math.abs(c.vf||0)*3.6)));setTxt('carname',c.cop&&c.type==='polizei'?'Streifenwagen':c.t.name);setTxt('bHorn',c.type==='feuerwehr'?'Wasser':(c.t.emerg||c.cop)?'Sirene':'Hupe');setTxt('gear',(c.rev?'KM/H · R':'KM/H · D'));setTxt('nitroInfo',c.up.nitro>0?'NITRO ×'+c.up.nitro:'');
+  if(c){setTxt('kmh',String(Math.round(Math.abs(c.vf||0)*3.6)));setTxt('carname',c.t.plane?c.t.name+' · '+(c.air?Math.round(c.z)+' m':'am Boden'):c.cop&&c.type==='polizei'?'Streifenwagen':c.t.name);setTxt('bHorn',c.type==='feuerwehr'?'Wasser':(c.t.emerg||c.cop)?'Sirene':'Hupe');setTxt('gear',(c.rev?'KM/H · R':'KM/H · D'));setTxt('nitroInfo',c.up.nitro>0?'NITRO ×'+c.up.nitro:'');
     const dmg=Math.round(c.hp/c.maxHp*100);if(cache.cd!==dmg){cache.cd=dmg;$('carbar').style.width=Math.max(0,dmg)+'%'}}
   const m=S.mission;setHidden('mission',!m.active);
   if(m.active){
@@ -118,14 +119,15 @@ function updateHUD(){
   // pads
   setHidden('footPads',!!c);setHidden('carPads',!c);
   if(!c){const fl=P.weapon===0?'Schlag':P.weapon===4?'Werfen':'Feuer';setTxt('bFire',fl);const near=!!S.nearestCarFor(P.x,P.y,2.2);if(cache.ed!==!near){cache.ed=!near;$('bEnter').classList.toggle('dim',!near)}}
-  else setHidden('bNitro',!(c.up.nitro>0));
+  else if(c.t.plane){setHidden('bNitro',false);setTxt('bNitro','Steigen');setTxt('bDrift','Sinken')}
+  else{setHidden('bNitro',!(c.up.nitro>0));setTxt('bNitro','Nitro');setTxt('bDrift','Drift')}
   // online chip
   const on=NET.enabled;setHidden('bNet',!on);setHidden('bChat',!on||NET.status!=='online');
   if(on){const n=NET.playerList().length+1;const st=NET.status;const lbl=st==='online'?String(n):'…';setTxt('netN',lbl);const cls='ico net '+st;if(cache.netc!==cls){cache.netc=cls;$('bNet').className=cls}}
 }
 
 /* ---------- map symbols (minimap, big map, 3D signs) ---------- */
-const ICON={home:['#ffc61a','house'],sale:['#8b919b','house'],lack:['#e0457b','spray'],werkstatt:['#3b82ff','wrench'],waffen:['#d8402f','gun'],imbiss:['#e8962a','pretzel'],phone:['#2fb56c','phone'],hehler:['#ff7a1a','$'],safe:['#2f9c63','V'],garage:['#c9a227','P'],way:['#b86bff','pin'],mission:['#ffc61a','!'],klinik:['#f2f2f2','cross'],feuerwache:['#e8402e','flame'],depot:['#2a6fd1','bus'],brauerei:['#e0a526','mug'],heli:['#1f3c88','heli'],pkg:['#f1ece0','W']};
+const ICON={home:['#ffc61a','house'],sale:['#8b919b','house'],lack:['#e0457b','spray'],werkstatt:['#3b82ff','wrench'],waffen:['#d8402f','gun'],imbiss:['#e8962a','pretzel'],phone:['#2fb56c','phone'],hehler:['#ff7a1a','$'],safe:['#2f9c63','V'],garage:['#c9a227','P'],way:['#b86bff','pin'],mission:['#ffc61a','!'],klinik:['#f2f2f2','cross'],feuerwache:['#e8402e','flame'],depot:['#2a6fd1','bus'],brauerei:['#e0a526','mug'],heli:['#1f3c88','heli'],pkg:['#f1ece0','W'],casino:['#8e1b6e','spade'],bank:['#1f4f3a','vault'],race:['#202124','flag'],airport:['#2a5fb0','plane']};
 function drawIcon(g,kind,x,y,r){
   const d=ICON[kind]||ICON.mission;g.save();g.translate(x,y);g.beginPath();g.arc(0,0,r,0,7);g.fillStyle=d[0];g.fill();g.lineWidth=Math.max(1,r*0.16);g.strokeStyle='rgba(0,0,0,.75)';g.stroke();
   if(d[1].length===1){g.fillStyle='#fff';g.font='700 '+Math.round(r*1.35)+'px "Barlow Condensed",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(d[1],0,r*0.08);g.restore();return}
@@ -142,6 +144,10 @@ function drawIcon(g,kind,x,y,r){
     case'bus':g.fillRect(-0.5,-0.5,1,0.86);g.fillStyle=d[0];g.fillRect(-0.38,-0.38,0.76,0.32);g.fillStyle='#fff';g.beginPath();g.arc(-0.28,0.46,0.12,0,7);g.arc(0.28,0.46,0.12,0,7);g.fill();break;
     case'mug':g.fillRect(-0.48,-0.36,0.66,0.9);g.lineWidth=0.14;g.beginPath();g.arc(0.24,0.08,0.22,-Math.PI/2,Math.PI/2);g.stroke();g.beginPath();g.arc(-0.3,-0.4,0.18,0,7);g.arc(-0.05,-0.46,0.2,0,7);g.arc(0.14,-0.4,0.16,0,7);g.fill();break;
     case'heli':g.fillRect(-0.7,-0.06,1.4,0.1);g.beginPath();g.ellipse(-0.05,0.18,0.36,0.24,0,0,7);g.fill();g.fillRect(-0.62,0.1,0.4,0.1);g.fillRect(-0.03,-0.04,0.06,0.12);break;
+    case'spade':g.beginPath();g.moveTo(0,-0.6);g.bezierCurveTo(0.7,-0.1,0.6,0.45,0.12,0.25);g.lineTo(0.25,0.6);g.lineTo(-0.25,0.6);g.lineTo(-0.12,0.25);g.bezierCurveTo(-0.6,0.45,-0.7,-0.1,0,-0.6);g.fill();break;
+    case'vault':g.fillRect(-0.55,-0.5,1.1,1);g.fillStyle=d[0];g.beginPath();g.arc(0,0,0.3,0,7);g.fill();g.fillStyle='#fff';g.fillRect(-0.04,-0.3,0.08,0.6);g.fillRect(-0.3,-0.04,0.6,0.08);break;
+    case'flag':g.fillRect(-0.5,-0.6,0.08,1.2);for(let r=0;r<3;r++)for(let c=0;c<4;c++)if((r+c)%2===0)g.fillRect(-0.42+c*0.22,-0.6+r*0.22,0.22,0.22);g.strokeStyle='#fff';g.lineWidth=0.05;g.strokeRect(-0.42,-0.6,0.88,0.66);break;
+    case'plane':g.beginPath();g.moveTo(0.62,0);g.lineTo(0.42,-0.08);g.lineTo(0.05,-0.08);g.lineTo(-0.2,-0.55);g.lineTo(-0.34,-0.55);g.lineTo(-0.2,-0.08);g.lineTo(-0.48,-0.08);g.lineTo(-0.6,-0.28);g.lineTo(-0.66,-0.28);g.lineTo(-0.6,0);g.lineTo(-0.66,0.28);g.lineTo(-0.6,0.28);g.lineTo(-0.48,0.08);g.lineTo(-0.2,0.08);g.lineTo(-0.34,0.55);g.lineTo(-0.2,0.55);g.lineTo(0.05,0.08);g.lineTo(0.42,0.08);g.closePath();g.fill();break;
     case'pin':g.beginPath();g.arc(0,-0.16,0.38,Math.PI,0);g.lineTo(0,0.6);g.closePath();g.fill();g.fillStyle=d[0];g.beginPath();g.arc(0,-0.16,0.15,0,7);g.fill();break;
   }
   g.restore();
@@ -183,6 +189,7 @@ function drawMini(){
   const icon=(x,y,kind,r,clampIt)=>{const q=at(x,y,r,clampIt);if(q)drawIcon(mctx,kind,q[0],q[1],r)};
   for(const p of W.properties){const own=S.G.owned.has(p.id);icon(p.x,p.y,own?'home':'sale',own?15:12,own&&p.id===S.G.home)}
   for(const z of W.zones)if(ZONE_ICON[z.kind])icon(z.x,z.y,ZONE_ICON[z.kind],13,false);
+  if(IH.act)for(const mk of IH.act.markers())icon(mk.x,mk.y,mk.k,13,false);icon(1300,250,'airport',14,false);
   for(const s2 of W.shops)icon(s2.x,s2.y,s2.k,12,false);
   if(!S.mission.active)for(const ph of W.phones)if((ph.cd||0)<=0)icon(ph.x,ph.y,'phone',12,false);
   if(NET.enabled)for(const p of NET.playerList()){const b=p.mode==='c'&&p.car?p.car:p.ped;if(!b||!p.snaps.length)continue;const q=at(b.x,b.y,8,true);mctx.fillStyle=p.color;mctx.strokeStyle='#000';mctx.lineWidth=3;mctx.beginPath();mctx.arc(q[0],q[1],8,0,7);mctx.fill();mctx.stroke()}
@@ -256,7 +263,7 @@ function bindAll(){
   bindPad('bAlt',()=>{inp.altQ=true});
   bindPad('bHorn',()=>{inp.fire=true},()=>{inp.fire=false});
   bindPad('bDrift',()=>{inp.hb=true},()=>{inp.hb=false});
-  bindPad('bNitro',()=>{inp.nitroQ=true});
+  bindPad('bNitro',()=>{inp.nitroQ=true;inp.up=true},()=>{inp.up=false});
 }
 $('bPause').addEventListener('click',()=>setPause(true));
 $('bCam').addEventListener('click',()=>toggleCam());
@@ -305,7 +312,7 @@ function pollGamepad(){
   if(mag>0.18){inp.mm=mag;inp.mx=lx;inp.my=ly}else if(joyId===null){inp.mm=inp.mx=inp.my=0}
   const c=P.inCar;
   inp.gas=!!c&&bv(7)>0.15;inp.brake=!!c&&bv(6)>0.15;
-  if(c){inp.hb=b(1);inp.fire=b(2);inp.sprint=false}else{inp.fire=b(2)||bv(7)>0.3;inp.hb=false;inp.sprint=b(1)}
+  if(c){inp.hb=b(1);inp.fire=b(2);inp.sprint=false;inp.up=b(5)}else{inp.fire=b(2)||bv(7)>0.3;inp.hb=false;inp.sprint=b(1)}
   if(pressed(0))inp.enterQ=true;if(pressed(3))inp.altQ=true;if(pressed(5))inp.nitroQ=true;if(pressed(4))toggleCam();if(pressed(8)&&NET.enabled)toggleChat();
 }
 
@@ -377,6 +384,8 @@ function drawMap(){
   const ic=(x,y,kind,r)=>{const q=w2s(x,y);drawIcon(g,kind,q[0],q[1],r);return q};
   for(const z of W.zones)if(ZONE_ICON[z.kind]){const q=ic(z.x,z.y,ZONE_ICON[z.kind],11);if(mapS>1.6)label(q[0],q[1]+24,z.name)}
   for(const s2 of W.shops){const q=ic(s2.x,s2.y,s2.k,10);if(mapS>2.2)label(q[0],q[1]+22,s2.name)}
+  if(IH.act)for(const mk of IH.act.markers()){const q=ic(mk.x,mk.y,mk.k,11);if(mapS>1.2)label(q[0],q[1]+24,mk.k==='casino'?'Casino':mk.k==='bank'?'Bankraub':'Rennen')}
+  {const q=ic(1300,250,'airport',13);label(q[0],q[1]+26,'Flughafen')}
   if(!S.mission.active)for(const ph of W.phones)if((ph.cd||0)<=0)ic(ph.x,ph.y,'phone',10);
   for(const p of W.properties){const own=G.owned.has(p.id);const q=ic(p.x,p.y,own?'home':'sale',own?14:12);label(q[0],q[1]+26,own?p.name+(G.home===p.id?' ★':''):p.name+' · $'+p.price.toLocaleString('de-DE'),own?'#ffc61a':'#f1ede2')}
   if(NET.enabled)for(const p of NET.playerList()){const b=p.mode==='c'&&p.car?p.car:p.ped;if(!b||!p.snaps.length)continue;const[x,y]=w2s(b.x,b.y);g.fillStyle=p.color;g.strokeStyle='#000';g.lineWidth=3;g.beginPath();g.arc(x,y,8,0,7);g.fill();g.stroke();label(x,y-14,p.name,p.color)}
@@ -385,7 +394,7 @@ function drawMap(){
   const src=P.inCar||P;const[px,py]=w2s(src.x,src.y);g.save();g.translate(px,py);g.rotate(P.inCar?P.inCar.a:P.a);g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=3;g.beginPath();g.moveTo(14,0);g.lineTo(-9,-9);g.lineTo(-4,0);g.lineTo(-9,9);g.closePath();g.fill();g.stroke();g.restore();
 }
 function buildLegend(){const L=$('legend');L.innerHTML='<b>Legende</b>';
-  for(const[k,t]of[['home','Dein Zuhause'],['sale','Wohnung zu verkaufen'],['lack','Lackiererei'],['werkstatt','Werkstatt'],['waffen','Waffenladen'],['imbiss','Imbiss'],['phone','Aufträge'],['hehler','Hehler'],['safe','Versteck'],['klinik','Klinik · Notarzt-Jobs'],['feuerwache','Feuerwache'],['depot','Busdepot'],['brauerei','Brauerei'],['mission','Auftragsziel'],['way','Wegpunkt']]){
+  for(const[k,t]of[['home','Dein Zuhause'],['sale','Wohnung zu verkaufen'],['lack','Lackiererei'],['werkstatt','Werkstatt'],['waffen','Waffenladen'],['imbiss','Imbiss'],['phone','Aufträge'],['hehler','Hehler'],['safe','Versteck'],['casino','Casino (Blackjack, Poker)'],['bank','Bankraub (Koop)'],['race','Straßenrennen'],['airport','Flughafen'],['klinik','Klinik · Notarzt-Jobs'],['feuerwache','Feuerwache'],['depot','Busdepot'],['brauerei','Brauerei'],['mission','Auftragsziel'],['way','Wegpunkt']]){
     const c=document.createElement('canvas');c.width=c.height=44;const g=c.getContext('2d');drawIcon(g,k,22,22,19);const sp=document.createElement('span');sp.textContent=t;L.append(c,sp)}}
 function mapZoom(f,cx,cy){const w=innerWidth,h=innerHeight;cx=cx===undefined?w/2:cx;cy=cy===undefined?h/2:cy;const wx=(cx-w/2)/mapS+mapX,wy=(cy-h/2)/mapS+mapY;mapS=clamp(mapS*f,Math.min(w,h)/1300,8);mapX=wx-(cx-w/2)/mapS;mapY=wy-(cy-h/2)/mapS;drawMap()}
 mapCv.addEventListener('pointerdown',e=>{e.preventDefault();try{mapCv.setPointerCapture(e.pointerId)}catch(_){}mapPtr.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY});if(mapPtr.size===1)mapDrag={moved:false};else mapDrag=null});
@@ -401,7 +410,7 @@ mapCv.addEventListener('pointerup',mapUp);mapCv.addEventListener('pointercancel'
 mapCv.addEventListener('wheel',e=>{e.preventDefault();mapZoom(e.deltaY<0?1.15:1/1.15,e.clientX,e.clientY)},{passive:false});
 $('mapZin').addEventListener('click',()=>mapZoom(1.4));$('mapZout').addEventListener('click',()=>mapZoom(1/1.4));
 $('mapClear').addEventListener('click',()=>{IH.waypoint=null;route=null;drawMap()});$('mapClose').addEventListener('click',closeMap);
-$('bMap').addEventListener('click',()=>openMap());
+mini.addEventListener('pointerdown',e=>{if(G&&G.state!=='menu'){e.preventDefault();e.stopPropagation();openMap()}});
 
 /* ---------- account & save codes ---------- */
 const ACC=IH.account;
