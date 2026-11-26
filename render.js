@@ -777,6 +777,42 @@ function campusBuild(C){
   addMesh(new THREE.CylinderGeometry(1.4,1.9,46,16),lam('#d2d5d8'),1703,23,971);addMesh(new THREE.CylinderGeometry(1.45,1.45,1.2,16),lam('#c0392b'),1703,44,971);
   for(const b of C.buildings){const sg=labelSprite(b.name,'rgba(0,101,189,.9)','#fff',0.8);sg.position.set(b.x,b.h+3.5,b.y);scene.add(sg)}
   const sg=labelSprite('FORSCHUNGSZENTRUM GARCHING','rgba(0,101,189,.92)','#fff',1.2);sg.position.set(1740,7,906);scene.add(sg)}
+// railway: station building (front + concourse), open glass hall over the platforms, tracks with sleepers, catenary, tunnel portal
+function railwayBuild(Rr,box){
+  const[x0,z0,x1,z1]=box,hx0=Rr.hall[0],hx1=Rr.hall[2],hz0=Rr.hall[1],hz1=Rr.hall[3],stone='#b9b2a5';
+  texturedBox(x0,z0,x1,hz0-2,18,stone);texturedBox(hx1,hz0-2,x1,z1,18,stone);
+  // hall: columns and a translucent barrel roof, open to the west
+  for(let x=hx0+4;x<hx1;x+=13)for(const z of[hz0+0.6,hz1-0.6,648])addMesh(new THREE.CylinderGeometry(0.35,0.45,10,8),lam('#59626b'),x,5,z);
+  {const g=new THREE.CylinderGeometry(1,1,1,24,1,true,0,Math.PI);const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:'#9fc2d6',transparent:true,opacity:0.5,side:THREE.DoubleSide,depthWrite:false}));m.rotation.set(0,0,Math.PI/2);m.scale.set((hz1-hz0)/2,hx1-hx0,6);m.position.set((hx0+hx1)/2,10,(hz0+hz1)/2);m.renderOrder=6;scene.add(m);
+    for(let x=hx0;x<=hx1;x+=13){const rib=new THREE.Mesh(new THREE.TorusGeometry(1,0.012,4,24,Math.PI),lam('#4d555d'));rib.rotation.set(0,Math.PI/2,0);rib.scale.set((hz1-hz0)/2,6,1);rib.position.set(x,10,(hz0+hz1)/2);scene.add(rib)}}
+  const sg=labelSprite('MÜNCHEN HBF','rgba(20,40,90,.9)','#fff',1.6);sg.position.set(hx0+2,14,648);scene.add(sg);
+  // platforms with a white edge line
+  for(const[a,b,c,d]of Rr.platforms){addMesh(new THREE.BoxGeometry(c-a,0.4,d-b),lam('#b7b3aa'),(a+c)/2,0.2,(b+d)/2);for(const z of[b+0.25,d-0.25])addMesh(new THREE.BoxGeometry(c-a,0.02,0.18),lam('#f2efe6'),(a+c)/2,0.41,z,{noShadow:true});
+    for(let x=a+12;x<c-8;x+=24){addMesh(new THREE.BoxGeometry(0.15,2.6,0.15),lam('#3d4248'),x,1.7,(b+d)/2);const sb=labelSprite('Gleis '+(Rr.platforms.indexOf(Rr.platforms.find(p=>p[1]===b))*2+1)+' · '+(Rr.platforms.indexOf(Rr.platforms.find(p=>p[1]===b))*2+2),'rgba(20,40,90,.9)','#fff',0.45);sb.position.set(x,3.3,(b+d)/2);scene.add(sb)}}
+  // tracks: ballast, sleepers (instanced), two rails each
+  const sl=[];for(const y of Rr.tracks){addMesh(new THREE.BoxGeometry(Rr.buffer-Rr.x0+2,0.12,4.2),lam('#8a8378'),(Rr.x0+Rr.buffer)/2,0.06,y,{noShadow:true});for(let x=Rr.x0;x<Rr.buffer;x+=0.9)sl.push([x,y]);
+    for(const o of[-0.72,0.72])addMesh(new THREE.BoxGeometry(Rr.buffer-Rr.x0+1,0.14,0.08),lam('#6d6f72'),(Rr.x0+Rr.buffer)/2,0.24,y+o,{noShadow:true});
+    addMesh(new THREE.BoxGeometry(0.8,1.0,3.2),lam('#c43b2e'),Rr.buffer+0.4,0.5,y)}   // buffer stop
+  {const g=new THREE.BoxGeometry(0.22,0.1,2.6);const im=new THREE.InstancedMesh(g,lam('#5a4a3c'),sl.length);sl.forEach((q,i)=>im.setMatrixAt(i,M4().makeTranslation(q[0],0.16,q[1])));scene.add(im)}
+  // catenary masts and wires between the tunnel and the hall
+  for(let x=Rr.x0+8;x<hx0;x+=22){for(const z of[Rr.y0+1.5,Rr.y1-1.5])addMesh(new THREE.CylinderGeometry(0.15,0.18,8,6),lam('#7c838b'),x,4,z);addMesh(new THREE.BoxGeometry(0.2,0.25,Rr.y1-Rr.y0-3),lam('#7c838b'),x,7.6,(Rr.y0+Rr.y1)/2)}
+  {const pts=[];for(const y of Rr.tracks)pts.push(new THREE.Vector3(Rr.x0,6.2,y),new THREE.Vector3(Rr.buffer,6.2,y));scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:'#3a3d40'})))}
+  // tunnel portal with dark openings
+  addMesh(new THREE.BoxGeometry(4,9,Rr.y1-Rr.y0+4),lam('#a39d92'),Rr.x0-0.5,4.5,(Rr.y0+Rr.y1)/2);for(const y of Rr.tracks)addMesh(new THREE.BoxGeometry(0.2,5.4,4.2),new THREE.MeshBasicMaterial({color:'#0c0d0f'}),Rr.portal-0.35,2.7,y)
+  buildTrains()}
+let trainObjs=[];const trainClip=[new THREE.Plane(new THREE.Vector3(1,0,0),-121.8)];
+function trainCarGeo(type,end){const P=[];const ice=type==='ice',L=ice?19.4:16.6,Wd=3.0,H=ice?3.9:4.6,body=ice?'#f2f2ef':'#c8102e',add=(g,c,m)=>P.push({g,color:c,m});
+  if(end){add(taperBox(L,H-0.6,Wd,ice?5.5:1.6,0,0.25),body,tm(0,0.6,0))}else add(new THREE.BoxGeometry(L,H-0.6,Wd),body,tm(0,0.6+(H-0.6)/2,0));
+  add(new THREE.BoxGeometry(end?L*0.7:L-0.6,0.25,Wd-0.5),'#8d9196',tm(end?-L*0.15:0,H+0.02,0));
+  for(const sd of[1,-1]){const z=sd*(Wd/2+0.005);
+    if(ice){add(new THREE.BoxGeometry(end?L*0.62:L-2,0.75,0.02),'#1c2430',tm(end?-L*0.16:0,2.35,z));add(new THREE.BoxGeometry(end?L*0.75:L-0.4,0.18,0.02),'#d42a22',tm(end?-L*0.1:0,1.55,z))}
+    else{for(const y of[1.55,3.15])add(new THREE.BoxGeometry(end?L*0.8:L-2,0.8,0.02),'#1c2430',tm(end?-L*0.06:0,y,z));for(const x of[-L*0.3,L*0.3])add(new THREE.BoxGeometry(1.3,2.0,0.03),'#e9e7e1',tm(x,1.5,z))}}
+  if(end&&ice)add(new THREE.BoxGeometry(1.2,0.7,Wd-0.6),'#1c2430',tm(L/2-3.2,H-1.1,0,0,1,1,1,-0.5));if(end&&!ice)add(new THREE.BoxGeometry(0.05,1.0,Wd-0.6),'#1c2430',tm(L/2+0.01,3.0,0));
+  for(const x of[-L*0.36,L*0.36])add(new THREE.BoxGeometry(3,0.6,Wd-0.4),'#2a2c30',tm(x,0.45,0));
+  return mergeGeos(P)}
+function buildTrains(){const mat=new THREE.MeshLambertMaterial({vertexColors:true,clippingPlanes:trainClip,clipShadows:true});const G={};for(const t of['ice','rb'])G[t]={mid:trainCarGeo(t,false),end:trainCarGeo(t,true)};
+  trainObjs=(S.trains||[]).map(tr=>{const g=new THREE.Group();const cars=[];for(let k=0;k<tr.cars;k++){const end=k===0||k===tr.cars-1;const m=new THREE.Mesh(end?G[tr.type].end:G[tr.type].mid,mat);m.castShadow=true;if(k===tr.cars-1&&tr.cars>1)m.rotation.y=Math.PI;g.add(m);cars.push(m)}g.visible=false;scene.add(g);return{g,cars}})}
+function syncTrains(){const T=S.trains||[];trainObjs.forEach((o,i)=>{const tr=T[i];o.g.visible=!!(tr&&tr.vis&&tr.xe>W.rail.portal);if(!o.g.visible)return;o.cars.forEach((m,k)=>{m.position.set(tr.xe-(k+0.5)*tr.carLen,0.25,tr.y)})})}
 // Autobahn: guard rails on both sides, a concrete barrier in the middle, blue signs at the exits
 function motorwayBuild(){
   const rail=[],posts=[],wall=[];const junction=(x,y)=>W.nodes.some(n=>n.edges.length>=3&&Math.abs(n.x-x)<26&&Math.abs(n.y-y)<26&&Math.hypot(n.x-x,n.y-y)<24);
@@ -838,8 +874,9 @@ function buildLandmarks(){
       case'airport':airportBuild(L.A);break;
       case'base':baseBuild(L.B);break;
       case'campus':campusBuild(L.C);break;
-      case'hbf':{const[x0,z0,x1,z1]=L.box;texturedBox(x0,z0,x1,z0+16,18,'#b9b2a5');texturedBox(x0,z0+16,x0+14,z1,18,'#b9b2a5');addMesh(new THREE.BoxGeometry(x1-x0-14,12,z1-z0-16),lam('#9aa4ab'),(x0+14+x1)/2,6,(z0+16+z1)/2);
-        const hall=new THREE.CylinderGeometry(1,1,1,16,1,false,0,Math.PI);const h=addMesh(hall,new THREE.MeshLambertMaterial({color:'#8fb1c4',transparent:true,opacity:0.75}),(x0+14+x1)/2,12,(z0+16+z1)/2,{rz:Math.PI/2});h.rotation.set(0,0,Math.PI/2);h.scale.set(8,x1-x0-14,(z1-z0-16)/2);
+      case'hbf':{const[x0,z0,x1,z1]=L.box;if(!W.rail){texturedBox(x0,z0,x1,z0+16,18,'#b9b2a5');texturedBox(x0,z0+16,x0+14,z1,18,'#b9b2a5');addMesh(new THREE.BoxGeometry(x1-x0-14,12,z1-z0-16),lam('#9aa4ab'),(x0+14+x1)/2,6,(z0+16+z1)/2);
+        const hall=new THREE.CylinderGeometry(1,1,1,16,1,false,0,Math.PI);const h=addMesh(hall,new THREE.MeshLambertMaterial({color:'#8fb1c4',transparent:true,opacity:0.75}),(x0+14+x1)/2,12,(z0+16+z1)/2,{rz:Math.PI/2});h.rotation.set(0,0,Math.PI/2);h.scale.set(8,x1-x0-14,(z1-z0-16)/2)}
+        else railwayBuild(W.rail,L.box);
         const lb=labelSprite('Hauptbahnhof','rgba(20,22,26,.72)','#fff',2);lb.position.set((x0+x1)/2,26,(z0+z1)/2);scene.add(lb);break}
       case'maibaum':{const tex=canvasTex(32,128,(g)=>{for(let i=-4;i<12;i++){g.fillStyle=i%2?'#ffffff':'#2a6fd1';g.beginPath();g.moveTo(0,i*16);g.lineTo(32,i*16-16);g.lineTo(32,i*16);g.lineTo(0,i*16+16);g.fill()}},true);tex.repeat.set(1,8);
         addMesh(new THREE.CylinderGeometry(0.25,0.4,28,8),new THREE.MeshLambertMaterial({map:tex}),L.x,14,L.y);for(let i=0;i<4;i++){addMesh(new THREE.BoxGeometry(5,0.2,0.2),lam('#e9e2c8'),L.x,10+i*4,L.y,{ry:i*0.8})}addMesh(new THREE.ConeGeometry(1.2,1.6,8),lam('#3e7d3e'),L.x,28.5,L.y);break}
@@ -1497,6 +1534,7 @@ function updateMarkers(dt){
   for(const im of runwayLights)im.visible=ENV.night>0.08||ENV.rain>0.4;
   if(gateBoom){const want=W.airport.gateOpen?-1.35:0;gateAng+=(want-gateAng)*Math.min(1,dt*4);gateBoom.rotation.x=gateAng}
   if(gateBoom2&&W.base){const want=W.base.broken?0.25:W.base.gateOpen?1.35:0;gateAng2+=(want-gateAng2)*Math.min(1,dt*4);gateBoom2.rotation.z=gateAng2}
+  syncTrains();
   for(const sh of sheds){const inside=src.x>sh.x0-1&&src.x<sh.x1+1&&src.y>sh.z0-1&&src.y<sh.z1+0.5&&(src.z||0)<6;sh.roof.visible=!inside}
   {const J=S.jets||[];while(jetObjs.length<J.length){const o=planeObject('fighter','luftwaffe');scene.add(o);jetObjs.push(o)}jetObjs.forEach((o,i)=>{const j=J[i];o.visible=!!j;if(j){o.position.set(j.x,j.z,j.y);o.rotation.set(j.roll||0,-j.a,j.pitch||0,'YZX')}})}
   {const PL=S.planes||[];while(planeObjs.length<PL.length)planeObjs.push(null);PL.forEach((p,i)=>{let o=planeObjs[i];if(!o||o.userData.key!==p.type+p.liv){if(o)scene.remove(o);o=planeObject(p.type,p.liv);o.userData.key=p.type+p.liv;scene.add(o);planeObjs[i]=o}
@@ -1537,7 +1575,7 @@ function adapt(dt){if(dt<=0)return;frameAcc+=dt;frameN++;if(frameN>=90){const av
 
 R3.init=function(canvas){
   Q=QUAL[(IH.settings&&IH.settings.quality)||'hoch']||QUAL.hoch;
-  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.localClippingEnabled=true;
   maxAniso=Math.min(16,renderer.capabilities.getMaxAnisotropy());
   R3.maxPR=Math.min(window.devicePixelRatio||1,Q.prMax);pr=Math.min(R3.maxPR,Q.prStart);renderer.setPixelRatio(pr);
   renderer.shadowMap.enabled=Q.shadow>0;renderer.shadowMap.type=THREE.PCFShadowMap;

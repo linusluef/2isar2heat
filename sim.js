@@ -592,6 +592,7 @@ function updateBullets(dt,active){
     for(let s=0;s<steps&&!dead;s++){
       b.x+=b.vx*dt/steps;b.y+=b.vy*dt/steps;b.z+=b.vz*dt/steps;
       if(b.z<0){spark(b.x,b.y,0.4);dead=true;break}
+      if(Math.abs(b.x-200)<120&&Math.abs(b.y-648)<30&&trainAt(b.x,b.y,b.z)){spark(b.x,b.y,b.z);dead=true;break}
       const t=at(b.x,b.y);if((t===TY.BUILD||t===TY.SOLID)&&b.z<Math.max(t===TY.SOLID?5:2,W.heightAt(b.x,b.y))){spark(b.x,b.y,Math.min(b.z,1.2));spark(b.x,b.y,Math.min(b.z,1.2));dead=true;break}
       for(const c of active){if(c.sink||c===b.src||(b.owner==='player'&&c===player.inCar)||(b.owner==='remote'&&c===player.inCar&&ridesWithMe(b.att)))continue;if(zIn(c,b.z)&&pointInCar(c,b.x,b.y)){spark(b.x,b.y,b.z);if(!c.dead){damageCar(c,b.dmg,b.owner==='player',b.x,b.y,'shot');if(b.owner==='player'&&c.cop&&c.driver&&c.driver!=='player')offense('weapon',0.34)}dead=true;break}}
       if(dead)break;
@@ -1074,6 +1075,25 @@ function racerDrive(c,dt){aiDrive(c,dt)}
 function countCopPeds(){let n=0;for(const p of peds)if(p.kind==='cop')n++;return n}
 
 
+/* ================= trains into the Hauptbahnhof (same timetable for every player: driven by the wall clock) ================= */
+// each track: a train comes out of the tunnel, brakes to the buffer stop, waits, then leaves backwards into the tunnel (terminus)
+const TRAINS=[{tr:0,type:'ice',cars:5,per:118,off:0},{tr:1,type:'rb',cars:4,per:96,off:40},{tr:2,type:'ice',cars:5,per:134,off:75},{tr:3,type:'rb',cars:3,per:88,off:20}];
+const trains=TRAINS.map(T=>({type:T.type,cars:T.cars,carLen:T.type==='ice'?20:17,y:0,xe:0,vis:false,spd:0}));
+function trainTick(dt){const Rr=W.rail;if(!Rr)return;const now=Date.now()/1000;
+  TRAINS.forEach((T,i)=>{const tr=trains[i];tr.y=Rr.tracks[T.tr];const len=tr.cars*tr.carLen;const t=((now-T.off)%T.per+T.per)%T.per;const A=24,D=30,L=22;let xe=null;
+    let v=0;if(t<A){const u=t/A;xe=Rr.portal+(Rr.buffer-Rr.portal)*(1-(1-u)*(1-u));v=(Rr.buffer-Rr.portal)*2*(1-u)/A}else if(t<A+D)xe=Rr.buffer;else if(t<A+D+L){const u=(t-A-D)/L;xe=Rr.buffer-(Rr.buffer-Rr.portal+2)*u*u;v=-(Rr.buffer-Rr.portal+2)*2*u/L}
+    tr.vis=xe!==null;tr.len=len;if(tr.vis){tr.spd=Math.abs(v);tr.dir=Math.sign(v);tr.xe=xe}else{tr.spd=0;tr.xe=Rr.portal-1}
+    if(!tr.vis)return;tr.waiting=t>=A&&t<A+D;
+    // rigid: nothing passes through a train; anything standing in its way is shoved aside (and hurt if it is moving)
+    const x0=Math.max(tr.xe-len,Rr.portal-1),x1=tr.xe+0.3,hw=1.65;
+    const fast=tr.spd>2&&!tr.waiting;
+    if(G.state==='play'&&onFoot()&&player.x>x0-0.4&&player.x<x1+0.4&&Math.abs(player.y-tr.y)<hw+0.4){const sd=player.y>=tr.y?1:-1;player.y=tr.y+sd*(hw+0.45);player.ly=player.y;if(fast&&player.stun<=0){hurtPlayer(Math.min(60,tr.spd*5),'car');player.stun=0.8;player.vy=sd*6;sfx('punch',1,player.x,player.y)}}
+    for(const c of activeCars){if(c.sink||(c.z||0)>4)continue;const ca=Math.abs(Math.cos(c.a)),sa=Math.abs(Math.sin(c.a)),ex=(c.t.len*ca+c.t.wid*sa)/2,ey=(c.t.len*sa+c.t.wid*ca)/2;
+      if(c.x+ex>x0&&c.x-ex<x1&&Math.abs(c.y-tr.y)<hw+ey){const sd=c.y>=tr.y?1:-1;c.y=tr.y+sd*(hw+ey+0.05);const vn=c.vy*sd;if(vn<0){c.vy*=-0.3;if(-vn>6){damageCar(c,(-vn-6)*3,false,c.x,tr.y+sd*hw);sfx('crash',Math.min(1,-vn/20),c.x,c.y);if(c===player.inCar)emit('shake',Math.min(0.8,-vn/25))}}
+        if(fast){c.vx+=tr.dir*tr.spd*0.6*dt*10;damageCar(c,tr.spd*2*dt*10,false,c.x,tr.y);}}}
+    for(const p of peds){if(isDown(p))continue;if(p.x>x0-0.3&&p.x<x1+0.3&&Math.abs(p.y-tr.y)<hw+0.3){const sd=p.y>=tr.y?1:-1;p.y=tr.y+sd*(hw+0.35);p.ly=p.y;if(fast)knock(p,tr.dir*tr.spd*0.5,sd*4,null,tr.spd*6)}}
+  })}
+const trainAt=(x,y,z)=>{if(z>4.3)return false;for(const tr of trains)if(tr.vis&&x>Math.max(tr.xe-tr.len,W.rail.portal-1)&&x<tr.xe&&Math.abs(y-tr.y)<1.65)return true;return false};
 /* ================= military: 5 stars, the air base, tanks and fighter jets ================= */
 function makeSoldier(x,y){const p=makePed(x,y,'cop');Object.assign(p,{mil:true,shirt:'#4b5a3a',hair:'#3d4a32',hp:170,spd:5.2,burst:0});return p}
 const shells=[];   // tank shells and air-to-air missiles: {x,y,z,vx,vy,vz,t,owner,src,missile,tgt}
@@ -1676,7 +1696,7 @@ function update(dt){
   for(let i=peds.length-1;i>=0;i--)if(!peds[i].alive)peds.splice(i,1);
   const busy=hypot(f.x-520,f.y-640)<230;
   if(civs<(busy?62:42)&&Math.random()<0.5){const s=walkPointNear(f.x,f.y,busy?30:55,150);if(s)peds.push(makePed(s.x,s.y,'civ'))}
-  crowdTick(f);fireTick(dt);heliTick(dt);planeTick(dt);hangarTick(dt);baseTick(dt);militaryTick(dt);jetTick(dt);shellTick(dt);
+  crowdTick(f);fireTick(dt);heliTick(dt);planeTick(dt);trainTick(dt);hangarTick(dt);baseTick(dt);militaryTick(dt);jetTick(dt);shellTick(dt);
   collidePedsCars(activeCars);collideRemotePeds();
   updateBullets(dt,activeCars);
   for(const p of W.props){if(p.spray>0){p.spray-=dt;if(Math.abs(p.x-f.x)<80&&Math.abs(p.y-f.y)<80)for(let i=0;i<2;i++)water(p.x,p.y,0.5,true)}}
@@ -1723,5 +1743,5 @@ function update(dt){
 
 IH.sim={makePed,addPart,takenByRemote,remoteCarFor,ridersOf,jobFor,onShift,toggleJob,spawnPlanes,planes,G,cars,peds,bullets,grenades,parts,decals,skids,floaters,player,mission,STORY,SHOP,WEAP,CT,stars,update,newGame,save,loadSave,lightState,shopBuy,shopPrice,nearestCarFor,
   spawnTraffic,fillLots,resetWorld,enterExit,get activeCars(){return activeCars},hasLOS,input,remote,remoteShot,remoteGrenade,remoteBoom,leaveRemoteCar,addMoney,pointInCar,
-  PAINTS,stats,lookFits,itemOwned,heli,fires,JOBS,makeCar,createFire,saveData,storeSave,normalizeSave,buyProperty,setHome,restAt,setShirt,inSafeZone,propById,astar,nearestNodeTo,pathPolyline,explosion,airlinerHit,damageCar,fireBullet,isAir,shells,jets,baseAlarm,makeSoldier,fireShell,surfAt};
+  PAINTS,stats,lookFits,itemOwned,heli,fires,JOBS,makeCar,createFire,saveData,storeSave,normalizeSave,buyProperty,setHome,restAt,setShirt,inSafeZone,propById,astar,nearestNodeTo,pathPolyline,explosion,airlinerHit,damageCar,fireBullet,isAir,trains,shells,jets,baseAlarm,makeSoldier,fireShell,surfAt};
 })(window));

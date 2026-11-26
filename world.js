@@ -684,6 +684,21 @@ for(let i=0;i<20000&&packages.length<30;i++){const x=Math.floor(DR(30,1170))+0.5
   let road=false,bld=false;for(let dy=-6;dy<=6&&!road;dy+=2)for(let dx=-6;dx<=6;dx+=2){const q=at(x+dx,y+dy);if(q===TY.ROAD)road=true;if(q===TY.BUILD)bld=true}
   if(road||!bld)continue;if(packages.some(p=>hypot(p.x-x,p.y-y)<70))continue;packages.push({i:packages.length,x,y})}
 
+/* ---------- railway into the Hauptbahnhof (from a tunnel in the west; laid out after everything else, so nothing else moves) ---------- */
+const rail=(()=>{const Rr={x0:120,portal:122,buffer:309,y0:620,y1:672,hall:[208,624,312,672],tracks:[630,642,654,666],platforms:[[214,634,306,638],[214,658,306,662]]};
+  const hit=(pts)=>pts.some(q=>q[0]>=Rr.x0-1&&q[0]<=Rr.hall[0]+1&&q[1]>=Rr.y0&&q[1]<=Rr.y1);
+  // clear the block between the tunnel and the station (buildings, trees, bins)
+  for(let i=buildings.length-1;i>=0;i--){const b=buildings[i];if(!hit(b.pts))continue;fillPoly(b.pts,(k)=>{if(grid[k]===TY.BUILD)grid[k]=TY.GRASS});buildings.splice(i,1)}
+  for(let i=props.length-1;i>=0;i--){const q=props[i];if(q.x>=Rr.x0-1&&q.x<=Rr.hall[0]+1&&q.y>=Rr.y0-1&&q.y<=Rr.y1+1)props.splice(i,1)}
+  // the hall is open to the west now: the old west wing and hall floor become track bed; the front building (north) and the concourse (east) stay
+  fillPoly(rect(Rr.x0,Rr.y0+2,Rr.hall[2],Rr.y1-2),(k)=>{grid[k]=TY.GRASS});
+  for(const y of Rr.tracks)fillPoly(rect(Rr.x0,y-2.2,Rr.hall[2],y+2.2),(k)=>{grid[k]=TY.ROAD});
+  for(const pf of Rr.platforms)fillPoly(rect(...pf),(k)=>{grid[k]=TY.PLAZA});
+  fillPoly(rect(Rr.hall[2]-2,Rr.hall[1],Rr.hall[2],Rr.hall[3]),(k)=>{grid[k]=TY.BUILD});   // buffer wall of the concourse
+  fillPoly(rect(Rr.x0-2,Rr.y0,Rr.x0+2,Rr.y1),(k)=>{if(!Rr.tracks.some(y=>Math.abs(Math.floor(k/MAP)+0.5-y)<2.4))grid[k]=TY.SOLID});   // tunnel portal (openings for the tracks)
+  roofs.push({x0:Rr.hall[0],y0:Rr.hall[1],x1:Rr.hall[2],y1:Rr.hall[3],h:16});
+  draw.zones.push({t:'apron',pts:rect(Rr.x0,Rr.y0,Rr.hall[2],Rr.y1)});
+  return Rr})();
 /* ---------- prop spatial grid ---------- */
 // obstacle heights for flying (2 m cells): buildings, landmarks, towers
 const HC=2,HW=MAP/HC,hgrid=new Uint8Array(HW*HW);
@@ -711,6 +726,6 @@ props.forEach((p,i)=>{p.i=i;const k=Math.floor(p.y/PCS)*PGW+Math.floor(p.x/PCS);
 function propsNear(x,y,r){const out=[];const x0=Math.max(0,Math.floor((x-r)/PCS)),x1=Math.min(PGW-1,Math.floor((x+r)/PCS)),y0=Math.max(0,Math.floor((y-r)/PCS)),y1=Math.min(PGW-1,Math.floor((y+r)/PCS));for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++){const a=pgrid[yy*PGW+xx];if(a)for(const p of a)out.push(p)}return out}
 
 IH.world={MAP,TY,grid,cross,waterMask,airside,at,nodes,edges,roads,buildings,lots,props,propsNear,landmarks,zones,shops,phones,places,pickups,zebras,draw,properties,ramps,packages,crowds,pigeons,xmas,
-  riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,base,compounds,roofs,roofAt,mwMask,campus,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
+  riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,base,compounds,roofs,roofAt,mwMask,campus,rail,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
 IH.util={mulberry32,clamp,hypot,pointAt,cumLen};
 })(window));
