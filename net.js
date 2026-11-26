@@ -73,9 +73,10 @@ net.stop=function(){
   if(!net.enabled)return;publish('b/'+net.id,{i:net.id});for(const l of net.links)l.close();net.links=[];net.enabled=false;net.status='off';
   for(const p of net.peers.values())dropPeer(p,true);net.peers.clear();IH.remote.cars.length=0;IH.remote.peds.length=0;
 };
-net.linkChanged=function(){const up=net.links.filter(l=>l.state==='up').length;const before=net.status;net.status=!net.enabled?'off':up?'online':'connecting';if(before!=='online'&&net.status==='online'){feed('Online – globale Lobby','sys');net.sendT=0}};
+net.linkChanged=function(){const up=net.links.filter(l=>l.state==='up').length;const before=net.status;net.status=!net.enabled?'off':up?'online':'connecting';if(before!=='online'&&net.status==='online'){const t=now();if(!net.onlineShown)feed('Online – globale Lobby','sys');else if(t-(net.offSince||t)>10000)feed('Wieder online','sys');net.onlineShown=true;net.sendT=0}if(before==='online'&&net.status!=='online')net.offSince=now()};   // brokers reconnecting don't spam the feed
 net.linksUp=()=>net.links.filter(l=>l.state==='up').length;
 function publish(sub,obj){const body=mstr(BASE+sub).concat(Array.from(te.encode(JSON.stringify(obj))));const b=pkt(0x30,body);for(const l of net.links)if(l.state==='up')l.raw(b)}
+const recentJoin=new Map(),leftSaid=new Map();   // name -> last time we announced / lost them (one player reconnecting or reopening the app is announced once)
 function feed(txt,kind,col){net.feed.push({txt,kind,col,t:now()});if(net.feed.length>6)net.feed.shift();if(net.onFeed)net.onFeed()}
 net.event=function(type,m){if(!net.enabled||net.status!=='online')return;if(type==='kill'){const k=net.peers.get(m.by);feed((k?k.name:'Jemand')+' hat dich erledigt','kill',k?k.color:null)}m=Object.assign({i:net.id,q:++net.seq,e:type},m);publish('e/'+net.id,m)};
 net.chat=function(i){if(!net.enabled)return;i=clamp(i|0,0,CHAT.length-1);net.event('msg',{t:i});net.myBubble={txt:CHAT[i],t:now()};feed(net.name+': '+CHAT[i],'chat',net.color)};
@@ -91,7 +92,7 @@ function getPeer(id){
 }
 function dropPeer(p,silent){
   const rc=IH.remote;let i=rc.cars.indexOf(p.car);if(i>=0)rc.cars.splice(i,1);i=rc.peds.indexOf(p.ped);if(i>=0)rc.peds.splice(i,1);
-  if(!silent&&p.joined)feed(p.name+' hat die Lobby verlassen','sys');net.peers.delete(p.id);
+  if(!silent&&p.joined&&now()-(p.joinT||0)>20000&&!leftSaid.has(p.name)){feed(p.name+' hat die Lobby verlassen','sys');leftSaid.set(p.name,now())}if(p.joined)recentJoin.set(p.name,now());net.peers.delete(p.id);
 }
 net.onMessage=function(topic,payload){
   if(!topic.startsWith(BASE)||payload.length>1500)return;const kind=topic.charAt(BASE.length);
@@ -104,7 +105,7 @@ net.onMessage=function(topic,payload){
   const p=getPeer(m.i);const t=now();
   if(kind==='s'){
     if(q<=p.lastSeq)return;p.lastSeq=q;p.last=t;
-    const nm=cleanName(m.n);if(!p.joined){p.joined=true;p.name=nm;feed(nm+' ist in der Lobby','sys',p.color)}p.name=nm;
+    const nm=cleanName(m.n);if(!p.joined){p.joined=true;p.name=nm;p.joinT=t;const last=recentJoin.get(nm);if(last===undefined||t-last>90000)feed(nm+' ist in der Lobby','sys',p.color);else if(leftSaid.has(nm))feed(nm+' ist wieder da','sys',p.color);leftSaid.delete(nm);recentJoin.set(nm,t)}p.name=nm;
     const x=num(m.x,-50,2050,null),y=num(m.y,-50,2050,null);if(x===null||y===null)return;
     const prevMode=p.mode;p.mode=m.m==='c'||m.m==='d'||m.m==='r'?m.m:'f';
     // just got into a car: remember where (from this message, not the delayed interpolation) so an empty local copy of that car can be removed

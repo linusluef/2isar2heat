@@ -1315,8 +1315,8 @@ function updateMarkers(dt){
   if(hasT){const tz=!at&&m.tz?m.tz:0;beacon.position.set(mtx,20+tz,mty);beaconRing.position.set(mtx,tz?tz:0.15,mty);const s=(tz?4.2:1)*(1+0.15*Math.sin(t*5));beaconRing.scale.set(s,s,1)}   // air rings for flight missions
   const nxt=(m.active&&m.type==='rennen'&&m.cps&&m.cps[m.cpi+1])||(at&&at.next);beacon2.visible=!!nxt&&G.state==='play';if(nxt)beacon2.position.set(nxt.x,12,nxt.y);
   const src=P.inCar||P;
-  arrow3d.visible=hasT&&hypot(m.tx-src.x,m.ty-src.y)>25;
-  if(arrow3d.visible){const a=Math.atan2(m.ty-src.y,m.tx-src.x);arrow3d.position.set(src.x,(P.inCar?P.inCar.t.ht:1.8)+2.2+Math.sin(t*4)*0.2,src.y);arrow3d.rotation.set(0,-a,0)}
+  arrow3d.visible=hasT&&hypot(mtx-src.x,mty-src.y)>25;   // points at the shown target (story/act targets too, not a stale mission target)
+  if(arrow3d.visible){const a=Math.atan2(mty-src.y,mtx-src.x);arrow3d.position.set(src.x,(P.inCar?P.inCar.t.ht:1.8)+2.2+Math.sin(t*4)*0.2,src.y);arrow3d.rotation.set(0,-a,0)}
   const wp=IH.waypoint;wpBeacon.visible=!!wp&&G.state==='play';if(wp)wpBeacon.position.set(wp.x,15,wp.y);
   {let hidden=false;if(G.state==='play'&&IH.settings.cam!=='chase'){const dx=camPos.x-src.x,dz=camPos.z-src.y,l=hypot(dx,dz)||1;for(let d=1.5;d<=11;d+=1.5)if(W.at(src.x+dx/l*d,src.y+dz/l*d)===W.TY.BUILD){hidden=true;break}}
    playerMark.visible=hidden;if(hidden)playerMark.position.set(src.x,(P.inCar?P.inCar.t.ht:1.8)+1.6+Math.sin(t*5)*0.15,src.y)}

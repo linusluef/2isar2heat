@@ -11,8 +11,9 @@ const CAST={
   vroni:{name:'Vroni',role:'Fahrerin',col:'#ff6fae',shirt:'#c2185b',hair:'#7a3b12',pitch:1.35,rate:1.08},
   memo:{name:'Memo',role:'Schrauber aus Giesing',col:'#3bd0ff',shirt:'#1f4e79',hair:'#141414',pitch:1.0,rate:1.05},
   brandl:{name:'Kommissar Brandl',role:'Kripo München',col:'#a9bfd6',shirt:'#55595f',hair:'#2e2e2e',pitch:0.7,rate:0.92},
+  kathi:{name:'Kathi',role:'Reporterin, Isar-Kurier',col:'#c3f15a',shirt:'#d9cfb8',hair:'#c9a26a',pitch:1.2,rate:1.1},
 };
-const CHAPTER={1:'Kapitel 1 · Neu in der Stadt',2:'Kapitel 2 · Der Graf',3:'Kapitel 3 · Isarfieber'};
+const CHAPTER={1:'Kapitel 1 · Neu in der Stadt',2:'Kapitel 2 · Der Graf',3:'Kapitel 3 · Isarfieber',4:'Kapitel 4 · Die Erbin',5:'Kapitel 5 · Wiesn-Showdown'};
 const current=()=>G.story<S.STORY.length?S.STORY[G.story]:null;
 
 /* ---------- contact points and the characters standing there ---------- */
@@ -70,17 +71,24 @@ function startStory(def){const st=def.story;const card=st.ch!==lastCh&&(G.story=
 const seenPre=new Set();let needLeave=false;
 // after a story mission: the character calls you
 const ow=S.mission.win;S.mission.win=function(){const def=this.data&&this.data.def;ow.apply(this,arguments);if(def&&def.story)postQ.push({def,t:performance.now()+3200})};   // the call comes once the success banner is gone
-function playPost(def){R3.camOverride=()=>cut?cutCam():null;
-  play(def.story.post,{phone:!def.story.end,onEnd:()=>{if(def.story.end)ending();else{const nx=current();if(nx)IH.on&&IH.on.toast&&IH.on.toast('Neuer Story-Auftrag: '+nx.title+' · '+CAST[nx.story.npc].name+' wartet bei '+nx.story.at+' ★')}}})}
-function ending(){R3.camOverride=()=>cut?cutCam():null;play([['sepp','Servus, und danke – ohne di hätt’ ma’s ned g’schafft.']],{card:'ENDE · Danke fürs Spielen!',onEnd:()=>{IH.on&&IH.on.banner&&IH.on.banner('Isarfieber – geschafft!','Freie Aufträge gibt’s weiter an den grünen Telefonzellen','#ffc61a')}})}
+// after a story mission the character just phones you: voice and text in a small box, the game goes on normally
+const callBox=document.createElement('div');callBox.id='stCall';callBox.hidden=true;callBox.innerHTML='<div id="scWho"></div><div id="scTxt"></div><button type="button" id="scNext">›</button>';document.body.appendChild(callBox);
+let call=null;   // {lines,i,shown,full,hold,onEnd}
+function callLine(){const L=call.lines[call.i],c=CAST[L[0]]||{name:L[0],col:'#fff'};$('scWho').innerHTML='📞 <b style="color:'+c.col+'">'+c.name+'</b>';call.full=L[1];call.shown=0;call.hold=1.6+L[1].length*0.045;$('scTxt').textContent='';speakLine(L[0],L[1])}
+function startCall(lines,onEnd){if(!lines||!lines.length){onEnd&&onEnd();return}call={lines,i:0,onEnd};callBox.hidden=false;IH.on&&IH.on.sfx&&IH.on.sfx('ring',0.7);callLine()}
+function callNext(){if(!call)return;call.i++;if(call.i>=call.lines.length){const c=call;call=null;callBox.hidden=true;c.onEnd&&c.onEnd();return}callLine()}
+$('scNext').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(call&&call.shown<call.full.length){call.shown=call.full.length;$('scTxt').textContent=call.full}else callNext()});
+function playPost(def){startCall(def.story.post,()=>{if(def.story.end)ending();else{const nx=current();if(nx)IH.on&&IH.on.toast&&IH.on.toast('Neuer Story-Auftrag: '+nx.title+' · '+CAST[nx.story.npc].name+' wartet bei '+nx.story.at+' ★')}})}
+function ending(){IH.on&&IH.on.banner&&IH.on.banner('Isarfieber – ENDE','Danke fürs Spielen! Freie Aufträge gibt’s weiter an den grünen Telefonzellen','#ffc61a')}
 
 let tickT=0,lastT=performance.now();
 function tick(){const nowT=performance.now(),dt=Math.min(0.25,(nowT-lastT)/1000);lastT=nowT;
   if(cut){if(cut.cardT>0){cut.cardT-=dt;if(cut.cardT<=0){$('stCard').className='';$('stDlg').style.visibility='visible';showLine()}}
     else if(cut.shown<cut.full.length){cut.shown=Math.min(cut.full.length,cut.shown+dt*42);$('stTxt').textContent=cut.full.slice(0,Math.floor(cut.shown))}
     if(G.state!=='play'){finish()}return}
+  if(call){if(call.shown<call.full.length){call.shown=Math.min(call.full.length,call.shown+dt*40);$('scTxt').textContent=call.full.slice(0,Math.floor(call.shown))}else{call.hold-=dt;if(call.hold<=0)callNext()}}
   if(G.state!=='play')return;
-  if(postQ.length&&performance.now()>postQ[0].t&&!S.mission.active&&S.stars()===0){playPost(postQ.shift().def);return}
+  if(postQ.length&&!call&&performance.now()>postQ[0].t&&!S.mission.active&&S.stars()===0){playPost(postQ.shift().def);return}
   const def=current();if(!def){if(npc){npc.alive=false;npc=null}return}
   tickT-=dt;if(tickT<=0){tickT=0.25;ensureNpc(def)}
   if(npc){const src=P.inCar||P;const d=hypot(src.x-npc.x,src.y-npc.y);if(d>10)needLeave=false;if(!needLeave&&canStart()&&d<(P.inCar?7:3.2))startStory(def)}

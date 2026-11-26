@@ -161,7 +161,7 @@ handlers.hs=(from,m)=>{
 let remoteHeist=null;
 handlers.hsj=(from,m)=>{if(heist.host!==myId()||heist.id!==m.id||heist.st!=='lobby')return;if(!heist.crew.includes(from)&&heist.crew.length<4){heist.crew.push(from);toast(peerName(from)+' ist dabei');pushHeist()}};
 handlers.hsp=(from,m)=>{if(heist.host!==myId()||heist.id!==m.id)return;if(m.busy!==undefined){heist.busy[m.i]=m.busy?from:null;pushHeist();return}
-  if(m.ok){heist.solved[m.i]=1;toast(peerName(from)+': '+BANK.terms[m.i].name+' ausgeschaltet')}else{heist.alarm=Math.min(100,heist.alarm+34);toast('Fehler an '+BANK.terms[m.i].name+'! Alarm '+heist.alarm+' %')}heist.busy[m.i]=null;pushHeist()};
+  if(m.ok){heist.solved[m.i]=1;toast(peerName(from)+': '+BANK.terms[m.i].name+' ausgeschaltet')}else if(m.full){heist.alarm=100;heist.solved[m.i]=2;toast('Falscher Code an '+BANK.terms[m.i].name+' – Alarm ausgelöst!')}else{heist.alarm=Math.min(100,heist.alarm+34);toast('Fehler an '+BANK.terms[m.i].name+'! Alarm '+heist.alarm+' %')}heist.busy[m.i]=null;pushHeist()};
 handlers.hsx=(from,m)=>{if(heist.st&&heist.id===m.id&&from===heist.host){toast('Der Bankraub wurde abgeblasen.');endHeist()}};
 function pushHeist(){if(heist.host===myId())send({k:'hs',id:heist.id,st:heist.st,crew:heist.crew,solved:heist.solved,alarm:heist.alarm,drill:+heist.drill.toFixed(1),left:Math.round(heist.left||0),busy:heist.busy})}
 function planHeist(){if(S.stars()>0){toast('Erst die Polizei abhängen');return}Object.assign(heist,{st:'lobby',id:uid(),host:myId(),crew:[myId()],solved:[0,0,0],alarm:0,drill:0,left:online()?40:0,busy:{},bag:false,adT:0});closePanel();pushHeist();
@@ -189,7 +189,7 @@ function heistTick(dt){
   const n=heist.crew?heist.crew.length:1;const share=Math.round((5000+(heist.alarm<100?2500:0))*(n>1?1+0.25*(n-1):1)/n);
   if(heist.st==='lobby'){heist.target={x:BANK.x,y:BANK.y};hud(`<b>Bankraub · ${esc(BANK.name)}</b><span>Crew ${n}/4${host?' · Start in '+Math.max(0,Math.ceil(heist.left))+' s':''}</span>${host?'<button id="hsGo" type="button">Jetzt starten</button>':''}`);const b=$('hsGo');if(b)b.onclick=heistGo}
   else if(heist.st==='hack'){const open=BANK.terms.map((t,i)=>heist.solved[i]?null:i).filter(i=>i!==null);let best=null,bd=1e9;for(const i of open){const t=BANK.terms[i];const d=hypot(t.x-src.x,t.y-src.y);if(d<bd&&!heist.busy[i]){bd=d;best=t}}heist.target=best?{x:best.x,y:best.y}:null;
-    hud(`<b>Sicherheitssysteme</b><span>${BANK.terms.map((t,i)=>(heist.solved[i]?'✔ ':'○ ')+t.name).join(' · ')}</span><span class="${heist.alarm>=100?'alarm':''}">Alarm ${heist.alarm} %</span>`)}
+    hud(`<b>Sicherheitssysteme</b><span>${BANK.terms.map((t,i)=>(heist.solved[i]===2?'✖ ':heist.solved[i]?'✔ ':'○ ')+t.name).join(' · ')}</span><span class="${heist.alarm>=100?'alarm':''}">Alarm ${heist.alarm} %</span>`)}
   else if(heist.st==='drill'){heist.target={x:BANK.x,y:BANK.y};hud(`<b>Tresor bohren</b><span>${Math.floor(heist.drill)} % · bleibt am Eingang!</span><i class="bar"><i style="width:${heist.drill}%"></i></i>`)}
   else if(heist.st==='loot'){heist.target={x:BANK.x,y:BANK.y};hud(`<b>Tresor offen</b><span>Hol deinen Anteil am Eingang (${fmt(share)})</span>`);
     if(!P.inCar&&hypot(P.x-BANK.x,P.y-BANK.y)<3){heist.st='escape';heist.bag=true;heist.share=share;setHeat(4.05);sfx('pick');banner('Beute gesichert',fmt(share)+' – ab ins Versteck oder Polizei abhängen','#3ddc84')}}
@@ -203,27 +203,40 @@ handlers.hs.seen=0;
 const _hs=handlers.hs;handlers.hs=(f,m)=>{if(heist.st&&heist.id===m.id)heist.seen=now();_hs(f,m)};
 
 /* ---------- puzzles ---------- */
-let puz=null;
+let puz=null,codeSave=null;
 function startPuzzle(i){
   if(heist.busy[i]&&heist.busy[i]!==myId()){toast('Da arbeitet schon jemand');return}
   send({k:'hsp',id:heist.id,i,busy:1});heist.busy[i]=myId();
-  const kind=['code','wires','freq'][i];puz={i,kind,t0:now(),T:kind==='code'?60:kind==='wires'?22:30};
-  if(kind==='wires'){const cols=['#e74c3c','#3498db','#f1c40f','#2ecc71','#9b59b6'];const L=cols.slice(0,4+(heist.crew.length>2?1:0));const R=L.slice().sort(()=>Math.random()-0.5);puz.L=L;puz.R=R;puz.links={};puz.sel=null}
-  if(kind==='code'){puz.code=[0,0,0,0].map(()=>1+Math.floor(Math.random()*6));puz.guess=[];puz.hist=[]}
+  const kind=['code','wires','freq'][i];puz={i,kind,t0:now(),T:kind==='code'?100:kind==='wires'?24:30};
+  if(kind==='wires'){
+    // Stroop wiring: every socket shows a colour WORD printed in a different ink – the word counts, not the ink
+    const n=6+(heist.crew.length>2?1:0),all=WCOL.slice().sort(()=>Math.random()-0.5).slice(0,n);
+    const L=all.slice().sort(()=>Math.random()-0.5),R=all.slice().sort(()=>Math.random()-0.5);
+    puz.L=L.map(c=>c.k);puz.R=R.map(c=>c.k);puz.ink=R.map(c=>{const o=WCOL.filter(x=>x.k!==c.k);return o[Math.floor(Math.random()*o.length)].k});puz.links={};puz.sel=null;puz.miss=0}
+  if(kind==='code'){
+    // one code per heist (same for the whole crew); leaving the terminal keeps your tries and the clock, so there is only one chance
+    let h=2166136261;for(const ch of String(heist.id))h=Math.imul(h^ch.charCodeAt(0),16777619)>>>0;const d=[0,1,2,3,4,5,6,7,8,9];for(let k=9;k>0;k--){h=Math.imul(h^(h>>>15),2246822507)>>>0;const j=h%(k+1);[d[k],d[j]]=[d[j],d[k]]}
+    puz.code=d.slice(0,5);puz.guess=[];puz.hist=[];if(codeSave&&codeSave.hid===heist.id){puz.hist=codeSave.hist;puz.t0=now()-codeSave.used}}
   if(kind==='freq'){puz.f=1+Math.random()*3,puz.a=0.3+Math.random()*0.6;puz.uf=2.5;puz.ua=0.5;puz.hold=0}
   renderPuzzle();
 }
-function puzzleDone(ok){const i=puz.i;puz=null;send({k:'hsp',id:heist.id,i,ok:ok?1:0});closePanel();sfx(ok?'pick':'fail');toast(ok?'Geschafft!':'Fehlgeschlagen – der Alarm steigt')}
+function puzzleDone(ok){const i=puz.i,full=!ok&&puz.kind==='code';puz=null;codeSave=null;send({k:'hsp',id:heist.id,i,ok:ok?1:0,full:full?1:0});closePanel();sfx(ok?'pick':'fail');toast(ok?'Geschafft!':full?'Falscher Code – ALARM! Das Schloss wird jetzt aufgebrochen':'Fehlgeschlagen – der Alarm steigt')}
+const WCOL=[{k:'rot',n:'ROT',c:'#e74c3c'},{k:'blau',n:'BLAU',c:'#3498db'},{k:'gelb',n:'GELB',c:'#f1c40f'},{k:'gruen',n:'GRÜN',c:'#2ecc71'},{k:'lila',n:'LILA',c:'#9b59b6'},{k:'orange',n:'ORANGE',c:'#ff8c1a'},{k:'weiss',n:'WEISS',c:'#f4f4f4'},{k:'pink',n:'PINK',c:'#ff5fb0'}];
+const wc=k=>WCOL.find(x=>x.k===k);
+// Wordle scoring: g = right digit right place, y = digit in the code elsewhere, x = not in the code
+function scoreCode(g,c){const r=g.map((d,i)=>d===c[i]?'g':null),left=c.filter((d,i)=>g[i]!==d);for(let i=0;i<g.length;i++){if(r[i])continue;const j=left.indexOf(g[i]);if(j>=0){r[i]='y';left.splice(j,1)}else r[i]='x'}return r}
 function renderPuzzle(){
   if(!puz)return;const left=Math.max(0,puz.T-(now()-puz.t0));const tm=`<p class="kicker">${esc(BANK.terms[puz.i].name)} · ${left.toFixed(0)} s</p>`;
-  if(puz.kind==='wires'){openPanel('puzzle',`${tm}<h2>Kabel verbinden</h2><p class="note">Tippe links ein Kabel und rechts die Buchse in derselben Farbe. Ein falscher Kontakt löst Alarm aus.</p>
-    <div class="wires"><div>${puz.L.map((c,k)=>`<button data-a="wl" data-v="${k}" type="button" class="wire ${puz.sel===k?'sel':''} ${puz.links[k]!==undefined?'done':''}" style="--c:${c}"></button>`).join('')}</div>
-    <div>${puz.R.map((c,k)=>`<button data-a="wr" data-v="${k}" type="button" class="sock ${Object.values(puz.links).includes(k)?'done':''}" style="--c:${c}"></button>`).join('')}</div></div>
+  if(puz.kind==='wires'){openPanel('puzzle',`${tm}<h2>Kabel verbinden</h2><p class="note">Tippe links ein Kabel und rechts die Buchse, deren <b>Wort</b> die Kabelfarbe nennt – die Schriftfarbe ist eine Falle. Zwei Fehlkontakte lösen Alarm aus${puz.miss?' · <b style="color:#ff4136">1 Fehlkontakt</b>':''}.</p>
+    <div class="wires"><div>${puz.L.map((c,k)=>`<button data-a="wl" data-v="${k}" type="button" class="wire ${puz.sel===k?'sel':''} ${puz.links[k]!==undefined?'done':''}" style="--c:${wc(c).c}"></button>`).join('')}</div>
+    <div>${puz.R.map((c,k)=>`<button data-a="wr" data-v="${k}" type="button" class="sock ${Object.values(puz.links).includes(k)?'done':''}" style="color:${wc(puz.ink[k]).c}">${wc(c).n}</button>`).join('')}</div></div>
     <div class="row"><button class="ghost" data-a="pquit" type="button">Abbrechen</button></div>`,false)}
-  else if(puz.kind==='code'){openPanel('puzzle',`${tm}<h2>Tresorschloss knacken</h2><p class="note">4 Ziffern (1–6). ● richtige Ziffer an richtiger Stelle, ○ richtige Ziffer an falscher Stelle. 7 Versuche.</p>
-    <div class="codehist">${puz.hist.map(h=>`<div><b>${h.g.join(' ')}</b><span>${'●'.repeat(h.b)}${'○'.repeat(h.w)}</span></div>`).join('')}</div>
-    <div class="codein"><b>${(puz.guess.join(' ')+' _ _ _ _').slice(0,7)}</b></div>
-    <div class="keys">${[1,2,3,4,5,6].map(d=>`<button data-a="ck" data-v="${d}" type="button">${d}</button>`).join('')}<button data-a="ck" data-v="del" type="button">⌫</button></div>
+  else if(puz.kind==='code'){
+    const best={};for(const h of puz.hist)h.g.forEach((d,i)=>{const r=h.r[i],o=best[d];if(r==='g'||(r==='y'&&o!=='g')||!o)best[d]=r});
+    const rows=[];for(let k=0;k<7;k++){const h=puz.hist[k];const cur=!h&&k===puz.hist.length;rows.push(`<div class="pinrow">${[0,1,2,3,4].map(i=>h?`<span class="pc r${h.r[i]}">${h.g[i]}</span>`:`<span class="pc ${cur?'cur':''}">${cur&&puz.guess[i]!==undefined?puz.guess[i]:''}</span>`).join('')}</div>`)}
+    openPanel('puzzle',`${tm}<h2>Tresorschloss knacken</h2><p class="note">5-stelliger Code, jede Ziffer höchstens einmal · 7 Versuche. <b style="color:#3ddc84">Grün</b> = richtig, <b style="color:#ffc61a">Gelb</b> = kommt vor, andere Stelle, <b style="color:#8a8f98">Grau</b> = nicht im Code.</p>
+    <div class="pingrid">${rows.join('')}</div>
+    <div class="keys pinkeys">${[1,2,3,4,5,6,7,8,9,0].map(d=>`<button data-a="ck" data-v="${d}" type="button" class="${best[d]?'r'+best[d]:''}">${d}</button>`).join('')}<button data-a="ck" data-v="del" type="button">⌫</button><button data-a="ck" data-v="ok" type="button" class="enter">OK</button></div>
     <div class="row"><button class="ghost" data-a="pquit" type="button">Abbrechen</button></div>`,false)}
   else{openPanel('puzzle',`${tm}<h2>Kamera-Frequenz stören</h2><p class="note">Bring die gelbe Welle mit den Reglern genau über die weiße und halte sie kurz.</p>
     <canvas id="fqCv" width="520" height="160"></canvas>
@@ -232,11 +245,13 @@ function renderPuzzle(){
     <div class="row"><button class="ghost" data-a="pquit" type="button">Abbrechen</button></div>`,false);
     $('fqF').oninput=e=>{puz&&(puz.uf=+e.target.value)};$('fqA').oninput=e=>{puz&&(puz.ua=+e.target.value)}}
 }
-clickers.pquit=()=>{const i=puz?puz.i:null;puz=null;closePanel();if(i!==null)send({k:'hsp',id:heist.id,i,busy:0})};
+clickers.pquit=()=>{const i=puz?puz.i:null;if(puz&&puz.kind==='code')codeSave={hid:heist.id,hist:puz.hist,used:now()-puz.t0};puz=null;closePanel();if(i!==null)send({k:'hsp',id:heist.id,i,busy:0})};
 clickers.wl=v=>{if(!puz)return;puz.sel=+v;renderPuzzle()};
-clickers.wr=v=>{if(!puz||puz.sel===null)return;const k=+v;if(puz.R[k]!==puz.L[puz.sel]){puzzleDone(false);return}puz.links[puz.sel]=k;puz.sel=null;sfx('beep',0.5);if(Object.keys(puz.links).length===puz.L.length)puzzleDone(true);else renderPuzzle()};
-clickers.ck=v=>{if(!puz)return;if(v==='del'){puz.guess.pop();renderPuzzle();return}puz.guess.push(+v);if(puz.guess.length===4){const g=puz.guess,c=puz.code;let b=0,w=0;const cg=[],cc=[];for(let i=0;i<4;i++){if(g[i]===c[i])b++;else{cg.push(g[i]);cc.push(c[i])}}for(const d of cg){const j=cc.indexOf(d);if(j>=0){w++;cc.splice(j,1)}}
-  puz.hist.push({g:g.slice(),b,w});puz.guess=[];if(b===4){puzzleDone(true);return}if(puz.hist.length>=7){puzzleDone(false);return}}renderPuzzle()};
+clickers.wr=v=>{if(!puz||puz.sel===null)return;const k=+v;if(Object.values(puz.links).includes(k))return;if(puz.R[k]!==puz.L[puz.sel]){puz.miss++;sfx('fail',0.6);if(puz.miss>=2){puzzleDone(false);return}puz.sel=null;puz.t0-=4;renderPuzzle();return}puz.links[puz.sel]=k;puz.sel=null;sfx('beep',0.5);if(Object.keys(puz.links).length===puz.L.length)puzzleDone(true);else renderPuzzle()};
+clickers.ck=v=>{if(!puz||puz.kind!=='code')return;if(v==='del'){puz.guess.pop();renderPuzzle();return}
+  if(v==='ok'){if(puz.guess.length<5){toast('Erst 5 Ziffern eingeben');return}const g=puz.guess.slice(),r=scoreCode(g,puz.code);puz.hist.push({g,r});puz.guess=[];
+    if(r.every(x=>x==='g')){puzzleDone(true);return}if(puz.hist.length>=7){toast('Code war '+puz.code.join(''));puzzleDone(false);return}sfx('beep',0.4);renderPuzzle();return}
+  const d=+v;if(puz.guess.length>=5||puz.guess.includes(d))return;puz.guess.push(d);renderPuzzle()};
 function puzzleTick(dt){
   if(!puz)return;const left=puz.T-(now()-puz.t0);if(left<=0){puzzleDone(false);return}
   const k=$('actBox').querySelector('.kicker');if(k)k.textContent=BANK.terms[puz.i].name+' · '+Math.ceil(left)+' s';

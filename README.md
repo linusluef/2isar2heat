@@ -153,6 +153,9 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 - **Getting away:**
   - Patrol cars are no faster than an ordinary saloon. At low wanted levels they chase more cautiously (80 % of their top speed at 1 star, rising to full speed at 4–5 stars), so a sports car, a motorbike or clever driving gets you away.
   - Officers only know where you are while one of them can see you. Once you are out of sight they drive to where you were last seen and then search the streets around it.
+  - **Off the street:** if you were last seen away from the road (a backyard, a park, a square, between buildings), officers get out of their car and search there on foot for about half a minute. They walk to random spots around where you were last seen, not straight to you. If they spot you they chase you, otherwise they go back to their car. Hiding is still possible, but leaving the road is no longer an automatic escape.
+  - Patrol cars no longer wait forever at a dead end. They move on to the next search point.
+  - **Stealing a police car** gives you at least 2 stars straight away, even without witnesses, because the car reports its position.
   - Stay unseen long enough and you lose a star (about 9 seconds at 1 star, 16 seconds at 5 stars).
 - **Health:** you take less damage than before.
 - **Car owners fight back:** when you pull someone out of their car, most run away. About a third get angry, shout and run back after you. If you are still standing or driving slowly when they reach the car, they drag you out and drive off in it themselves. Speed off quickly and they give up.
@@ -161,23 +164,38 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 
 ## Story: Isarfieber
 
-A campaign of 11 story missions in three chapters, with characters, German dialogue and short scenes. Phone booths keep giving smaller side missions in between.
+A campaign of 23 story missions in five chapters, with characters, German dialogue and short scenes. Phone booths keep giving smaller side missions in between.
+
+- **Chapters:**
+  1. Neu in der Stadt
+  2. Der Graf
+  3. Isarfieber
+  4. Die Erbin: Graf's partner Helene Kessler takes over his business and frames Brandl.
+  5. Wiesn-Showdown: the finale on the Theresienwiese.
+- **Saved games continue:** if you already finished chapter 3, the story carries on with chapter 4. Sepp is waiting in the Glockenbachviertel.
 
 - **The characters:**
   - **Sepp:** landlord of the Grüner Hirsch in the Glockenbachviertel.
   - **Vroni:** his niece and a racing driver (Olympiapark, Odeonsplatz, airport).
   - **Memo:** a mechanic on the Giesinger Berg.
-  - **Kommissar Brandl:** a detective at the Chinesischer Turm.
-  - Together they fight the property shark Konrad Graf, who wants Sepp's pub.
+  - **Kommissar Brandl:** a detective at the Chinesischer Turm (in chapter 5 at the Theresienwiese).
+  - **Kathi:** a reporter for the Isar-Kurier, at Marienplatz (chapter 5).
+  - Together they fight the property shark Konrad Graf, who wants Sepp's pub, and later his partner Helene Kessler.
 - **How it works:**
   - **You choose when:** the next story contact is a small orange **★** on the minimap and the big map, with the name above the character. In the mission panel on the right there is a small **★ Story** button. Tap it to switch the route arrow and light beam to the contact on (**★ Navi**), and tap again to switch it off. It is off by default.
   - Walk up (or stop next to them in a car, without wanted stars) and a scene starts: black bars, camera on both of you, the dialogue as text. The dialogue is also read aloud with the iPad's German voice.
   - Tap anywhere or **Weiter ›** to continue. **Überspringen ››** at the top right skips the scene at any time, also during the chapter title. After a failed attempt, going back replays only the last line.
-- **After a mission:** the character calls you, then the next contact appears. Each chapter starts with a title card, and the last mission ends with an epilogue.
+- **After a mission:** the character phones you. A small call box at the top shows the name and the text, and the line is read aloud. The camera stays on you and you keep playing normally. The lines move on by themselves, or tap **›** to speed them up. Then the next contact appears.
+- Each chapter starts with a title card, and the last mission ends with a phone epilogue and an end banner.
 - **New mission types:**
   - **Schatten:** tail a black limousine for 70 seconds. More than 75 m behind for 8 seconds loses it, closer than 13 m for 3.5 seconds and you are spotted, and touching it blows your cover.
   - **Schrottreif:** destroy an armoured transporter with escorts, which has about three times a normal transporter's armour.
   - **Luftpost:** fly the small plane from the airport through 9 rings in the air over the city. Each ring drops leaflets.
+  - **Freibier-Runde / Beweisfotos (several stops):** drive to each stop in turn. For the photos you have to stand still at each address for 3 seconds.
+  - **Kronzeuge / Gefangenentransport (pick-up):** pick someone up by car, then bring them to the hideout. Once they are on board the police come after you (2 or 4 stars), and you have to lose them before the drop-off counts.
+  - **Variations:** a supercar to bring to Memo's workshop in Haidhausen, a race to the Deutsches Museum, a bomb at the Maximilianeum, a reconnaissance flight over Hallbergmoos, a cash transporter and, in the finale, Kessler's armoured SUV with three escorts.
+  - **Tailing:** at the start you get 30 seconds to catch up with the car you have to follow. After that, falling more than 75 m behind for 8 seconds still loses it.
+- **Route arrow:** the yellow arrow above you now always points at the target that is shown. Before, it could point at the previous mission's target, for example on the way to the airport. With **★ Navi** on, the route line on the minimap also leads to the next story contact.
 
 ## Online activities
 
@@ -194,11 +212,12 @@ These work in the global lobby with other players, and alone (offline or nobody 
   Drive onto the start ring with a car or motorbike (not an aircraft) and pick an entry fee. When you race against others, everyone in the lobby gets an invitation and has 30 seconds to drive to the start and join. The winner takes the pot; with 3 or more drivers it is split 65 / 25 / 10 %. Alone it is a time trial for gold, silver or bronze.
 - **Bank heist (vault symbol, the Isarbank in the Altstadt):** up to 4 players.
   1. **Hack:** knock out three security systems around the bank, each with its own puzzle:
-     - connecting wires
-     - matching a radio frequency
-     - cracking the vault code
+     - **Connecting wires (harder):** 6 wires (7 with 3 or more players) and 24 seconds. Each socket shows a colour **word** printed in a different ink colour. The word counts, not the ink. The first wrong contact costs 4 seconds, the second sets off the alarm.
+     - **Matching a radio frequency:** unchanged.
+     - **Cracking the vault code (like Wordle):** a 5-digit code with no repeated digit, 7 tries and 100 seconds. Type 5 digits and tap **OK**. Each digit lights up in place: **green** means right digit in the right place, **yellow** means the digit is in the code but somewhere else, **grey** means it is not in the code. The keypad keeps these colours, so you can see which digits are left. Tap ⌫ to delete a digit.
+       - **Only one chance:** if all 7 tries are used up (or the time runs out), the alarm goes off straight away at 100 % and the lock is broken open by force (✖). The heist goes on, but with 3 stars and a smaller share. Leaving the terminal and coming back keeps the same code, your tries so far and the time left, so you can't get a fresh code by cancelling. The whole crew gets the same code.
 
-     Mistakes raise the alarm.
+     Failing the wires or the frequency raises the alarm by about a third. Three failures set it off.
   2. **Drill:** drill the vault while the police arrive. At least one crew member must stay at the entrance.
   3. **Escape:** grab your share and bring it to the hideout, or lose the police.
 - **Casino (spade symbol, the Spielbank on Leopoldstraße):**
@@ -207,6 +226,7 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - Open tables from other players appear in the casino's list. Tap **Hinsetzen**, and for poker choose your buy-in on the next page.
   - **Joining is reliable:** your device keeps asking the host for a seat until it appears at the table, for up to 12 seconds; if the host never answers, your buy-in is refunded. The host also resends the table state every 2.5 seconds, so a lost message no longer drops anyone.
   - **Fair odds:** cards are shuffled at random and bots only see their own cards. Blackjack uses six decks, the dealer stands on 17, blackjack pays 3:2 and you can double; there is no splitting. With good play you lose about 1 % of your bets over time, a little more than in a real casino because splitting is missing. Losing streaks are normal variance. The poker bots play reasonably: they judge their hand by simulating the rest of the board, and bluff now and then.
+- **Lobby messages:** "Online – globale Lobby" appears once at the start, and "Wieder online" only after more than 10 seconds offline. Each player is announced once when they join. If their connection drops and they come back within 90 seconds, you see "hat die Lobby verlassen" and "ist wieder da" at most once, not a new message every time.
 - **Things to know:** whoever opens a table, race or heist is its host. If the host leaves, the table closes and everyone gets their chips back. The lobby messages are public, so in theory someone could read the poker hole cards.
 
 ## New places
@@ -348,7 +368,7 @@ Settings are on the start screen and in the pause menu:
 | `net.js` | Online lobby (MQTT over WebSocket) |
 | `radio.js` | Car radio with three generated music stations |
 | `activities.js` | Races, bank heist and casino (blackjack, Texas Hold'em), online and offline |
-| `story.js` | Story campaign: characters, contact points, dialogue scenes, chapter cards |
+| `story.js` | Story campaign: characters, contact points, dialogue scenes, phone calls, chapter cards |
 | `account.js`, `config.js` | Accounts and cloud saves (Firebase), save codes |
 | `main.js` | Input (touch, controller, keyboard), sound, HUD, lobby UI |
 | `install.js` | Install screen: on phones and tablets the game only runs from the home screen |

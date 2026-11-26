@@ -182,7 +182,7 @@ function updateHUD(){
     let txt='';
     switch(m.type){
       case'kurier':txt=m.stage?'Liefern: '+m.data.b.name:'Abholen: '+m.data.a.name;break;
-      case'sportwagen':txt=m.stage?'Ab zum Hehler (orange Markierung)':'Schnapp dir den markierten Sportwagen';break;
+      case'sportwagen':txt=m.stage?'Ab zum Ziel: '+(m.data.dest?m.data.dest.name:'Hehler'):'Schnapp dir den markierten Wagen';break;
       case'rennen':txt='Kontrollpunkt '+Math.min(m.cpi+1,m.cps.length)+' von '+m.cps.length;break;
       case'randale':txt=m.count+' von '+m.need+' zerstört';break;
       case'bombe':txt=m.data.armed?'In die Isar damit, schnell!':'Steig in das markierte Auto';break;
@@ -192,7 +192,7 @@ function updateHUD(){
       case'notarzt':txt=(m.stage?'Ab ins Klinikum (Kreuz-Symbol)':'Hol den Verletzten ab – daneben anhalten')+(m.fares?' · '+m.fares+' gerettet · $'+m.earned:'');break;
       case'feuer':{const bc=m.data.burnCar;txt=(bc?'Auto brennt! Ranfahren und WASSER halten · '+Math.max(0,Math.ceil(bc.burn))+'%':'Nächster Einsatz …')+(m.fares?' · '+m.fares+' gelöscht':'');break}
       case'bus':txt=(m.data.hold>0?'Fahrgäste steigen ein …':'Nächste Haltestelle anfahren und halten')+(m.fares?' · '+m.fares+' Halte · $'+m.earned:'');break;
-      case'verfolgung':case'zerstoeren':case'flug':txt=m.data.hud||'';break;
+      case'verfolgung':case'zerstoeren':case'flug':case'abholung':case'tour':txt=m.data.hud||'';break;
       case'bier':txt='Fässer zum '+(m.data.dest?m.data.dest.name:'Wirtshaus')+' – vorsichtig fahren!'+(m.fares?' · '+m.fares+' geliefert':'');break;
     }
     setTxt('mTitle',m.title||TITLES[m.type]);setTxt('mText',txt);
@@ -246,7 +246,7 @@ const ZONE_ICON={werkstatt:'werkstatt',lack:'lack',hehler:'hehler',safe:'safe',k
 /* ---------- GPS route to waypoint or mission target ---------- */
 IH.waypoint=null;let route=null,routeT=0,routeKey='';
 function updateRoute(dt){
-  routeT-=dt;const m=S.mission;const tgt=IH.waypoint||(m.active&&m.tx!==null&&m.tx!==undefined?{x:m.tx,y:m.ty}:null);
+  routeT-=dt;const m=S.mission;const tgt=IH.waypoint||(m.active&&m.tx!==null&&m.tx!==undefined?{x:m.tx,y:m.ty}:null)||(!m.active&&IH.story&&IH.story.target&&IH.story.target())||null;
   if(!tgt||G.state!=='play'){route=null;return}
   const src=P.inCar||P;
   if(IH.waypoint&&hypot(tgt.x-src.x,tgt.y-src.y)<14){IH.waypoint=null;route=null;toast('Wegpunkt erreicht');return}

@@ -265,7 +265,7 @@ function witness(x,y,victim){
 // heat grows slowly: one star = 1.0; caps per offence so that a short rampage stays at 2–3 stars
 function offense(kind,amount,x,y,victim){
   if(G.state!=='play')return;const before=stars();
-  if(kind!=='copcrash'&&kind!=='alarm'){const w=witness(x,y,victim);if(!w)return;if(w==='civ'&&before===0){G.callT=G.callT>0?G.callT:rand(3,6);G.callHeat=Math.max(G.callHeat||0,kind==='carhit'?1.05:1.1);G.callWhy=kind;G.viol+=amount||0;return}}
+  if(kind!=='copcrash'&&kind!=='alarm'&&kind!=='copcar'){const w=witness(x,y,victim);if(!w)return;if(w==='civ'&&before===0){G.callT=G.callT>0?G.callT:rand(3,6);G.callHeat=Math.max(G.callHeat||0,kind==='carhit'?1.05:1.1);G.callWhy=kind;G.viol+=amount||0;return}}
   // escalation budget: refills ~1 star per 22 s, so even a rampage needs well over a minute to reach 5 stars
   const room=Math.min(1.2,(G.heatRoom??0.6)+(G.time-(G.roomT??G.time))/22);G.roomT=G.time;
   const raise=v=>{const inc=Math.min(v,room);G.heatRoom=room-inc;G.heat=Math.min(5.99,G.heat+inc)};
@@ -273,9 +273,10 @@ function offense(kind,amount,x,y,victim){
   if(kind==='copcrash'){if(before===0)G.heat=1.05;else raise(0.25)}
   else if(kind==='carhit'){if(before===0)G.heat=1.05;else raise(0.3)}
   else if(kind==='alarm'){if(before===0&&Math.random()<0.6)G.heat=1.05}
+  else if(kind==='copcar'){if(before<2)G.heat=Math.max(G.heat,2.05);else raise(0.5)}
   else if(kind==='weapon'){G.viol+=amount;if(before===0){if(G.viol>=1.4)G.heat=1.05}else raise(0.14*amount)}
   if(stars()>before)G.heatT=G.time;
-  if(stars()>before){G.lastSeen=0;if(before===0)emit('toast',kind==='alarm'?'Die Polizei hat den Autoalarm gehört':kind==='copcrash'?'Polizeiauto gerammt – du wirst gesucht':kind==='carhit'?'Fußgänger angefahren – du wirst gesucht':'Zu viel Gewalt – die Polizei ist alarmiert')}
+  if(stars()>before){G.lastSeen=0;if(before===0)emit('toast',kind==='alarm'?'Die Polizei hat den Autoalarm gehört':kind==='copcrash'?'Polizeiauto gerammt – du wirst gesucht':kind==='copcar'?'Streifenwagen geklaut – die Polizei ortet dich':kind==='carhit'?'Fußgänger angefahren – du wirst gesucht':'Zu viel Gewalt – die Polizei ist alarmiert')}
 }
 function damageCar(c,amt,byPlayer){
   if(c.dead||amt<=0)return;c.hp-=amt;
@@ -406,7 +407,11 @@ function copPedAI(p,dt){
   if(p.home&&(p.home.dead||p.home.driver==='player'||!cars.includes(p.home)))p.home=null;
   if(stars()===0||G.state!=='play'){
     if(p.home){goHome(p,dt)}else{const fd=hypot(p.x-player.x,p.y-player.y);if(fd>60)p.alive=false;else civSteer(p,dt)}return}
-  if(p.home&&d>34){goHome(p,dt);return}
+  const sees=d<32&&hasLOS(p.x,p.y,tgt.x,tgt.y),known=sees||(G.sightT||0)<1.5;
+  if(!known&&p.searchT!==undefined){p.searchT-=dt;if(p.searchT<=0&&p.home){goHome(p,dt);return}
+    p.spT=(p.spT||0)+dt;if(!p.sp||p.spT>7||hypot(p.sp.x-p.x,p.sp.y-p.y)<2.5){p.spT=0;const a=rand(0,Math.PI*2),r=rand(4,26);p.sp={x:(G.lkx||p.x)+Math.cos(a)*r,y:(G.lky||p.y)+Math.sin(a)*r}}
+    const sx=p.sp.x-p.x,sy=p.sp.y-p.y,sd=hypot(sx,sy)||1;slide(p,sx/sd*p.spd*0.7*dt,sy/sd*p.spd*0.7*dt);p.a=Math.atan2(sy,sx);return}
+  if(p.home&&d>(p.searchT!==undefined?80:34)){goHome(p,dt);return}
   const reach=player.inCar?player.inCar.t.wid/2+1.4:1.2;
   if(d>reach-0.2)slide(p,dx/d*p.spd*dt,dy/d*p.spd*dt);
   p.fireCD-=dt;
@@ -668,6 +673,7 @@ const input=IH.input={mx:0,my:0,mm:0,gas:false,brake:false,hb:false,fire:false,e
 function joyWorld(){const y=IH.cam.yaw||0;const c=Math.cos(y),s=Math.sin(y);return{x:c*input.mx-s*input.my,y:s*input.mx+c*input.my}}
 function kbActive(){const k=input.kb;return k.KeyW||k.KeyA||k.KeyS||k.KeyD||k.ArrowUp||k.ArrowDown||k.ArrowLeft||k.ArrowRight}
 function updatePlayer(dt){
+  {const c=player.inCar;if(c&&c!==player.lastCar&&(c.cop||c.type==='polizei'||c.type==='polsuv')&&!c.copStolen&&G.state==='play'){c.copStolen=true;offense('copcar',0,c.x,c.y)}player.lastCar=c}
   if(G.cut){player.vx=player.vy=0;player.spdNow=0;const c=player.inCar;if(c){c.vx*=Math.exp(-4*dt);c.vy*=Math.exp(-4*dt);c.vf=(c.vf||0)*Math.exp(-4*dt)}return}   // story scene playing
   player.fireCD-=dt;player.stun-=dt;player.hitFlash-=dt;player.punch-=dt;
   if(input.enterQ){input.enterQ=false;enterExit()}
@@ -844,6 +850,7 @@ function aiDrive(c,dt){
 }
 // chase speed by wanted level (share of the patrol car's top speed): low levels are easier to outrun
 const CHASE=[0.8,0.82,0.88,0.94,1,1];
+function offStreet(x,y){const t=at(x,y);return t!==TY.ROAD&&t!==TY.BRIDGE}
 function copDrive(c,dt){
   const tgt=player.inCar||player;const dx=tgt.x-c.x,dy=tgt.y-c.y,d=hypot(dx,dy);
   c.losT-=dt;if(c.losT<=0){const env=IH.env||{night:0,rain:0};c.los=d<70-22*env.night-12*env.rain&&hasLOS(c.x,c.y,tgt.x,tgt.y);c.losT=0.25}
@@ -865,8 +872,13 @@ function copDrive(c,dt){
     // without sight of you they only know where you were last seen: drive there, then search the streets around it
     c.replan-=dt;const known=(G.sightT||0)<1.5;let gx=known?tgt.x:G.lkx,gy=known?tgt.y:G.lky;
     if(!known){if(c.search&&hypot(c.x-c.search.x,c.y-c.search.y)>25){gx=c.search.x;gy=c.search.y}else if(hypot(c.x-G.lkx,c.y-G.lky)<30||c.search){const a=rand(0,Math.PI*2),r=rand(40,130);c.search={x:G.lkx+Math.cos(a)*r,y:G.lky+Math.sin(a)*r};gx=c.search.x;gy=c.search.y;c.replan=0}}else c.search=null;
+    // you were last seen off the street (park, courtyard, plaza…): officers get out and search there on foot
+    if(!known&&!c.footDone&&hypot(c.x-G.lkx,c.y-G.lky)<(Math.abs(vf)<2?120:45)&&Math.abs(vf)<7&&offStreet(G.lkx,G.lky)&&countCopPeds()<4+stars()){c.footDone=true;let n=0;
+      for(let i=0;i<2;i++){const side=i?1:-1,ca=Math.cos(c.a),sa=Math.sin(c.a);const x=c.x-sa*side*(c.t.wid/2+0.9),y=c.y+ca*side*(c.t.wid/2+0.9);if(pedBlocked(x,y,false))continue;const q=makePed(x,y,'cop');q.state='chase';q.home=c;q.searchT=28;peds.push(q);n++}
+      if(n){c.copsOut=n;c.driver='copIdle';c.exitCD=10;sfx('door',0.6,c.x,c.y);driveCar(c,0,0,true,dt);return}}
+    if(!known&&Math.abs(vf)<1){c.idleT=(c.idleT||0)+dt;if(c.idleT>4){c.idleT=0;const a=rand(0,Math.PI*2),r=rand(60,160);c.search={x:G.lkx+Math.cos(a)*r,y:G.lky+Math.sin(a)*r};gx=c.search.x;gy=c.search.y;c.replan=0}}else c.idleT=0;   // waiting at a dead end: move on to another search point
     if(c.mode!=='nav'||c.replan<=0||!c.q.length){snapToRoad(c,gx,gy);c.mode='nav';c.replan=known?2.5:4}
-    const st=followQueue(c);if(!st){driveCar(c,0,0,true,dt);return}
+    const st=followQueue(c);if(!st){if(!known){const a=rand(0,Math.PI*2),r=rand(40,130);c.search={x:G.lkx+Math.cos(a)*r,y:G.lky+Math.sin(a)*r};c.replan=0}driveCar(c,0,0,true,dt);return}   // end of the road near the spot: pick the next search point instead of waiting there
     steer=steerTo(c,st.tx,st.ty);target=c.t.max*(known?0.86:0.62)*(1-Math.min(0.6,st.bend*0.75));
     target=Math.min(target,obstacleLimit(c,10,true)+7);
   }
@@ -961,7 +973,57 @@ const STORY=[
   {type:'flucht',title:'Fünf Sterne',stars:5,time:160,pay:5000,intro:'Die ganze Stadt jagt dich. Häng die Polizei ab!',
    story:{ch:3,npc:'brandl',at:'Chinesischer Turm',
     pre:[['brandl','Graf ist durchgedreht. Er hat seine gekauften Leute auf Sie angesetzt – die ganze Stadt sucht Sie.'],['brandl','Ich brauche ein paar Minuten, um den Haftbefehl durchzubringen. Überleben Sie bis dahin – und hängen Sie sie ab!']],
-    post:[['brandl','Konrad Graf ist verhaftet. Bestechung, Erpressung, versuchter Anschlag. Das reicht für viele Jahre.'],['sepp','Der Grüne Hirsch bleibt! Und für di gibt’s ab heut Freibier – auf Lebenszeit!'],['vroni','Und wennst wieder a Rennen brauchst – du woaßt, wo d’ mi findst.'],['memo','Und wenn das Auto kaputt ist: Giesing. Werkstatt. Wie immer.']],end:true}},
+    post:[['brandl','Konrad Graf ist verhaftet. Bestechung, Erpressung, versuchter Anschlag. Das reicht für viele Jahre.'],['sepp','Der Grüne Hirsch bleibt! Und für di gibt’s ab heut Freibier – auf Lebenszeit!'],['sepp','Schau in a paar Tag wieder im Glockenbachviertel vorbei. Mir feiern!']]}},
+  // ---------- Kapitel 4 · Die Erbin ----------
+  {type:'tour',title:'Freibier-Runde',stops:[[600,650,'Hofbräuhaus'],[398,648,'Augustiner'],[655,312,'Chinesischer Turm']],r:12,verb:'Lieferung',done:'Fassl abgeliefert!',time:280,pay:1200,intro:'Bring je ein Fass Freibier zum Hofbräuhaus, zum Augustiner und zum Chinesischen Turm.',
+   story:{ch:4,npc:'sepp',at:'Glockenbachviertel',
+    pre:[['sepp','Ja da schau her! A Wochn is jetzt her, dass da Graf hinter Gittern sitzt.'],['sepp','Der Hirsch is jeden Abend voll bis auf’n letzten Platz. Des muss g’feiert wer’n!'],['sepp','I spendier drei Wirtschaften a Fassl Freibier: Hofbräuhaus, Augustiner und Chinesischer Turm. Fahr’s vorbei, sei so guad.']],
+    post:[['sepp','Du, grad is a Brief kemma. Von ana Helene Kessler – Kessler Immobilien.'],['sepp','Sie schreibt, sie hat dem Graf seine Firma übernommen. Und mei Pachtvertrag läuft Ende vom Monat aus!'],['sepp','Des gibt’s doch ned … Red amal mit’m Memo, der kennt jeden in dera Stadt.']]}},
+  {type:'verfolgung',title:'Die Erbin',car:'limousine',color:'#e9e4d6',label:'M-HK 7',follow:80,time:150,pay:1800,intro:'Folge Helene Kesslers weißer Limousine. Dranbleiben, aber nicht zu nah!',
+   story:{ch:4,npc:'memo',at:'Giesinger Berg',
+    pre:[['memo','Helene Kessler. Grafs Geschäftspartnerin – und angeblich das Hirn hinter allem.'],['memo','Graf war laut. Sie ist leise. Das macht sie gefährlicher.'],['memo','Ihr weißer Wagen ist gerade hier in der Gegend unterwegs. Häng dich dran und schau, wohin sie fährt.']],
+    post:[['memo','Sie war bei einer Lagerhalle draußen in Hallbergmoos. Mehr konnte ich nicht sehen.'],['memo','Wir brauchen einen Peilsender an ihrem Auto. Komm wieder vorbei, ich hab da eine Idee.']]}},
+  {type:'sportwagen',title:'Die Wanze',car:'super',near:[440,212],color:'#e9e4d6',dest:'Werkstatt Haidhausen',time:240,pay:2000,intro:'Hol Kesslers weißen Supersportwagen bei der BMW-Welt und bring ihn in Memos Werkstatt in Haidhausen.',
+   story:{ch:4,npc:'memo',at:'Giesinger Berg',
+    pre:[['memo','Kessler hat einen zweiten Wagen. Weißer Supersportler, steht bei der BMW-Welt.'],['memo','Bring ihn in meine Werkstatt nach Haidhausen. Ich bau einen Peilsender ein, und morgen steht er wieder da, als wäre nichts gewesen.'],['memo','Und wehe, da ist ein Kratzer dran!']],
+    post:[['memo','Peilsender sitzt. Ab jetzt wissen wir immer, wo Kessler hinfährt.'],['memo','Ach ja – Brandl will dich sprechen. Am Chinesischen Turm, wie immer.']]}},
+  {type:'abholung',title:'Kronzeuge',who:'Moser',from:'Hauptbahnhof',toZone:'Versteck Giesing',heat:2,shirt:'#6d5a3d',hair:'#6b6b6b',onBoard:'Moser ist drin – und die gekaufte Polizei hat euch gesehen!',time:260,pay:2200,intro:'Hol den Buchhalter Moser am Hauptbahnhof ab und bring ihn ins Versteck nach Giesing.',
+   story:{ch:4,npc:'brandl',at:'Chinesischer Turm',
+    pre:[['brandl','Grafs Buchhalter, Ferdinand Moser, will auspacken. Er kommt gleich mit dem Zug am Hauptbahnhof an.'],['brandl','Ins Präsidium kann ich ihn nicht bringen – dort hat Kessler Ohren.'],['brandl','Fahren Sie ihn ins Versteck nach Giesing. Und rechnen Sie damit, dass Sie nicht der Einzige sind, der auf ihn wartet.']],
+    post:[['brandl','Moser redet. Kessler hat Grafs Geld über Scheinfirmen und die Wiesn gewaschen – Millionen.'],['brandl','Mehr sage ich am Telefon nicht. Die Vroni hat übrigens auch etwas herausgefunden.']]}},
+  {type:'rennen',title:'Isar-Sprint',to:'Deutsches Museum',time:110,pay:1800,intro:'Rennen gegen Kesslers Fahrer: so schnell wie möglich zum Deutschen Museum.',
+   story:{ch:4,npc:'vroni',at:'Olympiapark',
+    pre:[['vroni','Die Kessler hat an Fahrer, der für sie Bargeld durch d’ Stadt kutschiert. Und der Depp prahlt, er wär der Schnellste in München.'],['vroni','Er hat mi herausg’fordert – aber i hab g’sagt, du fahrst für mi.'],['vroni','Vom Olympiapark bis zum Deutschen Museum. Wer verliert, verrät, wo Kesslers Geld liegt.']],
+    post:[['vroni','Haha! Er hat’s zugeb’n müssen: Kesslers Bargeld liegt in a Lagerhalle in Hallbergmoos.'],['vroni','Und no was: Morgen passiert irgendwas am Maximilianeum. Sag’s dem Brandl!']]}},
+  {type:'bombe',title:'Landtagsbombe',near:[864,640],time:60,pay:2600,intro:'Steig in den Wagen mit der Bombe am Maximilianeum und versenk ihn in der Isar.',
+   story:{ch:4,npc:'brandl',at:'Chinesischer Turm',
+    pre:[['brandl','Mosers Aussage soll morgen im Landtag verlesen werden. Kessler wird das verhindern wollen.'],['brandl','Vor dem Maximilianeum steht ein Wagen, der da nicht hingehört. Mein Bauch sagt: Sprengstoff.'],['brandl','Sie wissen ja, wie das geht. Ab in die Isar damit – und dann nichts wie raus.']],
+    post:[['brandl','Gerettet. Gute Arbeit … Moment. Da stehen Kollegen vor meiner Tür.'],['brandl','Sie sagen, sie hätten den Zünder in meinem Dienstwagen gefunden. Kessler hat mich reingelegt!'],['brandl','Sie verhaften mich. Gehen Sie zu Memo – und trauen Sie niemandem!']]}},
+  // ---------- Kapitel 5 · Wiesn-Showdown ----------
+  {type:'abholung',title:'Gefangenentransport',who:'Brandl',from:'Marienplatz',toZone:'Versteck Giesing',heat:4,shirt:'#55595f',hair:'#2e2e2e',onBoard:'Brandl ist frei – das halbe Präsidium ist hinter euch her!',time:280,pay:3000,intro:'Hol Brandl am Marienplatz ab, häng die Polizei ab und bring ihn ins Versteck nach Giesing.',
+   story:{ch:5,npc:'memo',at:'Giesinger Berg',
+    pre:[['memo','Sie haben Brandl ins Präsidium in der Ettstraße gebracht. Morgen kommt er nach Stadelheim.'],['memo','Ein Kumpel von mir fährt den Gefangenentransport. Er „verfährt“ sich zufällig am Marienplatz und lässt die Tür offen.'],['memo','Hol Brandl dort ab und bring ihn ins Versteck. Das wird laut.']],
+    post:[['brandl','Danke. Ich schulde Ihnen mehr als ein Bier.'],['brandl','Ich bin jetzt offiziell auf der Flucht. Die Vroni will Ihnen etwas zeigen – am Flughafen.']]}},
+  {type:'flug',title:'Luftaufklärung',rings:[[1560,200,50],[1700,400,60],[1690,520,45],[1580,620,55],[1440,560,80],[1560,440,60],[1620,300,50]],time:220,pay:3200,intro:'Flieg mit dem Kleinflugzeug über Kesslers Lager in Hallbergmoos – durch alle Ringe.',
+   story:{ch:5,npc:'vroni',at:'Flughafen München',
+    pre:[['vroni','Mir brauchen Beweise, dass des Geld wirklich in dera Lagerhalle in Hallbergmoos liegt.'],['vroni','Vom Boden aus kimmst ned ran – Zaun, Hunde, Kameras. Aber von oben …'],['vroni','D’ Kamera is im Kleinflugzeug eingebaut. Flieg durch alle Ringe, dann ham ma jeden Winkel.']],
+    post:[['vroni','D’ Fotos san g’stochen scharf: a ganze Halle voller Geldkisten!'],['vroni','Und auf oam Foto sieht ma an weißen Transporter, der grad losfahrt. Ruf glei den Memo an!']]}},
+  {type:'zerstoeren',title:'Geldregen',car:'transporter',color:'#e9e4d6',label:'KESSLER',armor:3.6,escorts:3,what:'Geldtransporter',time:170,pay:3500,intro:'Zerstör Kesslers Geldtransporter samt Begleitschutz.',
+   story:{ch:5,npc:'memo',at:'Giesinger Berg',
+    pre:[['memo','Kessler schafft ihr Geld weg, bevor jemand nachschaut. Weißer Transporter, drei Begleitwagen.'],['memo','Wenn der Transporter hochgeht, fliegen die Scheine über halb München – dann kann sie nichts mehr verstecken.'],['memo','Los, bevor er auf der Autobahn ist!']],
+    post:[['memo','Es regnet Geldscheine! Die Leute sammeln, die Presse filmt – das kann Kessler nicht mehr leugnen.'],['memo','Eine Reporterin hat nach dir gefragt. Kathi vom Isar-Kurier. Sie wartet am Marienplatz.']]}},
+  {type:'tour',title:'Beweisfotos',stops:['Westend','Haidhausen','Bogenhausen'],hold:3,r:14,verb:'Foto',done:'Foto im Kasten!',time:280,pay:2400,intro:'Fotografiere Kesslers Briefkastenfirmen: an jeder Adresse drei Sekunden anhalten.',
+   story:{ch:5,npc:'kathi',at:'Marienplatz',
+    pre:[['kathi','Kathi Huber, Isar-Kurier. Ich recherchiere seit Monaten über Kessler Immobilien.'],['kathi','Brandl hat mir drei Adressen gegeben – Briefkastenfirmen im Westend, in Haidhausen und in Bogenhausen.'],['kathi','Fahr hin, halt an und mach Fotos von den Firmenschildern. Ohne Bilder druckt mein Chef keine Zeile.']],
+    post:[['kathi','Perfekt! Die Geschichte kommt morgen auf die Titelseite.'],['kathi','Aber Kessler hat Wind davon bekommen. Sie will heute Nacht verschwinden. Komm zurück zum Marienplatz!']]}},
+  {type:'verfolgung',title:'Letzte Ausfahrt',car:'limousine',color:'#e9e4d6',label:'M-HK 7',follow:95,time:170,pay:2800,intro:'Brandls Peilsender piept: Folge Kessler unauffällig zu ihrem Treffpunkt.',
+   story:{ch:5,npc:'kathi',at:'Marienplatz',
+    pre:[['kathi','Kesslers Limousine ist unterwegs – der Peilsender piept wie verrückt.'],['kathi','Bleib an ihr dran, bis sie ihre Leute trifft. Nur so wissen wir, wo die Übergabe stattfindet.'],['kathi','Und denk dran: Wenn sie dich bemerkt, ist sie weg.']],
+    post:[['brandl','Ich habe alles mitgehört. Sie trifft ihre Leute auf der Theresienwiese.'],['brandl','Kommen Sie zur Theresienwiese. Wir beenden das – heute noch.']]}},
+  {type:'zerstoeren',title:'Wiesn-Showdown',car:'suv',color:'#e9e4d6',label:'KESSLER',armor:4.5,escorts:3,fast:1.25,what:'Kesslers SUV',time:190,pay:8000,intro:'Stoppe Helene Kesslers gepanzerten SUV, bevor sie entkommt.',
+   story:{ch:5,npc:'brandl',at:'Theresienwiese',
+    pre:[['brandl','Da drüben, der weiße SUV. Kessler sitzt drin – gepanzert, mit Begleitschutz.'],['brandl','Meine ehrlichen Kollegen sperren die Autobahn zum Flughafen. Sie müssen den Wagen nur stoppen.'],['brandl','Für den Grünen Hirsch. Für München. Los!']],
+    post:[['brandl','Helene Kessler ist festgenommen. Mosers Aussage, Kathis Fotos, das Geld auf der Straße – das reicht für den Rest ihres Lebens.'],['brandl','Und ich bin wieder im Dienst. Ab Montag leite ich die Kripo.'],['kathi','Titelseite morgen: „Der Schatten von München“. Rat mal, wer gemeint ist.'],['sepp','Und der Grüne Hirsch g’hört jetzt mir – gekauft, ned g’pachtet! Dei Freibier gilt ab sofort doppelt.'],['vroni','Und wennst wieder a Rennen brauchst – du woaßt, wo d’ mi findst.'],['memo','Und wenn das Auto kaputt ist: Giesing. Werkstatt. Wie immer.']],end:true}},
 ];
 const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},count:0,need:0,cps:null,cpi:0,tx:null,ty:null,pay:0,
   next(){return G.story<STORY.length?STORY[G.story]:null},
@@ -972,24 +1034,26 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
     else if(def.type==='sportwagen'){
       let slot=null,bd=1e9;for(const l of W.lots){if(W.zones.some(z=>z.lot===l))continue;const d=hypot(l.cx-def.near[0],l.cy-def.near[1]);if(d<bd&&l.slots.length){bd=d;slot=l.slots[Math.floor(l.slots.length/2)]}}
       if(slot&&slot.car){const i=cars.indexOf(slot.car);if(i>=0)cars.splice(i,1);slot.car=null}
-      const c=makeCar('sport',slot.x,slot.y,slot.a,{parked:true,color:def.color,mission:true});cars.push(c);if(slot)slot.car=c;m.data.car=c;m.data.dest=W.zones.find(z=>z.kind==='hehler');
+      const c=makeCar(def.car||'sport',slot.x,slot.y,slot.a,{parked:true,color:def.color,mission:true});if(def.label)c.label=def.label;cars.push(c);if(slot)slot.car=c;m.data.car=c;m.data.dest=W.zones.find(z=>def.dest?z.name===def.dest:z.kind==='hehler');
     }
     else if(def.type==='rennen'){
       let pts;
       if(def.route==='ring'){const rp=W.roadPts('Altstadtring');let bi=0,bd=1e9;rp.forEach((p,i)=>{const d=hypot(p[0]-player.x,p[1]-player.y);if(d<bd){bd=d;bi=i}});pts=rp.slice(bi).concat(rp.slice(1,bi+1));m.cps=sampleRoute(pts,95);m.cps.push({x:pts[0][0],y:pts[0][1]})}
       else if(def.route==='arena'){m.cps=[{x:520,y:334},{x:520,y:262},{x:521,y:180},{x:522,y:118},{x:620,y:110},{x:740,y:110},{x:860,y:110},{x:960,y:111},{x:1002,y:112}]}
-      else{const to=def.toPlace;const p=astar(nearestNodeTo(player.x,player.y),nearestNodeTo(to.x,to.y));m.cps=p?sampleRoute(pathPolyline(p),120):[{x:to.x,y:to.y}];m.cps.push({x:to.x,y:to.y})}
+      else{const to=def.toPlace||placeBy(def.to);const p=astar(nearestNodeTo(player.x,player.y),nearestNodeTo(to.x,to.y));m.cps=p?sampleRoute(pathPolyline(p),120):[{x:to.x,y:to.y}];m.cps.push({x:to.x,y:to.y})}
       const d0=hypot(m.cps[0].x-player.x,m.cps[0].y-player.y);m.time+=d0/14;
     }
     else if(def.type==='randale'){}
-    else if(def.type==='bombe'){const ne=W.nearestEdge(W.RB.x,W.RB.y+45,40);const p=lanePt(ne.e,true,0,ne.s);const c=makeCar('limousine',p.x,p.y,Math.atan2(p.ty,p.tx),{parked:true,color:'#5a5f66',mission:true});c.bomb=true;cars.push(c);m.data.car=c;m.data.armed=false}
-    else if(def.type==='fluchtwagen'){const b=W.nearestEdge(526,410,30);m.data.bank={x:528,y:410};m.data.dest=W.zones.find(z=>z.kind==='safe');void b}
+    else if(def.type==='bombe'){const ne=W.nearestEdge(def.near?def.near[0]:W.RB.x,def.near?def.near[1]:W.RB.y+45,40);const p=lanePt(ne.e,true,0,ne.s);const c=makeCar('limousine',p.x,p.y,Math.atan2(p.ty,p.tx),{parked:true,color:'#5a5f66',mission:true});c.bomb=true;cars.push(c);m.data.car=c;m.data.armed=false}
+    else if(def.type==='fluchtwagen'){const b=W.nearestEdge(526,410,30);m.data.bank={x:528,y:410};m.data.heat=def.heat||3.2;m.data.dest=W.zones.find(z=>z.kind==='safe');void b}
     else if(def.type==='flucht'){G.heat=Math.max(G.heat,(def.stars||3)+0.2);m.data.t0=G.time}
-    else if(def.type==='verfolgung'){const c=spawnAI('limousine',player.x,player.y,70,150,{color:'#121317',label:'M-KG 1'});if(!c){m.active=false;emit('toast','Gerade kein Ziel in Sicht – versuch’s gleich nochmal');return}c.cruise*=1.05;m.data.car=c;m.data.prog=0;m.data.lost=0;m.data.close=0;m.need=def.follow;m.data.hp0=c.hp}
-    else if(def.type==='zerstoeren'){const c=spawnAI('transporter',player.x,player.y,110,220,{color:'#2b2d31',label:'GRAF'});if(!c){m.active=false;emit('toast','Der Transporter ist noch nicht unterwegs – gleich nochmal');return}c.maxHp=c.hp=Math.round(c.maxHp*3.2);c.cruise*=1.2;m.data.car=c;
-      for(let i=0;i<2;i++){const e=spawnAI('suv',c.x,c.y,8,25,{color:'#17181b'});if(e)e.mission=true}}
+    else if(def.type==='verfolgung'){const c=spawnAI(def.car||'limousine',player.x,player.y,70,150,{color:def.color||'#121317',label:def.label||'M-KG 1'});if(!c){m.active=false;emit('toast','Gerade kein Ziel in Sicht – versuch’s gleich nochmal');return}c.cruise*=1.05;m.data.car=c;m.data.prog=0;m.data.lost=0;m.data.close=0;m.need=def.follow;m.data.hp0=c.hp}
+    else if(def.type==='zerstoeren'){const c=spawnAI(def.car||'transporter',player.x,player.y,110,220,{color:def.color||'#2b2d31',label:def.label||'GRAF'});if(!c){m.active=false;emit('toast','Das Ziel ist noch nicht unterwegs – gleich nochmal');return}c.maxHp=c.hp=Math.round(c.maxHp*(def.armor||3.2));c.cruise*=def.fast||1.2;m.data.car=c;m.data.what=def.what||'Transporter';
+      for(let i=0;i<(def.escorts===undefined?2:def.escorts);i++){const e=spawnAI('suv',c.x,c.y,8,25,{color:'#17181b'});if(e)e.mission=true}}
     else if(def.type==='flug'){const A=W.airport;const f=A.flyable.find(q=>q.type==='cessna');let c=cars.find(q=>q.type==='cessna'&&!q.dead&&hypot(q.x-f.x,q.y-f.y)<30&&!q.driver);if(!c){c=makeCar('cessna',f.x,f.y,f.a,{parked:true,liv:'bavaria'});cars.push(c)}c.mission=true;m.data.car=c;
-      m.data.rings=[[1520,190,55],[1330,240,70],[1130,180,75],[1010,112,60],[820,230,80],[650,300,70],[530,320,60],[430,230,85],[336,200,110]];m.cpi=0;m.need=m.data.rings.length}
+      m.data.rings=def.rings?def.rings.map(r=>r.slice()):[[1520,190,55],[1330,240,70],[1130,180,75],[1010,112,60],[820,230,80],[650,300,70],[530,320,60],[430,230,85],[336,200,110]];m.cpi=0;m.need=m.data.rings.length}
+    else if(def.type==='abholung'){const a=placeBy(def.from),z=def.to?placeBy(def.to):null;m.data.a=a;m.data.dest=z?{x:z.x,y:z.y,r:9,name:z.name}:W.zones.find(q=>q.name===def.toZone);m.tx=a.x;m.ty=a.y}
+    else if(def.type==='tour'){m.data.stops=def.stops.map(n=>{const p=typeof n==='string'?placeBy(n):{x:n[0],y:n[1],name:n[2]};return{x:p.x,y:p.y,name:p.name}});m.cpi=0;m.need=m.data.stops.length;m.data.hold=0;const s0=m.data.stops[0];m.tx=s0.x;m.ty=s0.y}
     else if(def.type==='taxi'){m.stage=0;m.fares=0;taxiNext()}
     else if(JOB_TYPES.includes(def.type)){m.stage=0;m.fares=0;m.earned=0;jobNext()}
     emit('mission',def.title,def.intro||'');
@@ -1020,19 +1084,34 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
         break}
       case'fluchtwagen':{
         if(m.stage===0){m.tx=m.data.bank.x;m.ty=m.data.bank.y;if(pc&&hypot(pc.x-m.tx,pc.y-m.ty)<10&&speed<2){m.stage=1;m.data.crew=[];for(let i=0;i<2;i++){const s=walkPointNear(m.tx,m.ty,3,8)||{x:m.tx+2,y:m.ty};const p=makePed(s.x,s.y,'civ');p.shirt='#1b1b1b';p.state='board';p.target=pc;peds.push(p);m.data.crew.push(p)}emit('toast','Die zwei kommen raus. Warte kurz!')}}
-        else if(m.stage===1){if(!pc){m.fail('Ohne Fluchtwagen geht’s nicht.');return}for(const p of m.data.crew)p.target=pc;if(m.data.crew.every(p=>p.boarded)){m.stage=2;G.heat=Math.max(G.heat,3.2);G.lastSeen=0;emit('toast','Alle drin – Polizei alarmiert!')}}
+        else if(m.stage===1){if(!pc){m.fail('Ohne Fluchtwagen geht’s nicht.');return}for(const p of m.data.crew)p.target=pc;if(m.data.crew.every(p=>p.boarded)){m.stage=2;G.heat=Math.max(G.heat,m.data.heat);G.lastSeen=0;emit('toast','Alle drin – Polizei alarmiert!')}}
         else{const z=m.data.dest;m.tx=z.x;m.ty=z.y;if(pc&&hypot(pc.x-z.x,pc.y-z.y)<z.r&&speed<2.5){if(stars()>0){if(!m.data.warned){m.data.warned=true;emit('toast','Erst die Polizei abhängen!')}}else m.win()}}
         break}
       case'flucht':if(stars()===0&&G.time-m.data.t0>5)m.win();break;
+      case'abholung':{const d=m.data,def=d.def;
+        if(m.stage===0){m.tx=d.a.x;m.ty=d.a.y;d.hud='Hol '+def.who+' am '+d.a.name+' ab';
+          if(hypot(px-d.a.x,py-d.a.y)<12){if(!pc){if(!d.warned){d.warned=true;emit('toast','Du brauchst ein Auto für '+def.who)}break}
+            if(speed<2){m.stage=1;const s0=walkPointNear(d.a.x,d.a.y,3,7)||{x:d.a.x+2,y:d.a.y};const p=makePed(s0.x,s0.y,'civ');if(def.shirt)p.shirt=def.shirt;if(def.hair)p.hair=def.hair;p.npc=true;p.state='board';p.target=pc;peds.push(p);d.crew=[p];emit('toast',def.who+' steigt ein – kurz warten')}}}
+        else if(m.stage===1){const p=d.crew[0];if(p.boarded){m.stage=2;if(def.heat){G.heat=Math.max(G.heat,def.heat+0.2);G.lastSeen=0}emit('toast',def.onBoard||(def.who+' ist an Bord'))}
+          else if(!p.alive){m.fail(def.who+' hat es nicht geschafft.');return}
+          else if(!pc){p.state='idle';p.target=null;d.hud=def.who+' wartet auf ein Auto'}else{p.state='board';p.target=pc;d.hud=def.who+' steigt ein …'}}
+        else{const z=d.dest;m.tx=z.x;m.ty=z.y;d.hud=def.who+' an Bord · Ziel: '+(z.name||'')+(stars()?' · erst Polizei abhängen':'');if(!pc){m.fail(def.who+' ist ohne Fahrer aufgeschmissen.');return}
+          if(hypot(pc.x-z.x,pc.y-z.y)<z.r+2&&speed<2.5){if(stars()>0){if(!d.warned2){d.warned2=true;emit('toast','Erst die Polizei abhängen!')}}else{const e=walkPointNear(pc.x,pc.y,2,6);if(e){const q=makePed(e.x,e.y,'civ');if(def.shirt)q.shirt=def.shirt;if(def.hair)q.hair=def.hair;peds.push(q)}sfx('door');m.win()}}}
+        break}
+      case'tour':{const d=m.data,def=d.def,st=d.stops[m.cpi];m.tx=st.x;m.ty=st.y;const hold=def.hold||0;
+        d.hud=(def.verb||'Station')+' '+(m.cpi+1)+'/'+m.need+': '+st.name+(hold&&d.hold>0?' · '+Math.ceil((hold-d.hold)*10)/10+' s':'');
+        if(hypot(px-st.x,py-st.y)<(def.r||10)&&(!pc||speed<(hold?1.5:6))){d.hold+=dt;if(d.hold>=hold){d.hold=0;m.cpi++;sfx('pick');emit('toast',def.done||'Erledigt!');if(def.addTime)m.time+=def.addTime;if(m.cpi>=m.need){m.win();return}}}else d.hold=Math.max(0,d.hold-dt*2);
+        break}
       case'verfolgung':{const c=m.data.car;if(!c||c.dead||!cars.includes(c)){m.fail('Die Limousine ist weg.');return}
         if(c.hp<m.data.hp0-3||c.flee){m.fail('Aufgeflogen! Graf hat dich bemerkt.');return}
         m.tx=c.x;m.ty=c.y;const d=hypot(c.x-px,c.y-py);
-        if(d>75){m.data.lost+=dt;if(m.data.lost>8){m.fail('Du hast ihn aus den Augen verloren.');return}m.data.hud='Zu weit weg – aufholen! ('+Math.ceil(8-m.data.lost)+' s)'}
+        const lim=m.data.seen?8:30;if(d<=75)m.data.seen=true;
+        if(d>75){m.data.lost+=dt;if(m.data.lost>lim){m.fail('Ziel aus den Augen verloren.');return}m.data.hud=(m.data.seen?'Zu weit weg – aufholen! (':'Fahr zum markierten Wagen (')+Math.ceil(lim-m.data.lost)+' s)'}
         else if(d<13){m.data.close+=dt;if(m.data.close>3.5){c.flee=true;m.fail('Zu nah – Graf hat dich bemerkt!');return}m.data.hud='Zu nah! Abstand halten!';m.data.lost=0}
         else{m.data.lost=0;m.data.close=Math.max(0,m.data.close-dt);m.data.prog+=dt;m.data.hud='Dranbleiben: '+Math.floor(m.data.prog)+' / '+m.need+' s';if(m.data.prog>=m.need){c.mission=false;m.win()}}
         m.time=Math.max(m.time,m.need-m.data.prog+10);break}
-      case'zerstoeren':{const c=m.data.car;if(!c||!cars.includes(c)){m.fail('Der Transporter ist entkommen.');return}if(c.dead){m.win();return}
-        m.tx=c.x;m.ty=c.y;m.data.hud='Transporter zerstören · Panzerung '+Math.max(0,Math.round(c.hp/c.maxHp*100))+'%';if(hypot(c.x-px,c.y-py)>420){m.fail('Der Transporter ist entkommen.');return}break}
+      case'zerstoeren':{const c=m.data.car;if(!c||!cars.includes(c)){m.fail('Ziel entkommen.');return}if(c.dead){m.win();return}
+        m.tx=c.x;m.ty=c.y;m.data.hud=m.data.what+' zerstören · Panzerung '+Math.max(0,Math.round(c.hp/c.maxHp*100))+'%';if(hypot(c.x-px,c.y-py)>420){m.fail('Ziel entkommen.');return}break}
       case'taxi':{
         if(pc!==m.data.veh){m.fail('Taxi verlassen – Schicht beendet.',true);return}
         if(m.stage===0){const p=m.data.fare;if(!p||(!p.alive&&!p.boarded)){taxiNext();break}m.tx=p.x;m.ty=p.y;
