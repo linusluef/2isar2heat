@@ -30,7 +30,7 @@ function ensureNpc(def){const cp=contactPos(def),c=CAST[def.story.npc];const nea
 function canStart(){if(G.state!=='play'||S.mission.active||cut||S.stars()>0||P.ride)return false;if(IH.act&&IH.act.busy&&IH.act.busy())return false;const c=P.inCar;if(c&&(c.t.plane||Math.hypot(c.vx,c.vy)>3))return false;return true}
 
 /* ---------- cutscene UI ---------- */
-const box=document.createElement('div');box.id='story';box.hidden=true;box.innerHTML='<div class="lb top"></div><div class="lb bot"></div><div id="stCard"></div><div id="stDlg"><div id="stWho"></div><div id="stTxt"></div><div class="stBtns"><button type="button" id="stSkip">Überspringen</button><button type="button" id="stNext">Weiter ›</button></div></div>';
+const box=document.createElement('div');box.id='story';box.hidden=true;box.innerHTML='<div class="lb top"></div><div class="lb bot"></div><div id="stCard"></div><div id="stDlg"><div id="stWho"></div><div id="stTxt"></div><div class="stBtns"><span></span><button type="button" id="stNext">Weiter ›</button></div></div><button type="button" id="stSkip">Überspringen ››</button>';   // skip is always visible, also during the chapter card
 document.body.appendChild(box);
 let cut=null;   // {lines,i,shown,full,t,cam,onEnd,phone}
 function speakLine(who,txt){try{if(IH.settings.muted||!root.speechSynthesis)return;speechSynthesis.cancel();const c=CAST[who]||{};const u=new SpeechSynthesisUtterance(txt.replace(/[„“’]/g,''));u.lang='de-DE';u.pitch=c.pitch||1;u.rate=c.rate||1;u.volume=1;
@@ -39,7 +39,8 @@ function showLine(){const L=cut.lines[cut.i];const c=CAST[L[0]]||{name:L[0],col:
   $('stWho').innerHTML=(cut.phone?'📞 ':'')+'<b style="color:'+c.col+'">'+c.name+'</b>'+(c.role?' <span>'+c.role+'</span>':'');cut.full=L[1];cut.shown=0;$('stTxt').textContent='';
   cut.speaker=L[0];speakLine(L[0],L[1])}
 function play(lines,o){if(!lines||!lines.length){o.onEnd&&o.onEnd();return}
-  cut=Object.assign({lines,i:0,shown:0,full:'',t:0,weapon:P.weapon},o);G.cut=true;P.weapon=0;   // put the gun away while talkingbox.hidden=false;document.body.classList.add('cutscene');
+  cut=Object.assign({lines,i:0,shown:0,full:'',t:0,weapon:P.weapon},o);G.cut=true;P.weapon=0;box.hidden=false;   // (gun put away while talking)
+  document.body.classList.add('cutscene');
   try{root.speechSynthesis&&speechSynthesis.cancel()}catch(e){}
   if(o.card){$('stCard').textContent=o.card;$('stCard').className='on';$('stDlg').style.visibility='hidden';cut.cardT=2.6}else{$('stCard').className='';$('stDlg').style.visibility='visible';showLine()}}
 function advance(){if(!cut)return;if(cut.cardT>0){cut.cardT=0;$('stCard').className='';$('stDlg').style.visibility='visible';showLine();return}
@@ -89,7 +90,10 @@ setInterval(tick,1000/60);
 IH.story={
   get active(){return!!cut},
   marker(){const d=current();if(!d||S.mission.active)return null;const cp=contactPos(d);return{x:cp.x,y:cp.y,title:d.title,label:CAST[d.story.npc].name+' · '+d.story.at,chapter:'Kapitel '+d.story.ch}},
-  target(){if(S.mission.active||cut||(IH.act&&IH.act.busy&&IH.act.busy()))return null;const m=this.marker();return m?{x:m.x,y:m.y}:null},
+  // the route arrow / light beam to the next contact only when you ask for it (tap the story button in the mission panel)
+  get nav(){return!!IH.settings.storyNav},
+  toggleNav(){IH.settings.storyNav=!IH.settings.storyNav;try{IH.saveSettings&&IH.saveSettings()}catch(e){}const m=this.marker();if(IH.on&&IH.on.toast)IH.on.toast(IH.settings.storyNav&&m?'Navi zur Story: '+m.label:'Story-Navi aus');},
+  target(){if(!IH.settings.storyNav||S.mission.active||cut||(IH.act&&IH.act.busy&&IH.act.busy()))return null;const m=this.marker();return m?{x:m.x,y:m.y}:null},
   labels(){const out=[];if(npc&&npc.alive&&npcFor){const c=CAST[npcFor.story.npc];if(hypot(P.x-npc.x,P.y-npc.y)<60)out.push({x:npc.x,y:npc.y,t:c.name+' ★',c:c.col})}return out},
   _play:play,_next:advance,_skip:()=>{if(cut)$('stSkip').click()},CAST
 };

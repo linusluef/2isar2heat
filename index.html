@@ -79,6 +79,8 @@ button:focus-visible{outline:3px solid var(--signal);outline-offset:3px}
 #clock{font-size:15px;font-weight:700;letter-spacing:.1em;color:var(--paper);font-variant-numeric:tabular-nums}
 #nextJob{font-size:14px;font-weight:600;line-height:1.2}
 #nextJob b{display:block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ok)}
+#nextJob .sbtn{pointer-events:auto;display:block;margin:5px 0 0 auto;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(14,16,19,.7);border:1px solid rgba(226,113,29,.7);color:#ffb37a;border-radius:9px;padding:4px 9px;font:700 13px 'Barlow Condensed',sans-serif;letter-spacing:.03em}
+#nextJob .sbtn.on{background:#e2711d;color:#0e1013;border-color:#e2711d}
 #feed{position:absolute;left:calc(env(safe-area-inset-left,0px) + 16px);top:calc(env(safe-area-inset-top,0px) + 232px);display:flex;flex-direction:column;gap:3px;max-width:min(320px,40vw)}
 #feed .fl{font-size:15px;font-weight:600;line-height:1.2;padding:3px 8px;background:rgba(14,16,19,.55);border-left:3px solid var(--muted);border-radius:3px;animation:fin .25s}
 #feed .fl.kill{color:var(--signal)}#feed .fl.sys{color:var(--muted)}
@@ -96,7 +98,7 @@ button:focus-visible{outline:3px solid var(--signal);outline-offset:3px}
 /* swipe areas for free look in the follow camera (everything right of the joystick, leaving the minimap free) */
 .lookzone{position:absolute;pointer-events:auto;touch-action:none}
 #lookA{left:46%;right:calc(env(safe-area-inset-right,0px) + clamp(118px,14vw,168px) + 32px);top:calc(env(safe-area-inset-top,0px) + 60px);bottom:0}
-#lookB{right:0;width:calc(env(safe-area-inset-right,0px) + clamp(118px,14vw,168px) + 32px);top:calc(env(safe-area-inset-top,0px) + 250px);bottom:0}
+#lookB{right:0;width:calc(env(safe-area-inset-right,0px) + clamp(118px,14vw,168px) + 32px);top:calc(env(safe-area-inset-top,0px) + 340px);bottom:0}
 .lookzone[hidden]{display:none}
 #joy{position:absolute;width:calc(150px*var(--ui));height:calc(150px*var(--ui));margin:calc(-75px*var(--ui)) 0 0 calc(-75px*var(--ui));border-radius:50%;border:2px solid var(--line);background:radial-gradient(circle,rgba(14,16,19,.12),rgba(14,16,19,.45));opacity:.6;transition:opacity .15s}
 #joy.on{opacity:1}
@@ -286,6 +288,7 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
 #stWho{font-size:17px;letter-spacing:.04em;margin-bottom:4px}#stWho b{font-size:19px}#stWho span{color:#a3a9b2;font-weight:600;margin-left:6px}
 #stTxt{font-size:clamp(18px,2.3vw,23px);line-height:1.3;font-weight:600;min-height:2.6em}
 .stBtns{display:flex;justify-content:space-between;margin-top:8px}
+#stSkip{position:absolute;right:calc(env(safe-area-inset-right,0px) + 16px);top:calc(11vh - 46px);z-index:2;background:rgba(14,16,19,.85);border:1px solid rgba(241,237,226,.35);color:#f1ede2;border-radius:10px;padding:8px 14px;font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:.06em}
 .stBtns button{background:none;border:1px solid rgba(241,237,226,.25);color:#f1ede2;border-radius:10px;padding:7px 14px;font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:.06em}
 #stNext{background:#ffc61a!important;color:#0e1013!important;border-color:#ffc61a!important}
 body.cutscene #banner,body.cutscene #toast,body.cutscene #mission,body.cutscene #ctrl,body.cutscene #radio,body.cutscene #actBtn,body.cutscene #mini,body.cutscene #nextJob{visibility:hidden}

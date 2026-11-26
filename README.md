@@ -154,7 +154,9 @@ Players log in with any **name and password** (at least 6 characters). Using an 
   - Patrol cars are no faster than an ordinary saloon. At low wanted levels they chase more cautiously (80 % of their top speed at 1 star, rising to full speed at 4–5 stars), so a sports car, a motorbike or clever driving gets you away.
   - Officers only know where you are while one of them can see you. Once you are out of sight they drive to where you were last seen and then search the streets around it.
   - Stay unseen long enough and you lose a star (about 9 seconds at 1 star, 16 seconds at 5 stars).
-- **Health:** you take less damage than before. Out of combat, your health slowly recovers on its own up to 60.
+- **Health:** you take less damage than before.
+- **Car owners fight back:** when you pull someone out of their car, most run away. About a third get angry, shout and run back after you. If you are still standing or driving slowly when they reach the car, they drag you out and drive off in it themselves. Speed off quickly and they give up.
+- **Motorbike riders fall off:** ram a motorbike hard with a vehicle and the rider is thrown off, just like you are on a bike. A light touch is not enough. The bike stays on the road unlocked. Out of combat, your health slowly recovers on its own up to 60.
 - **Bodies:** people now have health. A light hit knocks them down and they get up again; a deadly one leaves them lying there. Bodies disappear after a while, sooner once you are out of sight, so the police can't pile up.
 
 ## Story: Isarfieber
@@ -168,9 +170,9 @@ A campaign of 11 story missions in three chapters, with characters, German dialo
   - **Kommissar Brandl:** a detective at the Chinesischer Turm.
   - Together they fight the property shark Konrad Graf, who wants Sepp's pub.
 - **How it works:**
-  - The next story contact is an orange **★** on the minimap and the big map, with a light beam in the city and the name shown above the character. The HUD says who is waiting where.
+  - **You choose when:** the next story contact is a small orange **★** on the minimap and the big map, with the name above the character. In the mission panel on the right there is a small **★ Story** button. Tap it to switch the route arrow and light beam to the contact on (**★ Navi**), and tap again to switch it off. It is off by default.
   - Walk up (or stop next to them in a car, without wanted stars) and a scene starts: black bars, camera on both of you, the dialogue as text. The dialogue is also read aloud with the iPad's German voice.
-  - Tap anywhere or **Weiter ›** to continue, or **Überspringen** to skip. After a failed attempt, going back replays only the last line.
+  - Tap anywhere or **Weiter ›** to continue. **Überspringen ››** at the top right skips the scene at any time, also during the chapter title. After a failed attempt, going back replays only the last line.
 - **After a mission:** the character calls you, then the next contact appears. Each chapter starts with a title card, and the last mission ends with an epilogue.
 - **New mission types:**
   - **Schatten:** tail a black limousine for 70 seconds. More than 75 m behind for 8 seconds loses it, closer than 13 m for 3.5 seconds and you are spotted, and touching it blows your cover.

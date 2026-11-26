@@ -208,6 +208,18 @@ function moveCar(c,dt){
     if(c===player.inCar&&c.t.bike&&imp>8)c.eject=imp;
   }
 }
+// the owner of a stolen car drags you out and drives off again
+function pulledOut(c,p){if(player.inCar!==c)return;player.inCar=null;c.driver=null;
+  player.x=player.lx=p.x;player.y=player.ly=p.y;player.vx=player.vy=0;player.stun=1.4;
+  emit('carchange');emit('toast','Der Besitzer hat dich aus seinem Auto gezerrt!');sfx('punch',1,p.x,p.y);hurtPlayer(8,'punch',null);
+  if(mission.active&&mission.data.veh===c)mission.fail('Fahrzeug verloren.',true);reclaimCar(c,p)}
+function reclaimCar(c,p){p.alive=false;c.driver='ai';c.parked=false;c.open=false;sfx('door',0.8,c.x,c.y);
+  const ne=W.nearestEdge(c.x,c.y,30);if(ne){const e=ne.e,q=lanePt(e,true,0,ne.s);const fwd=e.oneway||(Math.cos(c.a)*q.tx+Math.sin(c.a)*q.ty)>=0;startOnEdge(c,e,fwd,fwd?ne.s:e.len-ne.s,0)}}
+// an AI or police motorbike rider thrown off by a hard hit (a light touch is not enough)
+function ejectAIRider(c,imp){if(!c.t.bike||c.dead||!(c.driver==='ai'||c.driver==='cop'))return;
+  const ped=makePed(c.x,c.y,c.cop?'cop':'civ');const fx=Math.cos(c.a),fy=Math.sin(c.a);ped.x=c.x+fx*1.3;ped.y=c.y+fy*1.3;if(pedBlocked(ped.x,ped.y,false)){ped.x=c.x;ped.y=c.y}
+  peds.push(ped);knock(ped,c.vx*0.7,c.vy*0.7,'car',Math.min(95,imp*3.2));
+  c.driver=null;c.parked=true;c.open=true;c.q=[];c.vx*=0.35;c.vy*=0.35;c.vf=(c.vf||0)*0.35;sfx('punch',1,c.x,c.y)}
 function ejectRider(c,imp){
   if(player.inCar!==c)return;player.inCar=null;c.driver=null;c.eject=0;const fx=Math.cos(c.a),fy=Math.sin(c.a);
   let x=c.x+fx*1.6,y=c.y+fy*1.6;if(pedBlocked(x,y,false)){x=c.x;y=c.y}player.x=player.lx=x;player.y=player.ly=y;player.vx=c.vx*0.5;player.vy=c.vy*0.5;player.stun=1.2;
@@ -373,6 +385,13 @@ function updatePed(p,dt){
     else if(p.state==='walk')civSteer(p,dt);
     else if(p.state==='wave'){if(!p.patient)p.a=Math.atan2((player.y-p.y),(player.x-p.x))}
     else if(p.state==='idle'){p.idleT-=dt;if(p.idleT<=0){p.idleT=rand(2,7);p.a=p.face+rand(-0.7,0.7)}}
+    else if(p.state==='reclaim'){const c=p.target;p.reT+=dt;
+      if(!c||c.dead||c.sink||!cars.includes(c)||p.reT>25){p.state='walk';p.target=null}
+      else if(p.reT>1.1){const dx=c.x-p.x,dy=c.y-p.y,d=hypot(dx,dy),sp=hypot(c.vx,c.vy);
+        if(d>50){p.state='walk';p.target=null}
+        else{p.a=Math.atan2(dy,dx);if(!pointInCar(c,p.x,p.y,0.9))slide(p,dx/d*4.8*dt,dy/d*4.8*dt);
+          if(pointInCar(c,p.x,p.y,1.3)&&sp<2.5){if(player.inCar===c&&G.state==='play')pulledOut(c,p);else if(!c.driver)reclaimCar(c,p)}
+          if(p.alive&&(!p.shoutT||G.time-p.shoutT>4)){p.shoutT=G.time;if(d<25)emit('toast',pick(['„Hey! Des is mei Auto!“','„Raus da, du Gauner!“','„Halt! Gib mei Auto her!“']))}}}}
     else if(p.state==='board'&&p.target){const c=p.target,dx=c.x-p.x,dy=c.y-p.y,d=hypot(dx,dy);p.boardT=(p.boardT||0)+dt;
       // reaching the car's side is enough (the body itself blocks the way to its centre); give up walking after a while and just get in
       if(d<1.2||pointInCar(c,p.x,p.y,1.0)||p.boardT>6){p.alive=false;p.boarded=true;sfx('door',0.7,c.x,c.y)}else slide(p,dx/d*3.4*dt,dy/d*3.4*dt)}
@@ -555,6 +574,7 @@ function collideCars(active){
         if(imp>6){
           damageCar(a,(imp-6)*1.0*mb/tm*2,!!pl&&a!==pl);damageCar(b,(imp-6)*1.0*ma/tm*2,!!pl&&b!==pl);
           if(pl)emit('shake',Math.min(0.9,imp/28));if(pl&&pl.t.bike&&imp>7)pl.eject=imp;
+          if(imp>9)for(const v of[a,b])if(v!==pl&&v.t.bike)ejectAIRider(v,imp);
           sfx('crash',Math.min(1,imp/25),best.px,best.py);for(let k=0;k<4;k++)spark(best.px,best.py,0.6);
         }
         if(pl&&other.driver==='ai'&&!other.cop)other.hornT=0.4;
@@ -637,7 +657,8 @@ function takeCar(c){
   if(c.driver==='ai'||c.driver==='cop'||c.driver==='copIdle'){
     if(c.driver!=='copIdle'){const ped=makePed(c.x,c.y,c.cop?'cop':'civ');const ca=Math.cos(c.a),sa=Math.sin(c.a);ped.x=c.x+sa*(c.t.wid/2+0.9);ped.y=c.y-ca*(c.t.wid/2+0.9);
       if(pedBlocked(ped.x,ped.y,false)){ped.x=c.x-sa*(c.t.wid/2+0.9);ped.y=c.y+ca*(c.t.wid/2+0.9)}
-      if(c.cop){ped.state='down';ped.downT=1.5}else{ped.state='flee';ped.fleeT=6;ped.fx=c.x;ped.fy=c.y}peds.push(ped)}
+      // most owners run away; some get angry and come back to pull you out (if you are still standing or slow)
+      if(c.cop){ped.state='down';ped.downT=1.5}else if(!c.t.bike&&Math.random()<0.35){ped.state='reclaim';ped.target=c;ped.reT=0}else{ped.state='flee';ped.fleeT=6;ped.fx=c.x;ped.fy=c.y}peds.push(ped)}
     stats.cars++;emit('toast',c.cop?'Streifenwagen geknackt':'Auto geknackt');
   }
   c.parked=false;c.driver='player';c.pursuit=false;c.siren=false;c.q=[];c.route=null;player.inCar=c;sfx('door');emit('carchange');

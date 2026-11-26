@@ -12,6 +12,7 @@ IH.settings={cam:'top',steer:'dir',muted:false,quality:(/iPad|iPhone|Macintosh/.
 try{Object.assign(IH.settings,JSON.parse(localStorage.getItem(SET_KEY)||'{}'))}catch(e){}
 if(!IH.settings.name)IH.settings.name='Spieler'+Math.floor(100+Math.random()*900);
 function saveSettings(){try{localStorage.setItem(SET_KEY,JSON.stringify(IH.settings))}catch(e){}}
+IH.saveSettings=saveSettings;
 let S,W,R3,G,P,NET;
 
 /* ---------- audio ---------- */
@@ -199,7 +200,7 @@ function updateHUD(){
     const low=t<=10&&!armedWait;if(cache.low!==low){cache.low=low;$('mTime').classList.toggle('low',low)}
   }
   const nj=!m.active&&G.state==='play';const nx=S.mission.next();
-  if(nj){const sm=IH.story&&IH.story.marker();const html=sm?'<b>Story · '+sm.chapter+'</b>'+sm.title+' · '+sm.label+' ★':'<b>Aufträge</b>Freie Jobs an jeder grünen Telefonzelle';if(cache.nj!==html){cache.nj=html;$('nextJob').innerHTML=html}}else if(cache.nj!==''){cache.nj='';$('nextJob').innerHTML=''}
+  if(nj){const sm=IH.story&&IH.story.marker();const nav=IH.story&&IH.story.nav;const html='<b>Aufträge</b>Grüne Telefonzellen'+(sm?'<button type="button" class="sbtn'+(nav?' on':'')+'" id="storyBtn">★ '+(nav?'Navi: '+sm.label:'Story: '+sm.title)+'</button>':'');if(cache.nj!==html){cache.nj=html;$('nextJob').innerHTML=html}}else if(cache.nj!==''){cache.nj='';$('nextJob').innerHTML=''}
   const env=IH.env;setTxt('clock',fmtTod(env.tod)+(env.rain>0.5?'  ·  Regen':env.night>0.6?'  ·  Nacht':env.dusk>0.5?'  ·  Abend':''));
   // pads
   setHidden('footPads',!!c);setHidden('carPads',!c);
@@ -350,6 +351,7 @@ for(const el of[$('lookA'),$('lookB')]){
     if(inVeh)c.look=(c.look||0)+dx*k;else{c.base=(c.base===undefined?c.yaw:c.base)+dx*k;c.freeT=3}
     c.lookP=clamp((c.lookP||0)+dy*k*0.6,-0.3,0.6);c.lookHold=1.6});
   const end=e=>{lookPtr.delete(e.pointerId)};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end)}
+$('nextJob').addEventListener('pointerdown',e=>{if(e.target.closest('#storyBtn')){e.preventDefault();e.stopPropagation();if(IH.story)IH.story.toggleNav()}});
 function joyMove(e){const dx=e.clientX-joyX,dy=e.clientY-joyY,d=hypot(dx,dy),Rr=joyR();const k=d>Rr?Rr/d:1;knob.style.transform='translate('+dx*k+'px,'+dy*k+'px)';let m=Math.min(1,d/Rr);if(m<0.1)m=0;inp.mm=m;inp.mx=dx/(d||1)*m;inp.my=dy/(d||1)*m}
 function bindPad(id,down,up){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId)}catch(_){}el.classList.add('down');initAudio();down()});const end=()=>{el.classList.remove('down');up&&up()};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end)}
 // pedals: one touch area, the finger can slide between gas and brake
