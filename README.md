@@ -136,10 +136,15 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 
   In emergency vehicles and police cars, the horn button switches the siren on and off.
 - **Stealing parked cars:** breaking in takes a moment (bar "AUFBRECHEN"), and some cars set off their alarm, which attracts nearby police.
-- **Police helicopter:** from 4 stars a helicopter hunts you with a searchlight, and from 5 stars it shoots. It can be shot down.
+- **Police helicopter:** from 4 stars a helicopter hunts you with a searchlight, and from 5 stars it shoots. If you are in the air yourself, it already shoots at 4 stars.
+  - **Shooting it down:** bullets now fly in 3D and the aim assist also locks onto targets in the air, so you can hit the helicopter from the ground. A downed helicopter spins, falls and explodes where it lands.
+  - **Next helicopter:** it only comes after about 75 seconds, even if you still have 4–5 stars.
   - **It has to see you:** its view reaches about 60 m (less in rain), and buildings block it. It also can't see you under trees in a park (on foot, on a motorbike or driving slowly) or inside your home or garage.
   - **When it loses you:** the searchlight stops following you and sweeps the streets. The helicopter circles where you were last seen, slowly widening the search, and it only shoots while it can see you.
   - **Escaping:** break its line of sight between tall buildings or under trees, then get away while it searches. A message tells you when it has lost you or found you again.
+- **Shooting at aircraft:** airliners have a hitbox too (fuselage and wings). Shooting at one gives you at least 2 stars. A destroyed one breaks up, falls and burns, and the police come with everything (4 stars). That flight is skipped, and the next one flies normally. Online, everyone sees it go down. Flying your own aircraft into an airliner destroys both.
+- **Visible damage on cars:** crashes now bend the body where they hit it. The front or back gets pushed in and the bonnet buckles, doors get dented, the paint is scraped dark and windows shatter. Bullets leave small dents, and explosions dent all sides. A repair at the workshop makes the car like new again.
+  - **Fists and weapons:** you can damage cars on foot. A punch does a little damage, a baseball bat more, and guns and explosives a lot. Hitting a parked car can set off its alarm.
 - **Stunt jumps:** 8 yellow-black ramps around the city. Each jump pays by distance and air time, and the first jump off each ramp pays an extra $500.
 - **Hidden packages:** 30 Weißwurst-Tüten are hidden around the city. Each pays $100, and all 30 pay $10,000. Progress is shown in the pause menu.
 - **New weapons (gun shop):** baseball bat, rifle (long range) and Molotov cocktails.
@@ -236,6 +241,11 @@ These work in the global lobby with other players, and alone (offline or nobody 
 - **Theresienwiese:** the Bavaria and the Ruhmeshalle stand clear of the road. The beer tents are rebuilt with towers, signs and beer gardens, and there is a new Ferris wheel that lights up at night.
 - **Flughafen München:** the airport lies well east of the city, about 350 m further out than before. It has two runways, both terminals, a satellite, the tower, the Munich Airport Center, hangars and parked aircraft. Planes take off and land on the same schedule for every player, so watch out on the runway. Departing planes turn north before they reach the city, and arrivals come in from the east, so no plane flies through buildings. Drive there via the Erdinger Landstraße and the small suburb Hallbergmoos.
 - **Airport fence:** a fence runs around the whole airside area (runways, taxiways, apron). The only way in by car is the guarded gate on the Terminalstraße next to Terminal 2, and the barrier only lifts when you drive up to it. Pedestrians stay out of the airside area.
+  - **Police at the airport:** if you hide airside, patrol cars drive to the gate, the barrier opens for them, and on the apron they drive straight to where you were last seen. Without seeing you, they search the airfield and send officers out on foot there too.
+- **Hangar (for sale, $40,000):** the second hangar north of the runways can be bought at its door, which is marked like the other homes.
+  - **What you get:** your own small plane and a **Kampfhubschrauber** (armed helicopter) stand on its apron.
+  - **Replacements:** if one is destroyed, or you leave it somewhere, a new one is waiting the next time you come back.
+  - **Safe zone:** the hangar door is a safe place like your homes, but you can't live there.
 - **Flying:** three aircraft at the airport can be flown:
 
   | Aircraft | Where |
@@ -257,6 +267,16 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - **In the air:** the joystick works like a real control stick (inverted). Push it **down to climb** and **up to descend**, and left or right to turn. There are no extra climb or descend buttons any more. Without any input the aircraft holds its altitude.
   - **Land:** brake or let go of the gas, then push the joystick up. Close to the ground the descent flattens out by itself, and you can land on runways, roads, fields and meadows.
   - **Danger:** too slow means a stall, and buildings, the Olympiaturm and a steep touchdown destroy the aircraft.
+  - **Landing on roofs:** a gentle touchdown from above works on roofs too, and the aircraft only explodes if it hits a wall or object from the side.
+    - **Braking on a roof:** braking is much stronger there. If you roll slowly to the edge, the parapet stops you; roll off fast and you fall.
+    - **Getting out and back in:** getting out on a roof takes you down the stairwell to the street next to the building. Standing at the building, **Einsteigen** takes you back up to the aircraft.
+- **Kampfhubschrauber (from your hangar):**
+  - **Controls:** the joystick moves it in the direction you push (like walking), **Steigen** (the gas pedal) climbs and **Sinken** (the brake) descends. Let go of both and it hovers.
+  - **Taking off and landing:** the rotor needs a moment to spin up before take-off. Land by descending gently onto a street, field or any roof. Bumping a wall slowly only bounces you off; hitting it fast or touching down too hard destroys it.
+  - **Bord-MG (on-board machine gun):** tap or hold the **MG** button. It has endless ammo, aims itself at police, cars, people and other aircraft, and fires downward ahead of you when there is no target.
+    - **Overheating:** firing heats the gun up, shown as **MG-HITZE** under the speed. At 100 % it overheats (**MG ÜBERHITZT**, the button turns red), and you have to wait about 3 seconds until it has cooled down completely. Short bursts let it cool on its own.
+  - **Fighting back:** the police can bring it down too. Officers on the ground shoot up at you, and the police helicopter fires at you from 4 stars.
+  - **Keyboard:** arrow keys fly, W or R climbs, S or F descends, Space fires.
   - **Keyboard:** R or N = climb, F or Shift = descend. **Controller:** left stick, or RB = climb, B = descend.
   - **Missions and pick-ups ignore aircraft:** phone booths, story and job targets, packages, health and weapon pick-ups, shops, garages and race checkpoints only react on foot or in a car, motorbike or other ground vehicle. Flying over them does nothing.
   - **Online:** other players see your aircraft at its real height.
@@ -309,6 +329,7 @@ These work in the global lobby with other players, and alone (offline or nobody 
 - **Your vehicle:** cars rumble, motorbikes sound higher and raspier, and the engine starts with a crank when you get in.
 - **Aircraft:** each type sounds different.
   - Kleinflugzeug: a buzzing propeller.
+  - Kampfhubschrauber: a deep rotor chop and turbine whine.
   - Turboprop: propeller drone with a turbine whine.
   - Passagierjet: rising turbine whine and roar.
 
@@ -347,6 +368,7 @@ These work in the global lobby with other players, and alone (offline or nobody 
 - **On foot:** the camera stays where you turned it, and the joystick then walks in the direction you are looking.
 - **In a vehicle:** the camera swings back behind you a moment after you let go, once you are driving.
 - **Top-down view:** swiping does nothing.
+- **Sensitivity:** the **Umschauen** slider in the pause menu sets how fast the camera turns, from 0.4× to 4×. The default is now 1.8×, almost twice as fast as before. Your choice is saved.
 
 Settings are on the start screen and in the pause menu:
 

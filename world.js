@@ -534,6 +534,9 @@ for(const[id,name,price,anchor,nslots,income]of PROP_DEFS){
   let door;if(b&&bd<70){b.property=id;door=nearestCell(b.front.x+b.front.nx*1.6,b.front.y+b.front.ny*1.6,t=>t===TY.WALK||t===TY.PLAZA,12)}else door=nearestCell(lot.front.x,lot.front.y,t=>t===TY.WALK,20);
   properties.push({id,name,price,income,slots:lot.slots.length,lot,b,x:door.x,y:door.y,gx:lot.cx,gy:lot.cy,gr:Math.min(lot.w,lot.d)/2+1.5});
 }
+// the hangar at the airport: buy it and a small plane plus an armed helicopter wait for you on its apron
+properties.push({id:'hangar',name:'Hangar am Flughafen',price:40000,income:0,slots:2,hangar:true,lot:null,b:null,x:1857,y:58.5,gx:1857,gy:64,gr:0,
+  fleet:[{type:'kampfheli',x:1843,y:64.5,a:Math.PI/2},{type:'cessna',x:1872,y:64.5,a:Math.PI/2}]});
 const phoneDefs=[[520,671],[345,630],[532,330],[1000,700],[335,205],[600,905],[200,742],[880,1060],[1000,400]];
 const phones=phoneDefs.map(([x,y])=>{const c=nearestCell(x,y,t=>t===TY.WALK);return{x:c.x,y:c.y}});
 const placesDef=[['Flughafen München',1650,250],['Hallbergmoos',1680,520],['Universität',505,366],['Marienplatz',520,668],['Hauptbahnhof',345,640],['Siegestor',530,320],['Friedensengel',RB.x,RB.y+30],['Maximilianeum',864,640],['Deutsches Museum',riverX(860),846],['Olympiapark',336,200],['BMW-Welt',440,212],['Allianz Arena',1010,112],['Theresienwiese',290,790],['Viktualienmarkt',600,668],['Chinesischer Turm',610,300],['Sendlinger Tor',432,780],['Isartor',690,662],['Odeonsplatz',520,490],['Giesinger Berg',960,1080],['Haidhausen',1040,700],['Bogenhausen',1000,380],['Westend',150,740],['Schwabing',515,180],['Glockenbachviertel',600,920]];

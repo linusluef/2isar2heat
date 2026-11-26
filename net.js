@@ -9,7 +9,7 @@
 const IH=root.IH;
 const BASE='2isar2heat/v1/';
 const DEFAULT_BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
-const CAR_TYPES=['kompakt','limousine','sport','taxi','transporter','polizei','motorrad','suv','super','bus','bierlaster','krankenwagen','feuerwehr','polsuv','cessna','regio','jet'];
+const CAR_TYPES=['kompakt','limousine','sport','taxi','transporter','polizei','motorrad','suv','super','bus','bierlaster','krankenwagen','feuerwehr','polsuv','cessna','regio','jet','kampfheli'];
 const CHAT=['Servus!','Rennen?','Folg mir!','Hilfe!','Gut gemacht!','Pass auf!','Haha 😄','Pfiat di!'];
 const COLORS=['#ff8a1c','#3ddc84','#3b82ff','#ff4fa3','#ffd21a','#20d3d3','#b36bff','#ff5a4f','#9be15d','#f2f2f2'];
 const te=new TextEncoder(),td=new TextDecoder();
@@ -126,10 +126,11 @@ net.onMessage=function(topic,payload){
   const S=IH.sim,P=S.player;const ex=num(m.x,-50,2050,null),ey=num(m.y,-50,2050,null);
   const near=ex!==null&&ey!==null&&Math.hypot(ex-P.x,ey-P.y)<260;
   switch(m.e){
-    case'shot':net.rx=(net.rx||0)+1;if(near)S.remoteShot({x:ex,y:ey,a:num(m.a,-10,10,0),w:num(m.w,1,6,1)|0,r:num(m.r,0,4294967295,1)},p.id);break;
+    case'shot':net.rx=(net.rx||0)+1;if(near)S.remoteShot({x:ex,y:ey,a:num(m.a,-10,10,0),w:num(m.w,1,8,1)|0,r:num(m.r,0,4294967295,1),z:num(m.z,0,400,1.2),vz:num(m.vz,-3000,3000,0)},p.id);break;
     case'gren':if(near)S.remoteGrenade({x:ex,y:ey,vx:num(m.vx,-40,40,0),vy:num(m.vy,-40,40,0),molotov:m.m===1},p.id);break;
     case'boom':if(near){const ty=CAR_TYPES[num(m.k,0,CAR_TYPES.length-1,0)|0];S.remoteBoom({x:ex,y:ey,a:num(m.a,-10,10,0),type:m.k===undefined?null:ty,color:/^#[0-9a-f]{6}$/i.test(m.c||'')?m.c:'#555555'},p.id);if(p.car)p.carBoomed=true}break;
     case'act':if(net.onAct)net.onAct(p,m);break;
+    case'pldown':if(IH.sim_pldown)IH.sim_pldown(num(m.p,0,2,0)|0);break;
     case'horn':if(near&&IH.on&&IH.on.sfx)IH.on.sfx('horn',0.8,ex,ey);break;
     case'msg':{const i=num(m.t,0,CHAT.length-1,0)|0;p.bubble={txt:CHAT[i],t};feed(p.name+': '+CHAT[i],'chat',p.color);if(net.onChat)net.onChat(p,i);break}
     case'kill':{const by=typeof m.by==='string'?m.by:'';const st=num(m.s,0,5,0)|0;
