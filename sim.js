@@ -273,16 +273,17 @@ function damageCar(c,amt,byPlayer){
 function explodeCar(c){
   if(c.dead)return;c.dead=true;c.hp=0;c.fire=0;c.siren=false;
   const byPlayer=G.time-c.lastHit<6||c.driver==='player';
-  if(c.driver==='player'){if(G.state==='play')wasted('Das Auto ist explodiert.')}
-  else if(c.driver&&c.driver!=='player'&&Math.random()<0.75){const p=makePed(c.x+rand(-1,1),c.y+rand(-1,1),c.cop?'cop':'civ');p.state='dead';p.hp=0;p.deadT=0;peds.push(p);if(byPlayer)offense('weapon',c.cop?3:1.5,c.x,c.y,p)}
+  // tell the others first (wasted() below clears the driver), so a crashed plane or car explodes on every screen
   if(c.driver==='player')emit('net','boom',{x:+c.x.toFixed(1),y:+c.y.toFixed(1),a:+c.a.toFixed(2),k:Math.max(0,['kompakt','limousine','sport','taxi','transporter','polizei','motorrad','suv','super','bus','bierlaster','krankenwagen','feuerwehr','polsuv','cessna','regio','jet'].indexOf(c.type)),c:c.color});
+  if(c.driver==='player'){if(G.state==='play')wasted(c.t.plane?'Abgestürzt.':'Das Auto ist explodiert.')}
+  else if(c.driver&&c.driver!=='player'&&Math.random()<0.75){const p=makePed(c.x+rand(-1,1),c.y+rand(-1,1),c.cop?'cop':'civ');p.state='dead';p.hp=0;p.deadT=0;peds.push(p);if(byPlayer)offense('weapon',c.cop?3:1.5,c.x,c.y,p)}
   c.driver=null;c.vx*=0.3;c.vy*=0.3;
   explosion(c.x,c.y,byPlayer);
   if(byPlayer&&G.state==='play'){addMoney(c.cop?300:120,c.x,c.y);mission.onEvent('carboom',c)}
   if(mission.active&&mission.data.car===c&&!mission.data.bombOK)mission.fail('Der Wagen ist hinüber.');
 }
 function knock(p,vx,vy,cause,dmg){
-  if(p.kind==='player'||p.state==='dead'||p.patient)return;
+  if(p.kind==='player'||p.state==='dead'||p.patient||p.npc)return;
   const was=p.state;p.hp-=dmg===undefined?25:dmg;p.vx=vx;p.vy=vy;
   if(p.hp<=0){p.state='dead';p.deadT=0;p.wave=false;blood(p.x,p.y);if(p.home){p.home.copsOut=Math.max(0,(p.home.copsOut||1)-1)}}
   else{if(was==='down')return;p.state='down';p.downT=p.kind==='cop'?2.6:rand(2.2,3.2)}
@@ -294,7 +295,7 @@ function breakProp(p,byPlayer,dx,dy){
   for(let i=0;i<6;i++)debris(p.x,p.y,p.k==='bin'?'#5f7b68':p.k==='hydrant'?'#b8262b':'#4b5058');
   if(byPlayer&&G.state==='play'){addMoney(p.k==='hydrant'?30:p.k==='lamp'?20:8,p.x,p.y);mission.onEvent('prop')}
 }
-function hurtPlayer(v,why,att){
+function hurtPlayer(v,why,att){if(G.cut)return;
   if(G.state!=='play')return;
   if(att){player.lastAtt=att;player.lastAttT=G.time}
   v*=why==='cop'?0.5:why==='boom'?0.75:why==='car'?0.7:0.85;player.hurtT=G.time;
@@ -486,7 +487,7 @@ function remoteShot(m,att){
   for(const p of peds)if(p.kind==='civ'&&(p.state==='walk'||p.state==='idle')&&hypot(p.x-m.x,p.y-m.y)<30){p.state='flee';p.fleeT=rand(4,7);p.fx=m.x;p.fy=m.y}
 }
 function remoteGrenade(m,att){grenades.push({x:m.x,y:m.y,z:1.6,vx:m.vx,vy:m.vy,vz:5,t:1.7,att,molotov:!!m.molotov});sfx('throw',0.6,m.x,m.y)}
-function remoteBoom(m,att){explosion(m.x,m.y,false,att);if(m.type&&CT[m.type]){const w=makeCar(m.type,m.x,m.y,m.a||0,{parked:true,color:m.color});w.dead=true;w.hp=0;w.parked=false;w.driver=null;cars.push(w);smoke(m.x,m.y,2,true)}}
+function remoteBoom(m,att){if(player.ride&&player.ride.peer===att){leaveRide(false);if(G.state==='play')hurtPlayer(70,'boom',null)}explosion(m.x,m.y,false,att);if(m.type&&CT[m.type]){const w=makeCar(m.type,m.x,m.y,m.a||0,{parked:true,color:m.color});w.dead=true;w.hp=0;w.parked=false;w.driver=null;cars.push(w);smoke(m.x,m.y,2,true)}}
 // a remote player got out: their car stays where they left it
 // another player just drove off in a car that also exists here as an empty parked copy (e.g. the one I left): remove the copy
 function takenByRemote(x,y,type,r){let best=-1,bd=r||5;for(let i=0;i<cars.length;i++){const c=cars[i];if(c.driver||c.dead||c===player.inCar||c.home||c.saved||c.mission)continue;if(c.type!==type&&!(type==='polizei'&&c.type==='limousine')&&!(type==='polsuv'&&c.type==='limousine'))continue;const d=hypot(c.x-x,c.y-y);if(d<bd){bd=d;best=i}}if(best<0)return false;const c=cars[best];if(player.breakIn&&player.breakIn.c===c)player.breakIn=null;cars.splice(best,1);return true}
@@ -646,6 +647,7 @@ const input=IH.input={mx:0,my:0,mm:0,gas:false,brake:false,hb:false,fire:false,e
 function joyWorld(){const y=IH.cam.yaw||0;const c=Math.cos(y),s=Math.sin(y);return{x:c*input.mx-s*input.my,y:s*input.mx+c*input.my}}
 function kbActive(){const k=input.kb;return k.KeyW||k.KeyA||k.KeyS||k.KeyD||k.ArrowUp||k.ArrowDown||k.ArrowLeft||k.ArrowRight}
 function updatePlayer(dt){
+  if(G.cut){player.vx=player.vy=0;player.spdNow=0;const c=player.inCar;if(c){c.vx*=Math.exp(-4*dt);c.vy*=Math.exp(-4*dt);c.vf=(c.vf||0)*Math.exp(-4*dt)}return}   // story scene playing
   player.fireCD-=dt;player.stun-=dt;player.hitFlash-=dt;player.punch-=dt;
   if(input.enterQ){input.enterQ=false;enterExit()}
   if(input.altQ){input.altQ=false;if(onFoot()||player.ride){let w=player.weapon;const N=WEAP.length;for(let i=0;i<N;i++){w=(w+1)%N;if(w===0||player.ammo[w]>0)break}player.weapon=w;sfx('pick',0.4)}}
@@ -892,15 +894,53 @@ function roadblock(){
 const placeBy=n=>W.places.find(p=>p.name===n);
 function sampleRoute(pts,step){const cum=W.cumLen(pts);const out=[];for(let s=0;s<=cum[cum.length-1];s+=step){const p=W.pointAt(pts,cum,s);out.push({x:p.x,y:p.y})}return out}
 function pathPolyline(path){const pts=[];for(let i=0;i<path.length-1;i++){const a=path[i],b=path[i+1];const e=nodes[a].edges.map(k=>edges[k]).find(e=>(e.a===a&&e.b===b)||(e.b===a&&e.a===b));if(!e)continue;const p=e.a===a?e.pts:e.pts.slice().reverse();for(const q of p)pts.push(q)}return pts}
+// Story campaign "Isarfieber": every mission is given in person by a character at a contact point (see story.js,
+// which also plays the dialogue scenes). intro = short objective shown when the mission starts.
 const STORY=[
-  {type:'kurier',title:'Brezn-Express',from:'Viktualienmarkt',to:'Hauptbahnhof',time:110,pay:400,intro:'Sepp: „A Kistn Brezn muss vom Viktualienmarkt zum Hauptbahnhof. Schnell, bevor s’ altbacken werdn.“'},
-  {type:'sportwagen',title:'Weiß-blauer Flitzer',near:[330,160],color:'#f2f2f2',time:220,pay:1500,intro:'Sepp: „Am Olympiapark steht a weißer Sportwagen. Bring’n ohne Kratzer zum Hehler in Neuhausen.“'},
-  {type:'rennen',title:'Ringrunde',route:'ring',time:95,pay:900,intro:'Vroni: „Einmal um den Altstadtring, gegen die Uhr. Zeig, was du kannst.“'},
-  {type:'randale',title:'Scherbenhaufen',need:10,time:60,pay:700,intro:'Vroni: „Die Konkurrenz braucht an Denkzettel. Zehn Straßenmöbel, sechzig Sekunden.“'},
-  {type:'bombe',title:'Heiße Ware',time:60,pay:1200,intro:'Sepp: „Am Friedensengel steht a Auto mit tickender Fracht. Versenk’s in der Isar, bevor’s hochgeht!“'},
-  {type:'fluchtwagen',title:'Bankgeschäft',time:200,pay:2500,intro:'Vroni: „Hol zwei Spezln an der Bank in der Ludwigstraße ab und bring s’ ins Versteck nach Giesing.“'},
-  {type:'rennen',title:'Arena-Sprint',route:'arena',time:85,pay:1400,intro:'Sepp: „Vom Siegestor zur Arena, bevor der Anpfiff kommt!“'},
-  {type:'flucht',title:'Fünf Sterne',stars:5,time:160,pay:5000,intro:'Vroni: „Die ganze Stadt sucht di. Überleb und häng s’ ab!“'},
+  {type:'kurier',title:'Brezn-Express',from:'Viktualienmarkt',to:'Hauptbahnhof',time:110,pay:400,intro:'Hol die Brezn am Viktualienmarkt und bring sie zum Hauptbahnhof.',
+   story:{ch:1,npc:'sepp',at:'Glockenbachviertel',
+    pre:[['sepp','Ja servus! Du bist also der Neue, von dem d’ Vroni so g’schwärmt hat.'],['sepp','I bin der Sepp. Mir g’hört der Grüne Hirsch – die beste Wirtschaft im ganzen Glockenbachviertel.'],['sepp','Ganz ehrlich: Die Zeiten san hart. Die Pacht steigt, und die Gäst’ bleib’n aus.'],['sepp','Fang amal klein an: A Kistn Brezn muss vom Viktualienmarkt zum Hauptbahnhof. Zack, zack!']],
+    post:[['sepp','Sauber! Pünktlich und koa einzige Brezn zerbröselt. Du g’fallst ma.']]}},
+  {type:'sportwagen',title:'Weiß-blauer Flitzer',near:[330,160],color:'#f2f2f2',time:220,pay:1500,intro:'Schnapp dir den weißen Sportwagen am Olympiapark und bring ihn zum Hehler.',
+   story:{ch:1,npc:'sepp',at:'Glockenbachviertel',
+    pre:[['sepp','Für an echten Verdienst brauchst a bissl Mut.'],['sepp','Am Olympiapark steht a weißer Sportwagen. Der Besitzer schuldet mir no Geld – sag’n ma’s amal so.'],['sepp','Bring’n zum Hehler nach Neuhausen. Und bitte: ohne an Kratzer!']],
+    post:[['sepp','Der Hehler hat zahlt. Und der Besitzer? Der wird’s überleben.']]}},
+  {type:'rennen',title:'Ringrunde',route:'ring',time:95,pay:900,intro:'Einmal um den Altstadtring, gegen die Uhr.',
+   story:{ch:1,npc:'vroni',at:'Olympiapark',
+    pre:[['vroni','Na, du bist also dem Onkel Sepp sei neuer Fahrer?'],['vroni','I bin d’ Vroni. Wenn’s um Autos geht, macht mir in dera Stadt koana was vor.'],['vroni','Beweis, dass d’ mithalten kannst: Einmal um den Altstadtring, gegen die Uhr.']],
+    post:[['vroni','Ned schlecht! Fast so schnell wie i … fast.'],['vroni','Übrigens: Der Onkel Sepp hat Ärger. Schau amal bei eahm vorbei.']]}},
+  {type:'randale',title:'Scherbenhaufen',need:10,time:60,pay:700,intro:'Zerstör zehn Straßenmöbel in sechzig Sekunden.',
+   story:{ch:2,npc:'sepp',at:'Glockenbachviertel',
+    pre:[['sepp','Heut war a Herr da. Feiner Anzug, kalte Augen. Konrad Graf hoaßt er.'],['sepp','Er will mei Wirtschaft kaufen. Für an Spottpreis. Und wenn i ned verkauf, dann „passiert halt was“, hat er g’sagt.'],['sepp','Seine Leit ham ma heut d’ Fenster eing’schmissen. Zeit für a Antwort.'],['sepp','Zehn Sachen kaputt, sechzig Sekunden – damit er merkt, dass mir ned kuschen!']],
+    post:[['sepp','Des wird eahm ned g’fallen. Aber jetzt woaß er, dass mir uns wehr’n.'],['sepp','Der Memo in Giesing hat Grafs Auto in der Werkstatt g’habt. Red amal mit eahm.']]}},
+  {type:'verfolgung',title:'Schatten',follow:70,time:130,pay:1300,intro:'Folge Grafs schwarzer Limousine. Bleib dran, aber nicht zu nah!',
+   story:{ch:2,npc:'memo',at:'Giesinger Berg',
+    pre:[['memo','Ah, du bist der, der für den Sepp arbeitet. Ich bin Memo – Schrauber, Giesinger, Löwen-Fan.'],['memo','Grafs Limousine war heute bei mir. Schwarz, getönte Scheiben, Kennzeichen M-KG 1.'],['memo','Er trifft sich gleich mit jemandem. Fahr ihm hinterher – aber halt Abstand, sonst merkt er was.']],
+    post:[['memo','Er hat sich mit einem Polizisten getroffen? Interessant …'],['memo','Den kenn ich. Kommissar Brandl. Angeblich der einzige Saubere im Präsidium. Red mit ihm – am Chinesischen Turm.']]}},
+  {type:'bombe',title:'Heiße Ware',time:60,pay:1200,intro:'Steig in den Wagen mit der Bombe und versenk ihn in der Isar.',
+   story:{ch:2,npc:'brandl',at:'Chinesischer Turm',
+    pre:[['brandl','Sie sind also der Schatten, der Graf heute verfolgt hat. Mutig. Oder dumm.'],['brandl','Ich ermittle seit zwei Jahren gegen Graf. Bestechung, Erpressung, Brandstiftung. Beweisen kann ich nichts.'],['brandl','Und jetzt plant er etwas Großes: Am Friedensengel steht ein Wagen mit Sprengstoff. Ziel: der Grüne Hirsch.'],['brandl','Die Hälfte meiner Kollegen steht auf seiner Gehaltsliste. Also machen Sie das: Versenken Sie den Wagen in der Isar!']],
+    post:[['brandl','Gut gemacht. Das war verdammt knapp.'],['brandl','Ab jetzt weiß Graf, dass ihm jemand in die Quere kommt. Passen Sie auf sich auf.']]}},
+  {type:'rennen',title:'Arena-Sprint',route:'arena',time:85,pay:1400,intro:'Vom Siegestor zur Allianz Arena – schneller als Grafs Fahrer.',
+   story:{ch:2,npc:'vroni',at:'Olympiapark',
+    pre:[['vroni','Hast scho g’hört? Graf hat a Wette laufen: a illegales Rennen zur Allianz Arena.'],['vroni','Wenn mir g’winnen, verliert er an Haufen Geld – und der Onkel Sepp kriegt den Einsatz.'],['vroni','Start is am Siegestor. Gib Gas!']],
+    post:[['vroni','Jaaa! Grafs Fahrer hat ned amal den Staub g’sehn!']]}},
+  {type:'zerstoeren',title:'Schrottreif',time:150,pay:2200,intro:'Zerstör Grafs gepanzerten Transporter, bevor er die Akten vernichtet.',
+   story:{ch:3,npc:'memo',at:'Giesinger Berg',
+    pre:[['memo','Brandl hat angerufen. Graf lässt heute seine Akten wegschaffen – in einem gepanzerten Transporter.'],['memo','Landen die Akten im Schredder, ist alles vorbei. Wenn der Transporter dagegen … verunglückt, findet die Polizei den Inhalt.'],['memo','Mach ihn platt. Rammen, schießen, egal. Aber schnell!']],
+    post:[['memo','Boah. Davon redet ganz Giesing noch in zehn Jahren.'],['memo','Brandl hat die Akten. Aber Graf hat noch Geld und Verträge in seinem Schließfach – frag die Vroni.']]}},
+  {type:'fluchtwagen',title:'Bankgeschäft',time:200,pay:2500,intro:'Hol zwei Leute an der Bank in der Ludwigstraße ab und bring sie ins Versteck.',
+   story:{ch:3,npc:'vroni',at:'Odeonsplatz',
+    pre:[['vroni','Graf räumt heut sein Schließfach aus. Zwei von meine Spezln holen’s eahm vorher raus.'],['vroni','Du fahrst. Bank in der Ludwigstraße, dann ab ins Versteck nach Giesing – und häng die Polizei ab!']],
+    post:[['vroni','Des Schließfach war voll mit Verträgen und Bargeld. Damit is Graf erledigt!']]}},
+  {type:'flug',title:'Luftpost',time:210,pay:3000,intro:'Steig ins Kleinflugzeug und flieg durch alle Ringe über der Stadt.',
+   story:{ch:3,npc:'vroni',at:'Flughafen München',
+    pre:[['vroni','Brandls Kollegen woll’n die G’schicht vertuschen. Da hilft nur oans: Öffentlichkeit!'],['vroni','Da drüben steht a Kleinflugzeug. Im Rumpf san tausend Flugblätter mit Grafs Verträgen.'],['vroni','Flieg durch alle Ringe über der Stadt – bei jedem Ring regnet’s Flugblätter.']],
+    post:[['vroni','Ganz München liest jetzt, was der Graf treibt! Die Zeitungen san voll davon.']]}},
+  {type:'flucht',title:'Fünf Sterne',stars:5,time:160,pay:5000,intro:'Die ganze Stadt jagt dich. Häng die Polizei ab!',
+   story:{ch:3,npc:'brandl',at:'Chinesischer Turm',
+    pre:[['brandl','Graf ist durchgedreht. Er hat seine gekauften Leute auf Sie angesetzt – die ganze Stadt sucht Sie.'],['brandl','Ich brauche ein paar Minuten, um den Haftbefehl durchzubringen. Überleben Sie bis dahin – und hängen Sie sie ab!']],
+    post:[['brandl','Konrad Graf ist verhaftet. Bestechung, Erpressung, versuchter Anschlag. Das reicht für viele Jahre.'],['sepp','Der Grüne Hirsch bleibt! Und für di gibt’s ab heut Freibier – auf Lebenszeit!'],['vroni','Und wennst wieder a Rennen brauchst – du woaßt, wo d’ mi findst.'],['memo','Und wenn das Auto kaputt ist: Giesing. Werkstatt. Wie immer.']],end:true}},
 ];
 const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},count:0,need:0,cps:null,cpi:0,tx:null,ty:null,pay:0,
   next(){return G.story<STORY.length?STORY[G.story]:null},
@@ -924,6 +964,11 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
     else if(def.type==='bombe'){const ne=W.nearestEdge(W.RB.x,W.RB.y+45,40);const p=lanePt(ne.e,true,0,ne.s);const c=makeCar('limousine',p.x,p.y,Math.atan2(p.ty,p.tx),{parked:true,color:'#5a5f66',mission:true});c.bomb=true;cars.push(c);m.data.car=c;m.data.armed=false}
     else if(def.type==='fluchtwagen'){const b=W.nearestEdge(526,410,30);m.data.bank={x:528,y:410};m.data.dest=W.zones.find(z=>z.kind==='safe');void b}
     else if(def.type==='flucht'){G.heat=Math.max(G.heat,(def.stars||3)+0.2);m.data.t0=G.time}
+    else if(def.type==='verfolgung'){const c=spawnAI('limousine',player.x,player.y,70,150,{color:'#121317',label:'M-KG 1'});if(!c){m.active=false;emit('toast','Gerade kein Ziel in Sicht – versuch’s gleich nochmal');return}c.cruise*=1.05;m.data.car=c;m.data.prog=0;m.data.lost=0;m.data.close=0;m.need=def.follow;m.data.hp0=c.hp}
+    else if(def.type==='zerstoeren'){const c=spawnAI('transporter',player.x,player.y,110,220,{color:'#2b2d31',label:'GRAF'});if(!c){m.active=false;emit('toast','Der Transporter ist noch nicht unterwegs – gleich nochmal');return}c.maxHp=c.hp=Math.round(c.maxHp*3.2);c.cruise*=1.2;m.data.car=c;
+      for(let i=0;i<2;i++){const e=spawnAI('suv',c.x,c.y,8,25,{color:'#17181b'});if(e)e.mission=true}}
+    else if(def.type==='flug'){const A=W.airport;const f=A.flyable.find(q=>q.type==='cessna');let c=cars.find(q=>q.type==='cessna'&&!q.dead&&hypot(q.x-f.x,q.y-f.y)<30&&!q.driver);if(!c){c=makeCar('cessna',f.x,f.y,f.a,{parked:true,liv:'bavaria'});cars.push(c)}c.mission=true;m.data.car=c;
+      m.data.rings=[[1520,190,55],[1330,240,70],[1130,180,75],[1010,112,60],[820,230,80],[650,300,70],[530,320,60],[430,230,85],[336,200,110]];m.cpi=0;m.need=m.data.rings.length}
     else if(def.type==='taxi'){m.stage=0;m.fares=0;taxiNext()}
     else if(JOB_TYPES.includes(def.type)){m.stage=0;m.fares=0;m.earned=0;jobNext()}
     emit('mission',def.title,def.intro||'');
@@ -934,6 +979,11 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
     const armedBomb=m.type==='bombe'&&!m.data.armed;
     if(!armedBomb){m.time-=dt;if(m.time<=0){if(m.type==='bombe'){const c=m.data.car;if(c&&!c.dead)explodeCar(c);m.fail('Bumm. Zu spät.');}else m.fail(m.type==='taxi'?'Der Fahrgast ist ausgestiegen.':'Die Zeit ist um.');return}}
     const px=player.x,py=player.y,pc=player.inCar,speed=pc?hypot(pc.vx,pc.vy):0;
+    if(m.type==='flug'){const c=m.data.car;if(!c||c.dead||!cars.includes(c)){m.fail('Das Flugzeug ist hinüber.');return}
+      if(pc!==c){m.tx=c.x;m.ty=c.y;m.tz=null;m.data.hud='Steig ins markierte Kleinflugzeug';if(m.cpi>0&&!c.air){m.fail('Flugzeug verlassen.');return}return}
+      const r=m.data.rings[m.cpi];m.tx=r[0];m.ty=r[1];m.tz=r[2];m.data.hud='Ring '+(m.cpi+1)+' von '+m.need+' · Höhe '+r[2]+' m (du: '+Math.round(c.z||0)+' m)';
+      if(hypot(c.x-r[0],c.y-r[1])<22&&Math.abs((c.z||0)-r[2])<20){m.cpi++;sfx('pick');for(let i=0;i<40;i++)addPart({k:'deb',x:c.x+rand(-3,3),y:c.y+rand(-3,3),z:(c.z||0)-1,vx:rand(-4,4)+c.vx*0.3,vy:rand(-4,4)+c.vy*0.3,vz:rand(-1,1),life:6,max:6,size:0.35,col:'#f4f1e6'});emit('toast','Flugblätter abgeworfen!');
+        if(m.cpi>=m.need){m.tz=null;m.win()}}return}
     if(inPlane())return;   // targets, pick-ups and drop-offs only count on the ground
     switch(m.type){
       case'kurier':
@@ -953,6 +1003,15 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
         else{const z=m.data.dest;m.tx=z.x;m.ty=z.y;if(pc&&hypot(pc.x-z.x,pc.y-z.y)<z.r&&speed<2.5){if(stars()>0){if(!m.data.warned){m.data.warned=true;emit('toast','Erst die Polizei abhängen!')}}else m.win()}}
         break}
       case'flucht':if(stars()===0&&G.time-m.data.t0>5)m.win();break;
+      case'verfolgung':{const c=m.data.car;if(!c||c.dead||!cars.includes(c)){m.fail('Die Limousine ist weg.');return}
+        if(c.hp<m.data.hp0-3||c.flee){m.fail('Aufgeflogen! Graf hat dich bemerkt.');return}
+        m.tx=c.x;m.ty=c.y;const d=hypot(c.x-px,c.y-py);
+        if(d>75){m.data.lost+=dt;if(m.data.lost>8){m.fail('Du hast ihn aus den Augen verloren.');return}m.data.hud='Zu weit weg – aufholen! ('+Math.ceil(8-m.data.lost)+' s)'}
+        else if(d<13){m.data.close+=dt;if(m.data.close>3.5){c.flee=true;m.fail('Zu nah – Graf hat dich bemerkt!');return}m.data.hud='Zu nah! Abstand halten!';m.data.lost=0}
+        else{m.data.lost=0;m.data.close=Math.max(0,m.data.close-dt);m.data.prog+=dt;m.data.hud='Dranbleiben: '+Math.floor(m.data.prog)+' / '+m.need+' s';if(m.data.prog>=m.need){c.mission=false;m.win()}}
+        m.time=Math.max(m.time,m.need-m.data.prog+10);break}
+      case'zerstoeren':{const c=m.data.car;if(!c||!cars.includes(c)){m.fail('Der Transporter ist entkommen.');return}if(c.dead){m.win();return}
+        m.tx=c.x;m.ty=c.y;m.data.hud='Transporter zerstören · Panzerung '+Math.max(0,Math.round(c.hp/c.maxHp*100))+'%';if(hypot(c.x-px,c.y-py)>420){m.fail('Der Transporter ist entkommen.');return}break}
       case'taxi':{
         if(pc!==m.data.veh){m.fail('Taxi verlassen – Schicht beendet.',true);return}
         if(m.stage===0){const p=m.data.fare;if(!p||(!p.alive&&!p.boarded)){taxiNext();break}m.tx=p.x;m.ty=p.y;
@@ -964,7 +1023,7 @@ const mission=IH.mission={active:false,type:'',title:'',stage:0,time:0,data:{},c
     }
   },
   win(){const m=this;stats.missions++;addMoney(m.pay,player.x,player.y);emit('banner','Auftrag erledigt','+$'+m.pay,'#3ddc84');sfx('win');if(m.data.def&&STORY.includes(m.data.def))G.story++;else G.jobs++;m.end();save()},
-  fail(why,quiet){const m=this;if(!quiet){emit('banner','Auftrag gescheitert',why,'#ff4136');sfx('fail')}else emit('toast',why);if(m.data.car)m.data.car.mission=false;if(m.data.crew)for(const p of m.data.crew)p.alive=false;if(m.data.fare)m.data.fare.wave=false,m.data.fare.state='walk';if(m.data.patient)m.data.patient.alive=false;if(m.data.burnCar){const bc=m.data.burnCar;bc.mission=false;if(bc.burn>0&&!bc.dead)explodeCar(bc)}m.end()},
+  fail(why,quiet){const m=this;m.tz=null;if(!quiet){emit('banner','Auftrag gescheitert',why,'#ff4136');sfx('fail')}else emit('toast',why);if(m.data.car)m.data.car.mission=false;if(m.data.crew)for(const p of m.data.crew)p.alive=false;if(m.data.fare)m.data.fare.wave=false,m.data.fare.state='walk';if(m.data.patient)m.data.patient.alive=false;if(m.data.burnCar){const bc=m.data.burnCar;bc.mission=false;if(bc.burn>0&&!bc.dead)explodeCar(bc)}m.end()},
   end(){if(this.type==='taxi'||JOB_TYPES.includes(this.type))G.jobCD=6;this.active=false;if(this.data.phone)this.data.phone.cd=20;this.data={};this.tx=this.ty=null}
 };
 const JOB_TYPES=['notarzt','feuer','bus','bier'];
@@ -983,6 +1042,10 @@ function toggleJob(){
   if(IH.act&&IH.act.busy()){emit('toast','Gerade nicht möglich');return}
   mission.start(Object.assign({pay:0},j));mission.data.veh=pc;if(pc.type==='feuerwehr')pc.siren=true}
 const PUBS=[['Hofbräuhaus',600,650],['Augustiner',398,648],['Chinesischer Turm',655,312],['Schottenhamel-Festzelt',300,885],['Viktualienmarkt-Biergarten',598,706],['Paulaner am Nockherberg',960,1060],['Löwenbräukeller',372,505],['Hirschgarten',90,600]];
+// an AI-driven car on a road around (cx,cy) for missions (protected from despawning)
+function spawnAI(type,cx,cy,rmin,rmax,o){for(let tries=0;tries<40;tries++){const a=rand(0,Math.PI*2),d=rand(rmin,rmax);const ne=W.nearestEdge(cx+Math.cos(a)*d,cy+Math.sin(a)*d,40);if(!ne)continue;const e=ne.e;if(e.bridge)continue;
+  const fwd=e.oneway?true:Math.random()<0.5;const s=fwd?ne.s:e.len-ne.s;if(s<(fwd?e.clearA:e.clearB)+2||s>e.len-(fwd?e.clearB:e.clearA)-6)continue;const p=lanePt(e,fwd,0,s);if(carNear(p.x,p.y,7))continue;
+  const c=makeCar(type,p.x,p.y,Math.atan2(p.ty,p.tx),{driver:'ai'});if(o){if(o.color)c.color=o.color;if(o.label)c.label=o.label}c.mission=true;startOnEdge(c,e,fwd,s,0);cars.push(c);return c}return null}
 function roadSpot(cx,cy,rmin,rmax){for(let i=0;i<30;i++){const a=rand(0,Math.PI*2),d=rand(rmin,rmax);const ne=W.nearestEdge(cx+Math.cos(a)*d,cy+Math.sin(a)*d,30);if(!ne||ne.e.bridge||ne.e.oneway)continue;const e=ne.e;if(ne.s<e.clearA+6||ne.s>e.len-e.clearB-6)continue;const p=lanePt(e,true,0,ne.s);const o=e.w/2-1.2;return{x:p.x-p.ty*o,y:p.y+p.tx*o,a:Math.atan2(p.ty,p.tx)}}return null}
 function jobNext(){
   const m=mission,pc=player.inCar;if(!pc){m.fail('Schicht beendet.',true);return}m.stage=0;m.data.hold=0;
@@ -1212,7 +1275,7 @@ function update(dt){
     policeTick(dt);mission.tick(dt);depotTick(dt);G.jobCD=(G.jobCD||0)-dt;
     {const src=player.inCar||player;for(const pk of inPlane()?[]:W.packages){if(G.pkgs.has(pk.i))continue;if(Math.abs(src.x-pk.x)<2.4&&Math.abs(src.y-pk.y)<2.4){G.pkgs.add(pk.i);const n=G.pkgs.size;addMoney(100,pk.x,pk.y);sfx('pick');if(n===W.packages.length){addMoney(10000,pk.x,pk.y);emit('banner','Alle Weißwurst-Tüten!','+$10.000 · Respekt.','#ffc61a');sfx('win')}else emit('toast','Weißwurst-Tüte '+n+' von '+W.packages.length);save()}}}
     // phones
-    for(const ph of W.phones){ph.cd=(ph.cd||0)-dt;if(!mission.active&&ph.cd<=0&&!inPlane()&&!(IH.act&&IH.act.busy())&&hypot(player.x-ph.x,player.y-ph.y)<(player.inCar?5:2.4)){const def=mission.next()||randomJob();mission.start(def,ph)}}
+    for(const ph of W.phones){ph.cd=(ph.cd||0)-dt;if(!mission.active&&ph.cd<=0&&!inPlane()&&!(IH.act&&IH.act.busy())&&hypot(player.x-ph.x,player.y-ph.y)<(player.inCar?5:2.4)){mission.start(randomJob(),ph)}}
     // pickups
     for(const p of W.pickups){p.cd=(p.cd||0)-dt;if(p.cd<=0&&!inPlane()&&hypot(player.x-p.x,player.y-p.y)<1.8){
       if(p.k==='health'){if(player.hp>=100)continue;player.hp=Math.min(100,player.hp+50);emit('toast','Erste Hilfe +50')}
@@ -1246,7 +1309,7 @@ function update(dt){
   if(Math.random()<0.03)fillLots(false);
 }
 
-IH.sim={takenByRemote,remoteCarFor,ridersOf,jobFor,onShift,toggleJob,spawnPlanes,planes,G,cars,peds,bullets,grenades,parts,decals,skids,floaters,player,mission,STORY,SHOP,WEAP,CT,stars,update,newGame,save,loadSave,lightState,shopBuy,shopPrice,nearestCarFor,
+IH.sim={makePed,addPart,takenByRemote,remoteCarFor,ridersOf,jobFor,onShift,toggleJob,spawnPlanes,planes,G,cars,peds,bullets,grenades,parts,decals,skids,floaters,player,mission,STORY,SHOP,WEAP,CT,stars,update,newGame,save,loadSave,lightState,shopBuy,shopPrice,nearestCarFor,
   spawnTraffic,fillLots,resetWorld,enterExit,get activeCars(){return activeCars},hasLOS,input,remote,remoteShot,remoteGrenade,remoteBoom,leaveRemoteCar,addMoney,pointInCar,
   PAINTS,stats,heli,fires,JOBS,makeCar,createFire,saveData,storeSave,normalizeSave,buyProperty,setHome,restAt,setShirt,inSafeZone,propById,astar,nearestNodeTo,pathPolyline};
 })(window));

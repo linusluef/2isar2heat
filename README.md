@@ -8,7 +8,7 @@ A 2.5D top-down action game set in Munich (Frauenkirche to Allianz Arena), built
 
 No build tools are needed. GitHub Pages serves the files exactly as they are.
 
-1. **Unzip.** In the Files app, tap `2isar2heat.zip`. You get a folder called `2isar2heat` with 23 files.
+1. **Unzip.** In the Files app, tap `2isar2heat.zip`. You get a folder called `2isar2heat` with 24 files.
 2. **Create the repository.** On github.com, tap **+ → New repository**.
    - Name: `2isar2heat`
    - Visibility: **Public** (Pages is free for public repositories)
@@ -157,6 +157,26 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 - **Health:** you take less damage than before. Out of combat, your health slowly recovers on its own up to 60.
 - **Bodies:** people now have health. A light hit knocks them down and they get up again; a deadly one leaves them lying there. Bodies disappear after a while, sooner once you are out of sight, so the police can't pile up.
 
+## Story: Isarfieber
+
+A campaign of 11 story missions in three chapters, with characters, German dialogue and short scenes. Phone booths keep giving smaller side missions in between.
+
+- **The characters:**
+  - **Sepp:** landlord of the Grüner Hirsch in the Glockenbachviertel.
+  - **Vroni:** his niece and a racing driver (Olympiapark, Odeonsplatz, airport).
+  - **Memo:** a mechanic on the Giesinger Berg.
+  - **Kommissar Brandl:** a detective at the Chinesischer Turm.
+  - Together they fight the property shark Konrad Graf, who wants Sepp's pub.
+- **How it works:**
+  - The next story contact is an orange **★** on the minimap and the big map, with a light beam in the city and the name shown above the character. The HUD says who is waiting where.
+  - Walk up (or stop next to them in a car, without wanted stars) and a scene starts: black bars, camera on both of you, the dialogue as text. The dialogue is also read aloud with the iPad's German voice.
+  - Tap anywhere or **Weiter ›** to continue, or **Überspringen** to skip. After a failed attempt, going back replays only the last line.
+- **After a mission:** the character calls you, then the next contact appears. Each chapter starts with a title card, and the last mission ends with an epilogue.
+- **New mission types:**
+  - **Schatten:** tail a black limousine for 70 seconds. More than 75 m behind for 8 seconds loses it, closer than 13 m for 3.5 seconds and you are spotted, and touching it blows your cover.
+  - **Schrottreif:** destroy an armoured transporter with escorts, which has about three times a normal transporter's armour.
+  - **Luftpost:** fly the small plane from the airport through 9 rings in the air over the city. Each ring drops leaflets.
+
 ## Online activities
 
 These work in the global lobby with other players, and alone (offline or nobody around) against bots, the bank or the clock.
@@ -182,7 +202,9 @@ These work in the global lobby with other players, and alone (offline or nobody 
 - **Casino (spade symbol, the Spielbank on Leopoldstraße):**
   - Blackjack against the bank, up to 4 players at one table.
   - Texas Hold'em against other players. Empty seats are filled with bots. Your buy-in comes back as money when you stand up.
-  - Open tables from other players appear in the casino's list.
+  - Open tables from other players appear in the casino's list. Tap **Hinsetzen**, and for poker choose your buy-in on the next page.
+  - **Joining is reliable:** your device keeps asking the host for a seat until it appears at the table, for up to 12 seconds; if the host never answers, your buy-in is refunded. The host also resends the table state every 2.5 seconds, so a lost message no longer drops anyone.
+  - **Fair odds:** cards are shuffled at random and bots only see their own cards. Blackjack uses six decks, the dealer stands on 17, blackjack pays 3:2 and you can double; there is no splitting. With good play you lose about 1 % of your bets over time, a little more than in a real casino because splitting is missing. Losing streaks are normal variance. The poker bots play reasonably: they judge their hand by simulating the rest of the board, and bluff now and then.
 - **Things to know:** whoever opens a table, race or heist is its host. If the host leaves, the table closes and everyone gets their chips back. The lobby messages are public, so in theory someone could read the poker hole cards.
 
 ## New places
@@ -252,7 +274,9 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - **When the driver gets out:** all passengers get out too. The car stays there unlocked, so one of them can take the wheel straight away.
   - **The driver sees it:** a message in the feed shows when someone gets in or out.
   - **Wanted levels stay personal:** if a passenger is wanted, the police chase the car they are riding in.
-- Each player still runs their own traffic, police and missions. You play your own game in a shared city.
+- **What every player sees the same:** other players, the cars, planes and motorbikes they drive, their passengers, shots, grenades, explosions (also crashed planes) and cars someone left behind.
+- **What is local to each device:** traffic, pedestrians, police, parked cars and missions. Each device runs these itself, so they differ between players. Keeping all of them identical would need one device to simulate the whole city and stream it to everyone else, which public MQTT brokers can't carry smoothly.
+- **Smooth movement:** positions are timed with the sender's own clock and blended along a smooth curve using speed and direction, so vehicles you ride in or watch don't stutter when the network jitters. While someone rides along, the driver's device sends updates more often.
 - **How it works without a server:** the game connects to three free public MQTT brokers at once over secure WebSockets (EMQX, HiveMQ and the Mosquitto test server). It sends to all three and ignores duplicates, so the lobby keeps working if one of them is down. No account or server setup is needed.
 - **Things to know:**
   - These public brokers come with no uptime guarantee.
@@ -322,6 +346,7 @@ Settings are on the start screen and in the pause menu:
 | `net.js` | Online lobby (MQTT over WebSocket) |
 | `radio.js` | Car radio with three generated music stations |
 | `activities.js` | Races, bank heist and casino (blackjack, Texas Hold'em), online and offline |
+| `story.js` | Story campaign: characters, contact points, dialogue scenes, chapter cards |
 | `account.js`, `config.js` | Accounts and cloud saves (Firebase), save codes |
 | `main.js` | Input (touch, controller, keyboard), sound, HUD, lobby UI |
 | `install.js` | Install screen: on phones and tablets the game only runs from the home screen |

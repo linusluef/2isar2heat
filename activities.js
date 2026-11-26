@@ -42,6 +42,12 @@ let panelOpen=null;
 function openPanel(kind,html,pause){panelOpen=kind;$('actBox').innerHTML=html;$('actPanel').hidden=false;if(pause!==false&&!online())G.paused=true;if(pause!==false)A.inside=true}
 function closePanel(){panelOpen=null;$('actPanel').hidden=true;$('actBox').innerHTML='';G.paused=false;A.inside=false}
 $('actBox').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const fn=clickers[b.dataset.a];if(fn)fn(b.dataset.v,b)});
+// never rebuild the panel while a finger is on it: a button replaced between touch-down and touch-up loses the tap
+let ptrDown=false,pendingRender=null;
+$('actBox').addEventListener('pointerdown',()=>{ptrDown=true},true);
+const ptrUp=()=>{if(!ptrDown)return;ptrDown=false;setTimeout(()=>{const f=pendingRender;pendingRender=null;if(f)f()},30)};
+for(const ev of['pointerup','pointercancel'])root.addEventListener(ev,ptrUp,true);
+function rerender(fn){if(ptrDown){pendingRender=fn;return}fn()}
 const clickers={};
 function hud(html){const h=$('actHud');if(!html){h.hidden=true;return}h.hidden=false;if(h.innerHTML!==html)h.innerHTML=html}
 
@@ -269,7 +275,9 @@ handlers.tbl=(from,m)=>{if(from===myId())return;seen.set(m.t,{id:m.t,g:m.g,host:
 handlers.tblx=(from,m)=>{seen.delete(m.t);if(myTable&&myTable.id===m.t&&from===myTable.host){cashOut('Der Tisch wurde geschlossen.')}};
 function announce(T){send({k:'tbl',t:T.id,g:T.game,h:myName(),n:T.seats.filter(s=>!s.bot).length,max:T.game==='poker'?6:4,s:T.game==='poker'?T.bb:T.min})}
 function closeTable(T){tables.delete(T.id);send({k:'tblx',t:T.id})}
-handlers.tj=(from,m)=>{const T=tables.get(m.t);if(!T)return;if(T.seats.some(s=>s.id===from))return;const humans=T.seats.filter(s=>!s.bot).length;const max=T.game==='poker'?6:4;
+handlers.tj=(from,m)=>{const T=tables.get(m.t);if(!T)return;
+  const old=T.seats.find(s=>s.id===from);if(old){if(old.left){old.left=false;if(T.game==='poker')old.chips=clamp(m.c|0,0,1e6);T.dirty=true}else T.dirty=true;return}   // re-join after leaving mid-hand / repeated request: just resend the state
+  const humans=T.seats.filter(s=>!s.bot).length;const max=T.game==='poker'?6:4;
   if(humans>=max){send({k:'tno',t:T.id,to:from,why:'Der Tisch ist voll.'});return}
   if(T.game==='poker'){const bi=T.seats.findIndex(s=>s.bot&&!s.inHand);const seat={id:from,name:String(m.n||'Spieler').slice(0,16),chips:clamp(m.c|0,0,1e6),bot:false,sitOut:false};if(T.seats.length>=6&&bi>=0)T.seats.splice(bi,1,seat);else if(T.seats.length<6)T.seats.push(seat);else{send({k:'tno',t:T.id,to:from,why:'Der Tisch ist voll.'});return}}
   else T.seats.push({id:from,name:String(m.n||'Spieler').slice(0,16),bet:0,hands:[],won:0});
@@ -376,19 +384,23 @@ function bjTick(T){
 /* ---------------- client side of a table ---------------- */
 let myHole=null,lastPayRound=-1,pkRaise=0;
 handlers.pkh=(from,m)=>{if(m.to===myId()&&myTable&&myTable.id===m.t){myHole={hn:m.hn,c:m.c}}};
-handlers.pk=(from,m)=>{if(!myTable||myTable.id!==m.t)return;view=m;myTable.seen=now();const me=m.s.find(s=>s.id===myId());if(me)myTable.chips=me.c;if(panelOpen==='poker')renderPoker()};
+handlers.pk=(from,m)=>{if(!myTable||myTable.id!==m.t)return;view=m;myTable.seen=now();const me=m.s.find(s=>s.id===myId());if(me)myTable.chips=me.c;if(panelOpen==='poker')rerender(()=>{if(panelOpen==='poker')renderPoker()})};
 handlers.bj=(from,m)=>{if(!myTable||myTable.id!==m.t)return;const prev=view;view=m;myTable.seen=now();const me=m.s.find(s=>s.id===myId());
   if(m.ph==='result'&&me&&lastPayRound!==m.rn&&me.bet>0){lastPayRound=m.rn;if(me.p>0)pay(me.p);sfx(me.p>me.bet?'pick':me.p===me.bet?'beep':'fail',0.6);myTable.inRound=0}
   if(m.ph==='play'&&me&&me.bet>0&&myTable.dbl!==m.rn&&prev&&prev.ph==='play'){const pm=prev.s.find(s=>s.id===myId());if(pm&&me.bet===pm.bet*2){pay(-pm.bet);myTable.dbl=m.rn}}
-  if(panelOpen==='bj')renderBJ()};
+  if(panelOpen==='bj')rerender(()=>{if(panelOpen==='bj')renderBJ()})};
 function sit(T,game){myTable={id:T.id,game,host:T.host||myId(),buy:0,chips:0,seen:now()};view=null;myHole=null}
 function joinTable(t,buy){if(t.g==='poker'){if(P.money<buy){toast('Nicht genug Geld');return}pay(-buy);myTable={id:t.id,game:'poker',host:t.host,buy,chips:buy,seen:now()}}else myTable={id:t.id,game:'bj',host:t.host,buy:0,chips:0,seen:now()};
-  view=null;myHole=null;send({k:'tj',t:t.id,n:myName(),c:buy});if(t.g==='poker')renderPoker();else renderBJ()}
+  myTable.since=now();myTable.tjT=now();myTable.ok=false;view=null;myHole=null;send({k:'tj',t:t.id,n:myName(),c:buy});if(t.g==='poker')renderPoker();else renderBJ()}
 function leaveTable(){if(!myTable)return;send({k:'tl',t:myTable.id});myTable.inRound=0;cashOut(null)}
 function cashOut(why){if(!myTable)return;const mt=myTable;myTable=null;view=null;myHole=null;if(mt.game==='poker'&&mt.chips>0)pay(mt.chips);if(mt.game==='bj'&&mt.inRound)pay(mt.inRound);
   const T=tables.get(mt.id);if(T&&T.host===myId())closeTable(T);if(why)toast(why);if(panelOpen==='poker'||panelOpen==='bj')casinoLobby()}
 // leaving the table if the host disappears
-function clientTick(){if(myTable&&myTable.host!==myId()&&now()-myTable.seen>15)cashOut('Verbindung zum Tisch verloren – Chips ausgezahlt.')}
+function clientTick(){if(!myTable||myTable.host===myId())return;
+  const inView=view&&view.s&&view.s.some(s=>s.id===myId());if(inView)myTable.ok=true;
+  if(!myTable.ok){if(now()-(myTable.tjT||0)>1.5){myTable.tjT=now();send({k:'tj',t:myTable.id,n:myName(),c:myTable.buy||0})}
+    if(now()-myTable.since>12){const mt=myTable;myTable=null;view=null;if(mt.game==='poker'&&mt.buy)pay(mt.buy);toast('Der Tisch antwortet nicht – Buy-in zurück');casinoLobby();return}}
+  if(now()-myTable.seen>15)cashOut('Verbindung zum Tisch verloren – Chips ausgezahlt.')}
 
 /* ---------------- casino UI ---------------- */
 function casinoLobby(){
@@ -398,13 +410,18 @@ function casinoLobby(){
    ${list.length?`<p class="kicker">Offene Tische</p><div class="tables">${list.map(t=>`<div class="tbl"><span><b>${t.g==='poker'?'Texas Hold’em':'Blackjack'}</b> · ${esc(t.hn)} · ${t.n}/${t.max}${t.g==='poker'?' · Blinds '+t.stake/2+'/'+t.stake:''}</span><button data-a="tjoin" data-v="${t.id}" type="button">Hinsetzen</button></div>`).join('')}</div>`:''}
    <p class="kicker">Neuer Tisch</p>
    <div class="row"><button class="cta" data-a="newbj" type="button">Blackjack</button><button class="cta" data-a="newpk" type="button">Texas Hold’em</button></div>
-   <div id="buyRow" hidden><p class="kicker">Buy-in für Poker</p><div class="seg">${[500,1000,2000,5000].map(b=>`<button data-a="buy" data-v="${b}" type="button">${fmt(b)}</button>`).join('')}</div></div>
    <div class="row"><button class="ghost" data-a="close" type="button">Casino verlassen</button></div>`);
 }
 let pendingPoker=null;
 clickers.newbj=()=>{const T=newBJ();sit(T,'bj');T.seats.push({id:myId(),name:myName(),bet:0,cards:[],won:0});T.dirty=true;renderBJ()};
-clickers.newpk=()=>{pendingPoker='new';$('buyRow').hidden=false};
-clickers.tjoin=v=>{const t=seen.get(v);if(!t)return;if(t.g==='poker'){pendingPoker=t;$('buyRow').hidden=false}else joinTable(t,0)};
+// poker buy-in gets its own clear page (before, the choice appeared at the bottom of the lobby and was easy to miss)
+function buyInPanel(t){pendingPoker=t;openPanel('casino',`<p class="kicker">${esc(W.casino.name)}</p><h2>Texas Hold’em</h2>
+   <p class="note">${t==='new'?'Neuer Tisch – freie Plätze übernehmen Bots, andere Spieler können sich dazusetzen.':'Tisch von <b>'+esc(t.hn)+'</b> · '+t.n+'/'+t.max+' Spieler · Blinds '+t.stake/2+'/'+t.stake}<br>Mit wie viel Geld setzt du dich hin? Dein Geld: <b>${fmt(P.money)}</b></p>
+   <div id="buyRow"><p class="kicker">Buy-in wählen</p><div class="seg">${[500,1000,2000,5000].map(b=>`<button data-a="buy" data-v="${b}" type="button"${P.money<b?' disabled':''}>${fmt(b)}</button>`).join('')}</div></div>
+   <div class="row"><button class="ghost" data-a="lobby" type="button">Zurück</button></div>`)}
+clickers.lobby=()=>{pendingPoker=null;casinoLobby()};
+clickers.newpk=()=>buyInPanel('new');
+clickers.tjoin=v=>{const t=seen.get(v);if(!t){toast('Der Tisch ist nicht mehr offen');casinoLobby();return}if(t.g==='poker')buyInPanel(t);else joinTable(t,0)};
 clickers.buy=v=>{const b=+v;if(P.money<b){toast('Nicht genug Geld');return}if(pendingPoker==='new'){pay(-b);const T=newPoker();myTable={id:T.id,game:'poker',host:myId(),buy:b,chips:b,seen:now()};view=null;myHole=null;T.seats.push({id:myId(),name:myName(),chips:b,bot:false});pokerTopUpBots(T);T.dirty=true;renderPoker()}else if(pendingPoker)joinTable(pendingPoker,b)};
 clickers.leave=()=>{leaveTable();casinoLobby()};
 function seatHtml(s,me,extra){return`<div class="seat${s.id===me?' me':''}${extra||''}"><b>${esc(s.n)}</b>`}
@@ -468,14 +485,14 @@ function tick(){
   const t=now(),dt=Math.min(0.1,t-lastT);lastT=t;
   try{
     if(G.state!=='menu'){raceTick(dt);heistTick(dt);puzzleTick(dt);clientTick()}
-    for(const T of tables.values()){T.annT-=dt;if(T.annT<=0){T.annT=4;announce(T)}if(T.game==='poker')pokerTick(T);else bjTick(T)}
+    for(const T of tables.values()){T.annT-=dt;if(T.annT<=0){T.annT=4;announce(T)}T.hbT=(T.hbT||0)-dt;if(T.hbT<=0){T.hbT=2.5;T.dirty=true}if(T.game==='poker')pokerTick(T);else bjTick(T)}
     tickT-=dt;if(tickT<=0){tickT=0.25;const zone=nearPOI();
       // stepping onto the red carpet / the bank steps / a start line opens the activity by itself (once per visit), the button stays as a fallback
       if(!zone)autoKey=null;else if(zone.auto&&zone.key!==autoKey&&!panelOpen){autoKey=zone.key;try{zone.fn()}catch(e){console.error(e)}}
       const poi=panelOpen?null:zone;btnAction=poi?poi.fn:null;const b=$('actBtn');b.hidden=!poi;if(poi&&b.textContent!==poi.label)b.textContent=poi.label;renderInvites()}
     // the casino lobby keeps its list of open tables up to date while it is open
-    lobT-=dt;if(lobT<=0){lobT=1;if(panelOpen==='race'&&panelRace){const r=[...remoteRaces.values()].find(q=>q.def.id===panelRace.id);if((r?r.id:'')!==panelRaceSig)racePanel(panelRace)}
-      if(panelOpen==='casino'){const sig=[...seen.values()].filter(q=>now()-q.t<12).map(q=>q.id+':'+q.n).join(',');const br=$('buyRow');if(sig!==lobSig&&!(br&&!br.hidden)){lobSig=sig;casinoLobby()}}else lobSig=null}
+    lobT-=dt;if(lobT<=0){lobT=1;if(panelOpen==='race'&&panelRace){const r=[...remoteRaces.values()].find(q=>q.def.id===panelRace.id);if((r?r.id:'')!==panelRaceSig&&!ptrDown)racePanel(panelRace)}
+      if(panelOpen==='casino'){const sig=[...seen.values()].filter(q=>now()-q.t<12).map(q=>q.id+':'+q.n).join(',');const br=$('buyRow');if(sig!==lobSig&&!(br&&!br.hidden)&&!ptrDown){lobSig=sig;casinoLobby()}}else lobSig=null}
   }catch(e){console.error(e)}
   requestAnimationFrame(tick);
 }

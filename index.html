@@ -275,6 +275,20 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
 @keyframes eqb{0%{height:3px}100%{height:18px}}
 #radio.off .eq{opacity:.3}
 @media (max-width:760px){#radio{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 50px);min-width:200px}}
+
+/* story scenes */
+#story{position:fixed;inset:0;z-index:20;pointer-events:auto;touch-action:none}
+#story .lb{position:absolute;left:0;right:0;height:11vh;background:#000;transition:transform .5s}
+#story .lb.top{top:0}#story .lb.bot{bottom:0}
+#stCard{position:absolute;left:0;right:0;top:42%;text-align:center;font-family:'Bungee',Impact,sans-serif;font-size:clamp(24px,4.6vw,46px);color:#ffc61a;text-shadow:0 3px 0 #000,0 0 24px rgba(0,0,0,.8);opacity:0;transition:opacity .6s;padding:0 16px}
+#stCard.on{opacity:1}
+#stDlg{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(11vh + 14px);width:min(760px,calc(100vw - 32px));background:rgba(14,16,19,.92);border:1px solid rgba(241,237,226,.18);border-radius:16px;padding:14px 18px 12px;color:#f1ede2;font-family:'Barlow Condensed','Arial Narrow',sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#stWho{font-size:17px;letter-spacing:.04em;margin-bottom:4px}#stWho b{font-size:19px}#stWho span{color:#a3a9b2;font-weight:600;margin-left:6px}
+#stTxt{font-size:clamp(18px,2.3vw,23px);line-height:1.3;font-weight:600;min-height:2.6em}
+.stBtns{display:flex;justify-content:space-between;margin-top:8px}
+.stBtns button{background:none;border:1px solid rgba(241,237,226,.25);color:#f1ede2;border-radius:10px;padding:7px 14px;font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:.06em}
+#stNext{background:#ffc61a!important;color:#0e1013!important;border-color:#ffc61a!important}
+body.cutscene #banner,body.cutscene #toast,body.cutscene #mission,body.cutscene #ctrl,body.cutscene #radio,body.cutscene #actBtn,body.cutscene #mini,body.cutscene #nextJob{visibility:hidden}
 </style>
 </head>
 <body>
@@ -443,6 +457,7 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
 <script src="account.js"></script>
 <script src="activities.js"></script>
 <script src="radio.js"></script>
+<script src="story.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

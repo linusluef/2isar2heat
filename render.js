@@ -1141,6 +1141,15 @@ function pedObj(p){
   let wave=null;if(p.wave){wave=new THREE.Mesh(new THREE.RingGeometry(0.8,1.05,24),new THREE.MeshBasicMaterial({color:'#ffc61a',side:THREE.DoubleSide}));wave.rotation.x=-Math.PI/2;wave.position.y=0.1;g.add(wave)}
   scene.add(g);o={g,torso,body,l1,l2,a1,a2,gun,wave,pool:null,wk:null};pedObjs.set(p.id,o);return o;
 }
+// one stride of hip flexion (+ = thigh forward) and knee flexion in degrees, from typical gait data
+const GAIT=(()=>{const K={wh:[[0,22],[0.12,18],[0.3,4],[0.5,-10],[0.6,-12],[0.7,-2],[0.85,20]],wk:[[0,4],[0.12,16],[0.3,6],[0.5,8],[0.62,38],[0.72,60],[0.85,30],[0.95,6]],
+    rh:[[0,28],[0.1,16],[0.3,-12],[0.38,-16],[0.5,0],[0.65,38],[0.8,44],[0.92,34]],rk:[[0,18],[0.1,36],[0.3,20],[0.42,52],[0.55,105],[0.68,95],[0.8,55],[0.93,20]]};
+  const out={};for(const k in K){const pts=K[k],n=pts.length,N=128,tab=new Float32Array(N);
+    for(let i=0;i<N;i++){const t=i/N;let j=n-1;for(let q=0;q<n;q++)if(pts[q][0]<=t)j=q;const p1=pts[j],p2=pts[(j+1)%n],p0=pts[(j-1+n)%n],p3=pts[(j+2)%n];
+      const t1=p1[0],t2=j+1<n?p2[0]:1+p2[0];const u=(t-t1)/(t2-t1);const u2=u*u,u3=u2*u;   // Catmull-Rom through the keys (periodic)
+      tab[i]=0.5*((2*p1[1])+(-p0[1]+p2[1])*u+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*u2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*u3)}
+    out[k]=t=>{const x=t*N,i=Math.floor(x)%N,f=x-Math.floor(x);return tab[i]+(tab[(i+1)%N]-tab[i])*f}}
+  return out})();
 function posePed(o,p,isPlayer){
   o.g.position.set(p.x,0,p.y);o.g.rotation.set(0,-p.a,0);o.torso.rotation.set(0,0,0);o.torso.position.set(0,0,0);
   for(const a of[o.a1,o.a2]){a.rotation.set(0,0,0);a.fore.rotation.set(0,0,0)}
@@ -1154,25 +1163,22 @@ function posePed(o,p,isPlayer){
     return}
   if(o.pool){scene.remove(o.pool);o.pool=null}
   const sp=p.spdNow||0,moving=sp>0.25,run=sp>3.6;const ph=p.anim||0;
-  // gait. Thighs swing further forward than back (as in real walking/running), the knee bends while the leg
-  // travels forward and is nearly straight while the foot is planted; the hip height follows the planted foot.
-  // Arms swing opposite to the legs with a bent elbow (more bent when running).
-  const f=0.62+0.13*Math.min(sp,9),step=sp/(2*f);const amp=moving?Math.min(run?0.62:0.42,Math.asin(Math.min(0.95,step/1.84))*0.85+0.05):0;
-  const fwd=moving?(run?0.32:0.06)*Math.min(1,amp/0.4):0;   // bias of the swing towards the front
-  const kneeMax=moving?(run?1.25:0.7)*Math.min(1,amp/0.38):0,kneeStance=moving?(run?0.25:0.1):0;
-  const leg=(o2,phi)=>{const th=fwd+Math.sin(phi)*amp;const c=Math.cos(phi);const sw=Math.max(0,c);
-    const kn=kneeStance*Math.max(0,-Math.sin(phi*2))*(c<0?1:0)+kneeMax*sw*sw*(0.4+0.6*Math.max(0,Math.cos(phi+0.6)));
-    o2.rotation.set(0,0,th);o2.shin.rotation.set(0,0,-kn);return 0.46*Math.cos(th)+0.465*Math.cos(th-kn)};
-  const h1=leg(o.l1,ph),h2=leg(o.l2,ph+Math.PI);
-  const lean=run?0.2*Math.min(1,(sp-3.6)/3+0.4):0.03*Math.min(1,sp);
-  const arm=amp*(run?1.0:0.75),aFwd=run?0.18:0.04,elbow=moving?(run?1.25:0.35):0.12;
-  const sa=Math.sin(ph)*arm;
-  o.a1.rotation.set(0.07,0,aFwd-sa+lean*0.5);o.a2.rotation.set(-0.07,0,aFwd+sa+lean*0.5);
-  o.a1.fore.rotation.set(0,0,elbow+Math.max(0,-Math.sin(ph))*(run?0.25:0.2));o.a2.fore.rotation.set(0,0,elbow+Math.max(0,Math.sin(ph))*(run?0.25:0.2));
-  o.torso.rotation.set(0,-Math.sin(ph)*amp*0.16,-lean);
+  // gait from motion-capture-like keyframe curves (hip and knee angle over one stride), blended from walking to running
+  // by speed. Contact at t=0; the knee flexes after toe-off and reaches forward bent, extending only just before contact,
+  // which avoids the stiff "marching" look. Arms swing against the legs; the hips follow the planted foot.
+  const tt=((ph/6.2832)%1+1)%1;const bl=moving?smooth(2.2,4.6,sp):0,ampW=moving?clamp(0.45+sp/2.6,0.45,1):0,ampR=clamp(0.82+(sp-4)/14,0.82,1.12);
+  const leg=(o2,t)=>{const hip=(GAIT.wh(t)*(1-bl)*ampW+GAIT.rh(t)*bl*ampR)*0.01745,kn=(GAIT.wk(t)*(1-bl)*ampW+GAIT.rk(t)*bl*ampR)*0.01745+0.04;
+    o2.rotation.set(0,0,hip);o2.shin.rotation.set(0,0,-kn);return[0.46*Math.cos(hip)+0.465*Math.cos(hip-kn),hip]};
+  const[h1,hp1]=moving?leg(o.l1,tt):[0.925,0],[h2,hp2]=moving?leg(o.l2,(tt+0.5)%1):[0.925,0];
+  if(!moving){o.l1.rotation.set(0,0,0.02);o.l2.rotation.set(0,0,-0.02);o.l1.shin.rotation.set(0,0,-0.05);o.l2.shin.rotation.set(0,0,-0.05)}
+  const lean=moving?0.03+bl*0.16:0;
+  const aK=0.55+bl*0.35,aBias=bl*0.15;
+  o.a1.rotation.set(0.07,0,aBias-aK*(hp1-0.12*bl)+lean*0.4);o.a2.rotation.set(-0.07,0,aBias-aK*(hp2-0.12*bl)+lean*0.4);
+  const elb=0.18+bl*1.2;o.a1.fore.rotation.set(0,0,elb+Math.max(0,-hp1)*0.4);o.a2.fore.rotation.set(0,0,elb+Math.max(0,-hp2)*0.4);
+  o.torso.rotation.set(0,(hp2-hp1)*0.22,-lean);
   // lean pivots at the hip joint (not at the ground), so the hips stay on top of the legs
   o.torso.position.set(-Math.sin(lean)*0.95,(1-Math.cos(lean))*0.95,0);
-  o.g.position.y=moving?Math.max(h1,h2)-0.925+(run?0.06*Math.max(0,-Math.cos(ph*2)):0):0;
+  o.g.position.y=moving?Math.max(h1,h2)-0.925:0;
   if(p.state==='wave'){o.a1.rotation.set(-2.6+Math.sin(S.G.time*8)*0.3,0,0);o.a1.fore.rotation.set(0,0,0.5)}
   // weapon in hand
   const w=isPlayer?S.player.weapon:p.remote?p.weapon:(p.kind==='cop'&&S.stars()>=2?(S.stars()>=4?3:1):0);const wk=WKIND[w]||null;
@@ -1303,10 +1309,10 @@ function updateMarkers(dt){
   const G=S.G,m=S.mission,P=S.player;const t=G.time;
   for(const{ph,g}of phoneMeshes){const ready=(ph.cd||0)<=0&&!m.active&&G.state==='play';g.userData.beam.visible=ready;if(ready)g.userData.beam.material.opacity=0.22+0.15*Math.sin(t*4)}
   for(const{p,m:mesh}of pickupMeshes){mesh.visible=(p.cd||0)<=0;mesh.rotation.y=t*1.6;mesh.position.y=0.9+Math.sin(t*3+p.x)*0.15}
-  const at=!m.active&&IH.act&&IH.act.target?IH.act.target():null;
-  const hasT=(m.active&&m.tx!==null&&m.tx!==undefined||!!at)&&G.state==='play';const mtx=at?at.x:m.tx,mty=at?at.y:m.ty;
+  const at=!m.active&&((IH.act&&IH.act.target?IH.act.target():null)||(IH.story&&IH.story.target?IH.story.target():null));
+  const hasT=(m.active&&m.tx!==null&&m.tx!==undefined||!!at)&&G.state==='play'&&!(IH.story&&IH.story.active);const mtx=at?at.x:m.tx,mty=at?at.y:m.ty;
   beacon.visible=beaconRing.visible=hasT;
-  if(hasT){beacon.position.set(mtx,20,mty);beaconRing.position.set(mtx,0.15,mty);const s=1+0.15*Math.sin(t*5);beaconRing.scale.set(s,s,1)}
+  if(hasT){const tz=!at&&m.tz?m.tz:0;beacon.position.set(mtx,20+tz,mty);beaconRing.position.set(mtx,tz?tz:0.15,mty);const s=(tz?4.2:1)*(1+0.15*Math.sin(t*5));beaconRing.scale.set(s,s,1)}   // air rings for flight missions
   const nxt=(m.active&&m.type==='rennen'&&m.cps&&m.cps[m.cpi+1])||(at&&at.next);beacon2.visible=!!nxt&&G.state==='play';if(nxt)beacon2.position.set(nxt.x,12,nxt.y);
   const src=P.inCar||P;
   arrow3d.visible=hasT&&hypot(m.tx-src.x,m.ty-src.y)>25;

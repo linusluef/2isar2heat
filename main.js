@@ -191,6 +191,7 @@ function updateHUD(){
       case'notarzt':txt=(m.stage?'Ab ins Klinikum (Kreuz-Symbol)':'Hol den Verletzten ab – daneben anhalten')+(m.fares?' · '+m.fares+' gerettet · $'+m.earned:'');break;
       case'feuer':{const bc=m.data.burnCar;txt=(bc?'Auto brennt! Ranfahren und WASSER halten · '+Math.max(0,Math.ceil(bc.burn))+'%':'Nächster Einsatz …')+(m.fares?' · '+m.fares+' gelöscht':'');break}
       case'bus':txt=(m.data.hold>0?'Fahrgäste steigen ein …':'Nächste Haltestelle anfahren und halten')+(m.fares?' · '+m.fares+' Halte · $'+m.earned:'');break;
+      case'verfolgung':case'zerstoeren':case'flug':txt=m.data.hud||'';break;
       case'bier':txt='Fässer zum '+(m.data.dest?m.data.dest.name:'Wirtshaus')+' – vorsichtig fahren!'+(m.fares?' · '+m.fares+' geliefert':'');break;
     }
     setTxt('mTitle',m.title||TITLES[m.type]);setTxt('mText',txt);
@@ -198,7 +199,7 @@ function updateHUD(){
     const low=t<=10&&!armedWait;if(cache.low!==low){cache.low=low;$('mTime').classList.toggle('low',low)}
   }
   const nj=!m.active&&G.state==='play';const nx=S.mission.next();
-  if(nj){const html=nx?'<b>Nächster Auftrag</b>'+nx.title+' · grüne Telefonzelle':'<b>Aufträge</b>Freie Jobs an jeder grünen Telefonzelle';if(cache.nj!==html){cache.nj=html;$('nextJob').innerHTML=html}}else if(cache.nj!==''){cache.nj='';$('nextJob').innerHTML=''}
+  if(nj){const sm=IH.story&&IH.story.marker();const html=sm?'<b>Story · '+sm.chapter+'</b>'+sm.title+' · '+sm.label+' ★':'<b>Aufträge</b>Freie Jobs an jeder grünen Telefonzelle';if(cache.nj!==html){cache.nj=html;$('nextJob').innerHTML=html}}else if(cache.nj!==''){cache.nj='';$('nextJob').innerHTML=''}
   const env=IH.env;setTxt('clock',fmtTod(env.tod)+(env.rain>0.5?'  ·  Regen':env.night>0.6?'  ·  Nacht':env.dusk>0.5?'  ·  Abend':''));
   // pads
   setHidden('footPads',!!c);setHidden('carPads',!c);
@@ -213,7 +214,7 @@ function updateHUD(){
 }
 
 /* ---------- map symbols (minimap, big map, 3D signs) ---------- */
-const ICON={home:['#ffc61a','house'],sale:['#8b919b','house'],lack:['#e0457b','spray'],werkstatt:['#3b82ff','wrench'],waffen:['#d8402f','gun'],imbiss:['#e8962a','pretzel'],phone:['#2fb56c','phone'],hehler:['#ff7a1a','$'],safe:['#2f9c63','V'],garage:['#c9a227','P'],way:['#b86bff','pin'],mission:['#ffc61a','!'],klinik:['#f2f2f2','cross'],feuerwache:['#e8402e','flame'],depot:['#2a6fd1','bus'],brauerei:['#e0a526','mug'],heli:['#1f3c88','heli'],pkg:['#f1ece0','W'],casino:['#8e1b6e','spade'],bank:['#1f4f3a','vault'],race:['#202124','flag'],airport:['#2a5fb0','plane']};
+const ICON={home:['#ffc61a','house'],sale:['#8b919b','house'],lack:['#e0457b','spray'],werkstatt:['#3b82ff','wrench'],waffen:['#d8402f','gun'],imbiss:['#e8962a','pretzel'],phone:['#2fb56c','phone'],hehler:['#ff7a1a','$'],safe:['#2f9c63','V'],garage:['#c9a227','P'],way:['#b86bff','pin'],mission:['#ffc61a','!'],klinik:['#f2f2f2','cross'],feuerwache:['#e8402e','flame'],depot:['#2a6fd1','bus'],brauerei:['#e0a526','mug'],heli:['#1f3c88','heli'],pkg:['#f1ece0','W'],casino:['#8e1b6e','spade'],bank:['#1f4f3a','vault'],race:['#202124','flag'],airport:['#2a5fb0','plane'],story:['#e2711d','★']};
 function drawIcon(g,kind,x,y,r){
   const d=ICON[kind]||ICON.mission;g.save();g.translate(x,y);g.beginPath();g.arc(0,0,r,0,7);g.fillStyle=d[0];g.fill();g.lineWidth=Math.max(1,r*0.16);g.strokeStyle='rgba(0,0,0,.75)';g.stroke();
   if(d[1].length===1){g.fillStyle='#fff';g.font='700 '+Math.round(r*1.35)+'px "Barlow Condensed",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(d[1],0,r*0.08);g.restore();return}
@@ -276,6 +277,7 @@ function drawMini(){
   for(const p of W.properties){const own=S.G.owned.has(p.id);icon(p.x,p.y,own?'home':'sale',own?15:12,own&&p.id===S.G.home)}
   for(const z of W.zones)if(ZONE_ICON[z.kind])icon(z.x,z.y,ZONE_ICON[z.kind],13,false);
   if(IH.act)for(const mk of IH.act.markers())icon(mk.x,mk.y,mk.k,13,false);icon(1650,250,'airport',14,false);
+  {const sm=IH.story&&IH.story.marker();if(sm)icon(sm.x,sm.y,'story',15,true)}
   for(const s2 of W.shops)icon(s2.x,s2.y,s2.k,12,false);
   if(!S.mission.active)for(const ph of W.phones)if((ph.cd||0)<=0)icon(ph.x,ph.y,'phone',12,false);
   if(NET.enabled)for(const p of NET.playerList()){const b=bodyOf(p);if(!b||!p.snaps.length)continue;const q=at(b.x,b.y,8,true);mctx.fillStyle=p.color;mctx.strokeStyle='#000';mctx.lineWidth=3;mctx.beginPath();mctx.arc(q[0],q[1],8,0,7);mctx.fill();mctx.stroke()}
@@ -299,6 +301,8 @@ function drawOverlay(){
   if(P.hitFlash>0&&G.state==='play'){octx.fillStyle='rgba(255,40,30,'+(P.hitFlash*0.9)+')';octx.fillRect(0,0,w,h)}
   octx.font='700 18px "Barlow Condensed","Arial Narrow",sans-serif';octx.textAlign='center';
   for(const f of S.floaters){const p=R3.project(f.x,f.y,2+(1.4-f.t)*2);if(p.behind)continue;octx.globalAlpha=Math.min(1,f.t*1.5);octx.fillStyle='#000';octx.fillText(f.txt,p.x+1,p.y+1);octx.fillStyle=f.c;octx.fillText(f.txt,p.x,p.y)}octx.globalAlpha=1;
+  // story characters: name tags
+  if(IH.story&&G.state==='play')for(const L of IH.story.labels()){const pr=R3.project(L.x,L.y,2.5);if(pr.behind||pr.x<-60||pr.x>w+60||pr.y<-60||pr.y>h+60)continue;octx.font='700 16px "Barlow Condensed","Arial Narrow",sans-serif';const tw=octx.measureText(L.t).width+16;octx.fillStyle='rgba(14,16,19,.78)';roundRect(octx,pr.x-tw/2,pr.y-22,tw,22,6);octx.fill();octx.fillStyle=L.c;octx.fillRect(pr.x-tw/2,pr.y-22,4,22);octx.fillStyle='#f1ede2';octx.textAlign='center';octx.fillText(L.t,pr.x+2,pr.y-6)}
   // other players: name, wanted level, health and chat bubbles
   if(NET.enabled){const now=performance.now();
     for(const p of NET.playerList()){const b=bodyOf(p);if(!b||!p.snaps.length)continue;const pr=R3.project(b.x,b.y,p.mode==='c'?3.2:2.6);if(pr.behind||pr.x<-60||pr.x>w+60||pr.y<-60||pr.y>h+60)continue;
@@ -487,6 +491,7 @@ function drawMap(){
   for(const s2 of W.shops){const q=ic(s2.x,s2.y,s2.k,10);if(mapS>2.2)label(q[0],q[1]+22,s2.name)}
   if(IH.act)for(const mk of IH.act.markers()){const q=ic(mk.x,mk.y,mk.k,11);if(mapS>1.2)label(q[0],q[1]+24,mk.k==='casino'?'Casino':mk.k==='bank'?'Bankraub':'Rennen')}
   {const q=ic(1650,250,'airport',13);label(q[0],q[1]+26,'Flughafen')}
+  {const sm=IH.story&&IH.story.marker();if(sm){const q=ic(sm.x,sm.y,'story',15);label(q[0],q[1]+28,sm.label,'#ffc61a')}}
   if(!S.mission.active)for(const ph of W.phones)if((ph.cd||0)<=0)ic(ph.x,ph.y,'phone',10);
   for(const p of W.properties){const own=G.owned.has(p.id);const q=ic(p.x,p.y,own?'home':'sale',own?14:12);label(q[0],q[1]+26,own?p.name+(G.home===p.id?' ★':''):p.name+' · $'+p.price.toLocaleString('de-DE'),own?'#ffc61a':'#f1ede2')}
   if(NET.enabled)for(const p of NET.playerList()){const b=bodyOf(p);if(!b||!p.snaps.length)continue;const[x,y]=w2s(b.x,b.y);g.fillStyle=p.color;g.strokeStyle='#000';g.lineWidth=3;g.beginPath();g.arc(x,y,8,0,7);g.fill();g.stroke();label(x,y-14,p.name,p.color)}
