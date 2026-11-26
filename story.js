@@ -7,11 +7,11 @@ const IH=root.IH,S=IH.sim,G=S.G,P=S.player,W=IH.world,R3=IH.r3;
 const $=id=>document.getElementById(id);
 const hypot=Math.hypot;
 const CAST={
-  sepp:{name:'Sepp',role:'Wirt vom Grünen Hirsch',col:'#ffc61a',shirt:'#3f6b34',hair:'#9a9a9a',pitch:0.8,rate:0.95},
-  vroni:{name:'Vroni',role:'Fahrerin',col:'#ff6fae',shirt:'#c2185b',hair:'#7a3b12',pitch:1.35,rate:1.08},
-  memo:{name:'Memo',role:'Schrauber aus Giesing',col:'#3bd0ff',shirt:'#1f4e79',hair:'#141414',pitch:1.0,rate:1.05},
-  brandl:{name:'Kommissar Brandl',role:'Kripo München',col:'#a9bfd6',shirt:'#55595f',hair:'#2e2e2e',pitch:0.7,rate:0.92},
-  kathi:{name:'Kathi',role:'Reporterin, Isar-Kurier',col:'#c3f15a',shirt:'#d9cfb8',hair:'#c9a26a',pitch:1.2,rate:1.1},
+  sepp:{g:'m',name:'Sepp',role:'Wirt vom Grünen Hirsch',col:'#ffc61a',shirt:'#3f6b34',hair:'#9a9a9a',pitch:0.8,rate:0.95},
+  vroni:{g:'f',name:'Vroni',role:'Fahrerin',col:'#ff6fae',shirt:'#c2185b',hair:'#7a3b12',pitch:1.35,rate:1.08},
+  memo:{g:'m',name:'Memo',role:'Schrauber aus Giesing',col:'#3bd0ff',shirt:'#1f4e79',hair:'#141414',pitch:1.0,rate:1.05},
+  brandl:{g:'m',name:'Kommissar Brandl',role:'Kripo München',col:'#a9bfd6',shirt:'#55595f',hair:'#2e2e2e',pitch:0.7,rate:0.92},
+  kathi:{g:'f',name:'Kathi',role:'Reporterin, Isar-Kurier',col:'#c3f15a',shirt:'#d9cfb8',hair:'#c9a26a',pitch:1.2,rate:1.1},
 };
 const CHAPTER={1:'Kapitel 1 · Neu in der Stadt',2:'Kapitel 2 · Der Graf',3:'Kapitel 3 · Isarfieber',4:'Kapitel 4 · Die Erbin',5:'Kapitel 5 · Wiesn-Showdown'};
 const current=()=>G.story<S.STORY.length?S.STORY[G.story]:null;
@@ -34,8 +34,8 @@ function canStart(){if(G.state!=='play'||S.mission.active||cut||S.stars()>0||P.r
 const box=document.createElement('div');box.id='story';box.hidden=true;box.innerHTML='<div class="lb top"></div><div class="lb bot"></div><div id="stCard"></div><div id="stDlg"><div id="stWho"></div><div id="stTxt"></div><div class="stBtns"><span></span><button type="button" id="stNext">Weiter ›</button></div></div><button type="button" id="stSkip">Überspringen ››</button>';   // skip is always visible, also during the chapter card
 document.body.appendChild(box);
 let cut=null;   // {lines,i,shown,full,t,cam,onEnd,phone}
-function speakLine(who,txt){try{if(IH.settings.muted||!root.speechSynthesis)return;speechSynthesis.cancel();const c=CAST[who]||{};const u=new SpeechSynthesisUtterance(txt.replace(/[„“’]/g,''));u.lang='de-DE';u.pitch=c.pitch||1;u.rate=c.rate||1;u.volume=1;
-  const v=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));if(v.length)u.voice=v[(who.length)%v.length];speechSynthesis.speak(u)}catch(e){}}
+function speakLine(who,txt){try{if(IH.settings.muted||!root.speechSynthesis)return;speechSynthesis.cancel();const c=CAST[who]||{};const u=new SpeechSynthesisUtterance(txt.replace(/[„“’]/g,''));u.lang='de-DE';u.pitch=1+((c.pitch||1)-1)*0.25;u.rate=1+((c.rate||1)-1)*0.4;u.volume=0.9;   // only a hint of each character's pitch: strong shifts sound robotic
+  const v=IH.pickVoice?IH.pickVoice(c.g):null;if(v)u.voice=v;speechSynthesis.speak(u)}catch(e){}}
 function showLine(){const L=cut.lines[cut.i];const c=CAST[L[0]]||{name:L[0],col:'#fff'};
   $('stWho').innerHTML=(cut.phone?'📞 ':'')+'<b style="color:'+c.col+'">'+c.name+'</b>'+(c.role?' <span>'+c.role+'</span>':'');cut.full=L[1];cut.shown=0;$('stTxt').textContent='';
   cut.speaker=L[0];speakLine(L[0],L[1])}

@@ -106,6 +106,18 @@ Players log in with any **name and password** (at least 6 characters). Using an 
   - **Wardrobe:** change your outfit colour.
 - **Paint shop (spray can):** a new colour costs $250 and clears your wanted level.
 - **Garage (wrench):** repairs and tuning.
+  - **Looks (Optik):** the Werkstatt also sells visual parts for normal cars (not for motorbikes, vans, trucks, buses, tanks or aircraft). Each part changes the car's model, stays on the car and is saved with it in your garage. Other online players still see the car without them.
+
+    | Part | Price |
+    |---|---|
+    | Heckspoiler (small lip on the boot) | $300 |
+    | GT-Heckflügel (big wing on struts) | $650 |
+    | Bodykit (front splitter, side skirts, fender flares, rear diffuser) | $900 |
+    | Rennstreifen (two stripes over bonnet, roof and boot; white or black depending on the paint) | $250 |
+    | Felgen Schwarz matt / Felgen Gold | $200 / $350 |
+    | Getönte Scheiben | $150 |
+    | Unterbodenbeleuchtung Blau / Pink (glows under the car, brightest at night) | $400 |
+    | Optik zurückbauen (removes all looks, keeps the tuning) | $50 |
 - **Map (tap the minimap, or K):** full-screen map with a legend. Tap to set a waypoint, and a GPS route shows on the minimap. Missions get a route automatically.
 
 ## Vehicles, side jobs and extras
@@ -116,7 +128,7 @@ Players log in with any **name and password** (at least 6 characters). Using an 
   |---|---|
   | Motorrad | Very quick and nimble, leans into corners; you fly off it in a hard crash |
   | SUV | Heavy, pushes other cars aside |
-  | Supersportwagen | Fastest car in the city, rare |
+  | Supersportwagen | Fastest car in the city. One always stands parked at three spots when you come by: near the BMW-Welt, in the Lehel by the Prinzregentenstraße and in Bogenhausen; now and then one also drives in traffic or stands in a car park |
   | MVG-Bus | Long and slow, wide turns |
   | Bierlaster | Heavy truck |
   | Krankenwagen, Feuerwehr | Sirens, side jobs by button |
@@ -136,9 +148,9 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 
   In emergency vehicles and police cars, the horn button switches the siren on and off.
 - **Stealing parked cars:** breaking in takes a moment (bar "AUFBRECHEN"), and some cars set off their alarm, which attracts nearby police.
-- **Police helicopter:** from 4 stars a helicopter hunts you with a searchlight, and from 5 stars it shoots. If you are in the air yourself, it already shoots at 4 stars.
+- **Police helicopter:** from 3 stars a helicopter hunts you with a searchlight, and from 4 stars it shoots.
   - **Shooting it down:** bullets now fly in 3D and the aim assist also locks onto targets in the air, so you can hit the helicopter from the ground. A downed helicopter spins, falls and explodes where it lands.
-  - **Next helicopter:** it only comes after about 75 seconds, even if you still have 4–5 stars.
+  - **Next helicopter:** it only comes after about 75 seconds, even if you still have 3–5 stars.
   - **It has to see you:** its view reaches about 60 m (less in rain), and buildings block it. It also can't see you under trees in a park (on foot, on a motorbike or driving slowly) or inside your home or garage.
   - **When it loses you:** the searchlight stops following you and sweeps the streets. The helicopter circles where you were last seen, slowly widening the search, and it only shoots while it can see you.
   - **Escaping:** break its line of sight between tall buildings or under trees, then get away while it searches. A message tells you when it has lost you or found you again.
@@ -154,7 +166,14 @@ Players log in with any **name and password** (at least 6 characters). Using an 
 ## Police, health and bodies
 
 - **Witnesses:** you only get a wanted level if someone sees the crime. Police officers see about 45 m, passers-by about 22 m, and both need a clear line of sight. A passer-by first has to call the police, which takes a few seconds.
-- **Slower stars:** the wanted level rises gradually. Even a long rampage takes well over a minute to reach 5 stars, and fewer police cars chase you at once.
+- **Slower stars:** the wanted level rises gradually. From 2 stars on it climbs at half speed, so reaching 3 stars now takes as much as 4 stars used to. 5 stars is rare and brings the military (see below).
+
+  | Stars | What happens |
+  |---|---|
+  | 1–2 | Patrol cars, officers on foot |
+  | 3 | Police helicopter with searchlight, officers shoot, Polizei-SUVs |
+  | 4 | The helicopter shoots too, roadblocks |
+  | 5 | Military: trucks with soldiers (machine guns) and up to two tanks |
 - **Getting away:**
   - Patrol cars are no faster than an ordinary saloon. At low wanted levels they chase more cautiously (80 % of their top speed at 1 star, rising to full speed at 4–5 stars), so a sports car, a motorbike or clever driving gets you away.
   - Officers only know where you are while one of them can see you. Once you are out of sight they drive to where you were last seen and then search the streets around it.
@@ -162,6 +181,12 @@ Players log in with any **name and password** (at least 6 characters). Using an 
   - Patrol cars no longer wait forever at a dead end. They move on to the next search point.
   - **Stealing a police car** gives you at least 2 stars straight away, even without witnesses, because the car reports its position.
   - Stay unseen long enough and you lose a star (about 9 seconds at 1 star, 16 seconds at 5 stars).
+  - **In the air:** the police track you on radar. As long as you fly higher than about 25 m above the ground, you keep your stars. Only flying low (and then slower than on the ground) or landing and hiding loses them.
+  - **On-board guns count as gunfire:** firing the helicopter MG or the fighter jet's cannon near people or traffic gets you wanted, and while you are wanted it keeps the police on you.
+- **Military at 5 stars:**
+  - **Soldiers:** olive trucks bring three soldiers each. They keep their distance and fire machine-gun bursts. At most about 8 soldiers are out at once.
+  - **Tanks:** up to two tanks hunt you. Their turret follows you, and every few seconds they fire a shell that explodes on impact. Bullets barely scratch a tank; explosions and tank shells hurt it.
+  - **Withdrawal:** when you drop below 5 stars the military pulls back and the soldiers leave.
 - **Health:** you take less damage than before.
 - **Car owners fight back:** when you pull someone out of their car, most run away. About a third get angry, shout and run back after you. If you are still standing or driving slowly when they reach the car, they drag you out and drive off in it themselves. Speed off quickly and they give up.
 - **Motorbike riders fall off:** ram a motorbike hard with a vehicle and the rider is thrown off, just like you are on a bike. A light touch is not enough. The bike stays on the road unlocked. Out of combat, your health slowly recovers on its own up to 60.
@@ -199,6 +224,7 @@ A campaign of 23 story missions in five chapters, with characters, German dialog
   - **Freibier-Runde / Beweisfotos (several stops):** drive to each stop in turn. For the photos you have to stand still at each address for 3 seconds.
   - **Kronzeuge / Gefangenentransport (pick-up):** pick someone up by car, then bring them to the hideout. Once they are on board the police come after you (2 or 4 stars), and you have to lose them before the drop-off counts.
   - **Variations:** a supercar to bring to Memo's workshop in Haidhausen, a race to the Deutsches Museum, a bomb at the Maximilianeum, a reconnaissance flight over Hallbergmoos, a cash transporter and, in the finale, Kessler's armoured SUV with three escorts.
+  - **Destroy missions (Schrottreif, Geldregen, Wiesn-Showdown):** the mission is won the moment the target blows up (or sinks), no matter how: on foot, by car, from the helicopter or with a tank. (Before, the explosion was wrongly counted as a failure, so Geldregen started over and over.)
   - **Tailing:** at the start you get 30 seconds to catch up with the car you have to follow. After that, falling more than 75 m behind for 8 seconds still loses it.
 - **Route arrow:** the yellow arrow above you now always points at the target that is shown. Before, it could point at the previous mission's target, for example on the way to the airport. With **★ Navi** on, the route line on the minimap also leads to the next story contact.
 
@@ -241,9 +267,11 @@ These work in the global lobby with other players, and alone (offline or nobody 
 - **Theresienwiese:** the Bavaria and the Ruhmeshalle stand clear of the road. The beer tents are rebuilt with towers, signs and beer gardens, and there is a new Ferris wheel that lights up at night.
 - **Flughafen München:** the airport lies well east of the city, about 350 m further out than before. It has two runways, both terminals, a satellite, the tower, the Munich Airport Center, hangars and parked aircraft. Planes take off and land on the same schedule for every player, so watch out on the runway. Departing planes turn north before they reach the city, and arrivals come in from the east, so no plane flies through buildings. Drive there via the Erdinger Landstraße and the small suburb Hallbergmoos.
 - **Airport fence:** a fence runs around the whole airside area (runways, taxiways, apron). The only way in by car is the guarded gate on the Terminalstraße next to Terminal 2, and the barrier only lifts when you drive up to it. Pedestrians stay out of the airside area.
+  - **Collision heights:** terminals, satellite, parking garage, hotel, hangars and tower now block aircraft exactly at their drawn size and height. Parked airliners only block along their fuselage, wings and tail, not in a big circle around them.
   - **Police at the airport:** if you hide airside, patrol cars drive to the gate, the barrier opens for them, and on the apron they drive straight to where you were last seen. Without seeing you, they search the airfield and send officers out on foot there too.
 - **Hangar (for sale, $40,000):** the second hangar north of the runways can be bought at its door, which is marked like the other homes.
-  - **What you get:** your own small plane and a **Kampfhubschrauber** (armed helicopter) stand on its apron.
+  - **What you get:** inside the hangar stands your own **Privatjet** (black and gold, faster than the small plane at the airport), and the **Kampfhubschrauber** (armed helicopter) waits on the apron in front of the door.
+  - **Open hangar:** the hangar is open at the front. You can walk, drive and taxi in and out, and the roof hides while you are inside so you can see your jet. From above you can land on its roof.
   - **Replacements:** if one is destroyed, or you leave it somewhere, a new one is waiting the next time you come back.
   - **Safe zone:** the hangar door is a safe place like your homes, but you can't live there.
 - **Flying:** three aircraft at the airport can be flown:
@@ -251,6 +279,8 @@ These work in the global lobby with other players, and alone (offline or nobody 
   | Aircraft | Where |
   |---|---|
   | Kleinflugzeug | By the hangars, north of the runways |
+  | Privatjet | Inside your hangar (once you own it) |
+  | Kampfjet | In the shelters of the air base (Fliegerhorst) |
   | Turboprop | On the apron next to Terminal 1 |
   | Passagierjet | At the east end of the apron |
 
@@ -263,6 +293,8 @@ These work in the global lobby with other players, and alone (offline or nobody 
     | Kleinflugzeug | about 86 km/h |
     | Turboprop | about 122 km/h |
     | Passagierjet | about 173 km/h |
+    | Privatjet | about 137 km/h |
+    | Kampfjet | about 187 km/h |
 
   - **In the air:** the joystick works like a real control stick (inverted). Push it **down to climb** and **up to descend**, and left or right to turn. There are no extra climb or descend buttons any more. Without any input the aircraft holds its altitude.
   - **Land:** brake or let go of the gas, then push the joystick up. Close to the ground the descent flattens out by itself, and you can land on runways, roads, fields and meadows.
@@ -271,7 +303,8 @@ These work in the global lobby with other players, and alone (offline or nobody 
     - **Braking on a roof:** braking is much stronger there. If you roll slowly to the edge, the parapet stops you; roll off fast and you fall.
     - **Getting out and back in:** getting out on a roof takes you down the stairwell to the street next to the building. Standing at the building, **Einsteigen** takes you back up to the aircraft.
 - **Kampfhubschrauber (from your hangar):**
-  - **Controls:** the joystick moves it in the direction you push (like walking), **Steigen** (the gas pedal) climbs and **Sinken** (the brake) descends. Let go of both and it hovers.
+  - **Controls:** the joystick tilts the rotor in the direction you push, and the helicopter accelerates that way. **Steigen** (the gas pedal) climbs and **Sinken** (the brake) descends. Let go of both and it holds its height.
+  - **More realistic flying:** it has momentum. It takes a few seconds to build up speed (top speed about 165 km/h) and keeps drifting when you let go of the stick. A stability assist then slowly brakes it, and pushing the stick the other way stops you faster. Leaning hard costs lift, so at full speed you slowly sink unless you climb a little. When moving it turns its nose into the flight direction, and in the hover it turns towards the stick. Close to the ground it cushions the descent, but touching down while still fast damages or wrecks it.
   - **Taking off and landing:** the rotor needs a moment to spin up before take-off. Land by descending gently onto a street, field or any roof. Bumping a wall slowly only bounces you off; hitting it fast or touching down too hard destroys it.
   - **Bord-MG (on-board machine gun):** tap or hold the **MG** button. It has endless ammo, aims itself at police, cars, people and other aircraft, and fires downward ahead of you when there is no target.
     - **Overheating:** firing heats the gun up, shown as **MG-HITZE** under the speed. At 100 % it overheats (**MG ÜBERHITZT**, the button turns red), and you have to wait about 3 seconds until it has cooled down completely. Short bursts let it cool on its own.
@@ -280,6 +313,13 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - **Keyboard:** R or N = climb, F or Shift = descend. **Controller:** left stick, or RB = climb, B = descend.
   - **Missions and pick-ups ignore aircraft:** phone booths, story and job targets, packages, health and weapon pick-ups, shops, garages and race checkpoints only react on foot or in a car, motorbike or other ground vehicle. Flying over them does nothing.
   - **Online:** other players see your aircraft at its real height.
+- **Fliegerhorst Isartal (military air base):** south-east of the city, reached via the Fliegerhorststraße from Hallbergmoos (star symbol on the map). Behind the fence are barracks, a headquarters, watchtowers, three aircraft shelters with a **Kampfjet** each, a tank park with three **Kampfpanzer**, a military truck and its own runway.
+  - **Getting in:** the barrier at the gate only opens for the military and the police. Ram it fast with a car to break through, fly in, or sneak in on foot through the **hole in the fence** in the south-west corner.
+  - **Guards:** soldiers stand at their posts. If one sees you inside the fence (about 38 m), or as soon as you take a vehicle, the **alarm** goes off: at least 3 stars, the guards open fire, and the police come through the gate to defend the base. While you are inside during the alarm, you can't lose your stars.
+  - **Kampfpanzer (tank):** slow but almost bulletproof, it pushes cars out of the way. The **Kanone** button fires a shell (about 2 seconds to reload, shown under the speed). In the follow camera the turret turns where you look (swipe to aim), otherwise it points forward; the aim assist picks targets near that direction, also the helicopter.
+  - **Kampfjet (fighter jet):** the fastest aircraft (about 900 km/h) with a strong climb. **Kanone** fires the on-board cannon with endless ammo; like the helicopter MG it overheats (**KANONE-HITZE**). Its shells keep the jet's speed, and the aim assist leads moving targets.
+  - **Interceptors:** while you fly a stolen fighter, enemy fighter jets come after you (up to two at a time, a new one every 20 seconds or so). They fire cannon bursts and launch missiles ("Rakete im Anflug"). Turn hard to break a missile's lock ("Rakete ausgetrickst!"). Each one you shoot down pays $2,500. When you land, they fly away.
+  - **Replacements:** stolen or destroyed vehicles are back in place, and fallen guards back at their posts, after you have left the area.
 - **Radio:** in every car, bike and aircraft a station bar appears at the bottom. Swipe it left or right, or tap the arrows, to switch.
 
   | Station | Music |
@@ -293,9 +333,12 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - **Real-sounding instruments:** plucked guitar, zither and double bass, piano, electric piano, supersaw synths, vocal pads, trumpets, tuba, accordion, clarinet, vibraphone and a full drum kit. They play in stereo with reverb and echo, dance tracks pump with the kick, and lo-fi has vinyl crackle and tape wobble.
   - **Song info:** the radio bar shows the style, artist and title. All artists and titles are made up.
   - **Presenter:**
-    - The presenter speaks in German with the iPad's voice, and the music dips while they talk. What they say also appears in the radio bar.
+    - The presenter speaks German with the iPad's voice. It now stays in the background: the voice is quieter, the music only dips a little, and the speech sounds more even (normal speed, no pitch shifting). What they say also appears in the radio bar.
+    - **Most natural voice:** the game automatically uses the best German voice on the device (premium or enhanced voices first, robotic novelty voices never). On an iPad you can download such a voice under Einstellungen › Bedienungshilfen › Gesprochene Inhalte › Stimmen › Deutsch (for example Anna or Helena, "Premium" or "Erweitert"). The story characters use it too, female or male to match the character.
+    - **How often:** the pause menu has a **Moderation** setting: Oft, Selten (default) or Aus. With Selten the presenter only talks after about every second song and keeps it short. Police news about your manhunt always comes through unless you choose Aus.
+    - Some iPads ignore the volume the browser asks for. In that case the voice stays at system volume, but it still comes less often and the music no longer drops away under it.
     - When you get in or switch stations, you hear the station name and the current song.
-    - Between songs there is always a short segment: the last song, a station slogan, then traffic, weather, the time or local news, and the next song.
+    - Between songs there is sometimes a short segment: the last song, now and then a station slogan, then traffic, weather, the time or local news, and the next song.
     - When you are wanted, the news reports the manhunt and names your vehicle.
     - Songs sometimes get a short intro too.
     - On iPhone and iPad the voice only starts after you have touched the screen once, which happens anyway when you start the game.

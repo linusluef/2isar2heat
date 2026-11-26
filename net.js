@@ -9,7 +9,7 @@
 const IH=root.IH;
 const BASE='2isar2heat/v1/';
 const DEFAULT_BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
-const CAR_TYPES=['kompakt','limousine','sport','taxi','transporter','polizei','motorrad','suv','super','bus','bierlaster','krankenwagen','feuerwehr','polsuv','cessna','regio','jet','kampfheli'];
+const CAR_TYPES=['kompakt','limousine','sport','taxi','transporter','polizei','motorrad','suv','super','bus','bierlaster','krankenwagen','feuerwehr','polsuv','cessna','regio','jet','kampfheli','privatjet','kampfjet','panzer','miltruck'];
 const CHAT=['Servus!','Rennen?','Folg mir!','Hilfe!','Gut gemacht!','Pass auf!','Haha 😄','Pfiat di!'];
 const COLORS=['#ff8a1c','#3ddc84','#3b82ff','#ff4fa3','#ffd21a','#20d3d3','#b36bff','#ff5a4f','#9be15d','#f2f2f2'];
 const te=new TextEncoder(),td=new TextDecoder();

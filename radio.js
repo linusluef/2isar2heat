@@ -488,22 +488,30 @@ function copLine(r){const n=S.stars?S.stars():0;if(!n)return null;const c=P.inCa
   return base+(n>=4?' Auch ein Hubschrauber ist im Einsatz.':'')}
 let talkBusy=false,lastTalk=-99,unlocked=false;
 function say(st,lines,delay){if(talkBusy)return;talkBusy=true;setTimeout(()=>{talkBusy=false;if(playing!==st)return;const l=typeof lines==='function'?lines():lines;if(l&&l.length)speak(l.join(' '),st)},delay||0)}
-function announce(st,s,sl){const r=rnd(sl*977+st.seed);const lines=[];
+function announce(st,s,sl){const r=rnd(sl*977+st.seed);const lines=[];const cop=copLine(r);
+  if(IH.settings.talk==='aus')return;if(!cop&&IH.settings.talk!=='oft'&&r()<0.5)return;   // not after every song
   lines.push(pick(r,['Das war ','Ihr habt gehört: ','Gerade lief ','Eben gehört: '])+'„'+s.title+'“ von '+s.artist+'.');
-  lines.push(pick(r,st.talk));
-  const cop=copLine(r);if(cop)lines.push(cop);else{const x=r();lines.push(x<0.4?pick(r,TRAFFIC):x<0.75?weatherLine(r):x<0.9?clockLine():pick(r,NEWS))}
+  if(r()<0.4)lines.push(pick(r,st.talk));
+  if(cop)lines.push(cop);else{const x=r();lines.push(x<0.4?pick(r,TRAFFIC):x<0.75?weatherLine(r):x<0.9?clockLine():pick(r,NEWS))}
   const next=songFor(st,sl+1);if(next)lines.push('Und jetzt: '+next.sub+' – „'+next.title+'“ von '+next.artist+'.');
   say(st,lines,1400)}
-function introTalk(st,s,sl){if(performance.now()/1000-lastTalk<40)return;const r=rnd(sl*313+st.seed);if(r()<0.5)return;const lines=[pick(r,['Hier kommt ','Weiter geht’s mit ','Für euch: '])+'„'+s.title+'“ von '+s.artist+'.'];
+function introTalk(st,s,sl){if(performance.now()/1000-lastTalk<40||IH.settings.talk==='aus')return;const r=rnd(sl*313+st.seed);if(r()<(IH.settings.talk==='oft'?0.5:0.8))return;const lines=[pick(r,['Hier kommt ','Weiter geht’s mit ','Für euch: '])+'„'+s.title+'“ von '+s.artist+'.'];
   if(r()<0.5)lines.push(r()<0.5?pick(r,TRAFFIC):weatherLine(r));say(st,lines,600)}
 function tuneInTalk(st){if(performance.now()/1000-lastTalk<25)return;say(st,()=>{const s=shown;const lines=['Ihr hört '+st.name+'.'];if(s)lines.push('Gerade läuft „'+s.title+'“ von '+s.artist+'.');return lines},1200)}
-function speak(txt,st){try{if(IH.settings.muted||!root.speechSynthesis)return;lastTalk=performance.now()/1000;const u=new SpeechSynthesisUtterance(txt);u.lang='de-DE';u.rate=1.05;u.volume=1;const v=pickVoice();if(v)u.voice=v;
+function speak(txt,st){try{if(IH.settings.muted||!root.speechSynthesis||IH.settings.talk==='aus')return;lastTalk=performance.now()/1000;const u=new SpeechSynthesisUtterance(txt);u.lang='de-DE';u.rate=1;u.pitch=1;u.volume=0.35;const v=IH.pickVoice(st&&st.id==='lofi'?'f':st&&st.id==='blas'?'m':null);if(v)u.voice=v;
     // music dips under the voice, the text shows in the radio bar
-    const vol=STATIONS[cur].vol*0.75;u.onstart=()=>{if(A&&playing===st){A.st.gain.setTargetAtTime(vol*0.35,A.AC.currentTime,0.15)}subtitle=txt;render()};
+    const vol=STATIONS[cur].vol*0.75;u.onstart=()=>{if(A&&playing===st){A.st.gain.setTargetAtTime(vol*0.78,A.AC.currentTime,0.3)}subtitle=txt;render()};   // the music only dips a little: the voice stays in the background
     const end=()=>{if(A&&playing===st){A.st.gain.setTargetAtTime(vol,A.AC.currentTime,0.4)}subtitle=null;render()};u.onend=end;u.onerror=end;
     speechSynthesis.speak(u)}catch(e){}}
-let voiceCache=null;function pickVoice(){if(voiceCache)return voiceCache;try{const vs=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));voiceCache=vs.find(x=>/Anna|Helena|Markus|Yannick|Google/i.test(x.name))||vs[0]||null}catch(e){}return voiceCache}
-try{root.speechSynthesis&&speechSynthesis.addEventListener&&speechSynthesis.addEventListener('voiceschanged',()=>{voiceCache=null})}catch(e){}
+// German system voices, best first: premium/enhanced/neural ones sound far more natural; the robotic novelty voices are skipped
+const NOVELTY=/Eddy|Flo|Grandma|Grandpa|Oma|Opa|Reed|Rocko|Sandy|Shelley|Albert|Bahh|Bells|Boing|Bubbles|Cellos|Wobble|Jester|Organ|Superstar|Trinoids|Whisper|Zarvox|Bad News|Good News/i;
+const FEMALE=/Anna|Helena|Petra|Marlene|Vicki|Katja|Sabine|Hedda|Katharina|Lena|Female|Frau/i,MALE=/Markus|Yannick|Martin|Viktor|Hans|Conrad|Stefan|Jonas|Florian|Male|Mann/i;
+let voiceList=null;
+function voices(){if(voiceList)return voiceList;try{const vs=speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang)&&!NOVELTY.test(x.name));
+  const score=x=>(/premium/i.test(x.name+x.voiceURI)?40:0)+(/enhanced|erweitert|neural|natural|online/i.test(x.name+x.voiceURI)?30:0)+(/Google/i.test(x.name)?14:0)+(FEMALE.test(x.name)||MALE.test(x.name)?6:0)+(x.localService===false?4:0)+(/de-DE/i.test(x.lang)?2:0);
+  voiceList=vs.sort((a,b)=>score(b)-score(a));if(!voiceList.length)voiceList=null}catch(e){}return voiceList}
+IH.pickVoice=function(g){const vs=voices();if(!vs)return null;const want=g==='f'?FEMALE:g==='m'?MALE:null;return(want&&vs.find(x=>want.test(x.name)))||vs[0]};
+try{root.speechSynthesis&&speechSynthesis.addEventListener&&speechSynthesis.addEventListener('voiceschanged',()=>{voiceList=null})}catch(e){}
 // iOS only lets a page speak after speech was started once from a tap: do that silently on the first touch
 function unlock(){if(unlocked||!root.speechSynthesis)return;unlocked=true;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;u.lang='de-DE';speechSynthesis.speak(u)}catch(e){}}
 for(const ev of['pointerdown','touchend','keydown'])root.addEventListener(ev,unlock,{capture:true,passive:true});

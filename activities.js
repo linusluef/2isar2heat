@@ -37,6 +37,8 @@ const ui=document.createElement('div');ui.id='act';ui.innerHTML=`
 document.body.appendChild(ui);
 let btnAction=null;
 $('actBtn').addEventListener('click',()=>{if(btnAction)btnAction()});
+// HUD buttons are re-rendered every second (countdown), so react on pointerdown via delegation instead of per-button onclick
+$('actHud').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();if(b.id==='hsGo')heistGo()});
 $('actInvite').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.go){const inv=invites.get(b.dataset.go);if(inv){IH.waypoint={x:inv.x,y:inv.y};toast('Ziel auf der Karte markiert')}}if(b.dataset.x)invites.delete(b.dataset.x);renderInvites()});
 let panelOpen=null;
 function openPanel(kind,html,pause){panelOpen=kind;$('actBox').innerHTML=html;$('actPanel').hidden=false;if(pause!==false&&!online())G.paused=true;if(pause!==false)A.inside=true}
@@ -187,7 +189,7 @@ function heistTick(dt){
   if(heist.st==='hack'&&heist.alarm>=100)setHeat(3.05);
   // targets and HUD
   const n=heist.crew?heist.crew.length:1;const share=Math.round((5000+(heist.alarm<100?2500:0))*(n>1?1+0.25*(n-1):1)/n);
-  if(heist.st==='lobby'){heist.target={x:BANK.x,y:BANK.y};hud(`<b>Bankraub · ${esc(BANK.name)}</b><span>Crew ${n}/4${host?' · Start in '+Math.max(0,Math.ceil(heist.left))+' s':''}</span>${host?'<button id="hsGo" type="button">Jetzt starten</button>':''}`);const b=$('hsGo');if(b)b.onclick=heistGo}
+  if(heist.st==='lobby'){heist.target={x:BANK.x,y:BANK.y};hud(`<b>Bankraub · ${esc(BANK.name)}</b><span>Crew ${n}/4${host?' · Start in '+Math.max(0,Math.ceil(heist.left))+' s':''}</span>${host?'<button id="hsGo" type="button">Jetzt starten</button>':''}`)}
   else if(heist.st==='hack'){const open=BANK.terms.map((t,i)=>heist.solved[i]?null:i).filter(i=>i!==null);let best=null,bd=1e9;for(const i of open){const t=BANK.terms[i];const d=hypot(t.x-src.x,t.y-src.y);if(d<bd&&!heist.busy[i]){bd=d;best=t}}heist.target=best?{x:best.x,y:best.y}:null;
     hud(`<b>Sicherheitssysteme</b><span>${BANK.terms.map((t,i)=>(heist.solved[i]===2?'✖ ':heist.solved[i]?'✔ ':'○ ')+t.name).join(' · ')}</span><span class="${heist.alarm>=100?'alarm':''}">Alarm ${heist.alarm} %</span>`)}
   else if(heist.st==='drill'){heist.target={x:BANK.x,y:BANK.y};hud(`<b>Tresor bohren</b><span>${Math.floor(heist.drill)} % · bleibt am Eingang!</span><i class="bar"><i style="width:${heist.drill}%"></i></i>`)}

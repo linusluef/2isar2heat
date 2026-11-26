@@ -156,6 +156,7 @@ for(const x of[1600,1640,1680,1720,1760])road('Hallbergmoos',[[x,460],[x,500],[x
 road('Flughafen-Zubringer',[[1600,460],[1602,430],[1604,400],[1604,360],[1606,340]],{w:12,lanes:2,country:true,walk:1});
 road('Terminalstraße',[[1606,340],[1650,338],[1668,320],[1668,180],[1650,162],[1612,162],[1596,180],[1596,320],[1606,340]],{w:10,country:true,closed:true,walk:3});
 road('Zentralallee',[[1596,250],[1668,250]],{w:8,country:true,walk:3});
+road('Fliegerhorststraße',[[1720,580],[1724,700],[1734,820],[1744,950],[1750,1080],[1750,1170]],{w:9,country:true,walk:1});
 const MAJOR_COUNT=roads.length;
 
 /* ---------- infill districts ---------- */
@@ -359,7 +360,9 @@ const airport=(()=>{
   const ha=A.hangarApron;fillPoly(rect(ha[0],ha[1],ha[2],ha[3]),set2(TY.PLAZA));draw.zones.push({t:'apron',pts:rect(ha[0],ha[1],ha[2],ha[3])});
   {const m=A.mac;fillPoly(rect(m[0],m[1],m[2],m[3]),set2(TY.PLAZA));draw.zones.push({t:'plaza',pts:rect(m[0],m[1],m[2],m[3])})}
   for(const t of A.terminals)stamp(rect(...t.box),TY.BUILD);stamp(rect(...A.satellite),TY.BUILD);
-  for(const b of A.garages.concat([A.hotel],A.hangars))stamp(rect(...b),TY.BUILD);
+  for(const b of A.garages.concat([A.hotel],[A.hangars[0]]))stamp(rect(...b),TY.BUILD);
+  // your hangar (the east one) is open at the front: walls left, right and at the back, you can drive and taxi in
+  {const[x0,y0,x1,y1]=A.hangars[1];fillPoly(rect(x0,y0,x1,y1),(i)=>{grid[i]=TY.PLAZA});for(const r of[[x0,y0,x0+2,y1],[x1-2,y0,x1,y1],[x0,y0,x1,y0+2]])stamp(rect(...r),TY.BUILD);A.openHangar={x0:x0+2,y0:y0+2,x1:x1-2,y1,h:19};draw.zones.push({t:'apron',pts:rect(x0+2,y0+2,x1-2,y1)})}
   fillCircle(A.tower.x,A.tower.y,A.tower.r,i=>{grid[i]=TY.SOLID});
   // parked aircraft: nose to the building, fuselage and engines block the way, cars fit under the wings
   const LIV=['isar','alpen','bavaria','edelweiss','nordlicht','cargo'];let li=0;
@@ -379,8 +382,41 @@ const airport=(()=>{
   fillPoly(A.fence,(i)=>{airside[i]=1});
   L({k:'airport',name:'Flughafen München',x:1650,y:250,A});
   return A})();
+/* ---------- Fliegerhorst Isartal: military air base south-east of the city ---------- */
+// fenced (compound 2), one gate in the north (opens for the military and the police), a gap in the fence in the south-west corner
+const roofs=[];if(airport.openHangar)roofs.push(airport.openHangar);
+const base=(()=>{
+  const B={x0:1520,y0:1180,x1:1960,y1:1470,name:'Fliegerhorst Isartal',gate:{x:1750,y:1180,x0:1745,x1:1755,cells:[]},hole:{x:1520,y0:1440,y1:1442},
+    runway:{x0:1560,x1:1935,y:1432,w:18,name:['09','27']},apron:[1590,1338,1762,1358],road:[1744,1180,1756,1338],tankPark:[1768,1196,1868,1244],
+    shelters:[[1598,1300,1628,1338],[1648,1300,1678,1338],[1698,1300,1728,1338]],barracks:[[1538,1198,1600,1216],[1538,1228,1600,1246],[1612,1198,1680,1216]],hq:[1792,1262,1872,1288],guard:[1759,1186,1767,1194],
+    taxis:[[[1663,1358],[1663,1432]],[[1600,1432],[1600,1400],[1640,1380],[1663,1380]]]};
+  const fld=(i)=>{const g=grid[i];if(g===TY.GRASS||g===TY.FIELD||g===TY.PARK)grid[i]=TY.FIELD};
+  fillPoly(rect(B.x0,B.y0,B.x1,B.y1),fld);
+  const R=B.runway;fillPoly(rect(R.x0,R.y-R.w/2,R.x1,R.y+R.w/2),(i)=>{grid[i]=TY.PLAZA});draw.zones.push({t:'runway',pts:rect(R.x0,R.y-R.w/2,R.x1,R.y+R.w/2),rw:R});
+  for(const t of B.taxis){fillThick(t,5,(i)=>{grid[i]=TY.PLAZA},true);draw.zones.push({t:'taxi',pts:t,w:10})}
+  for(const r of[B.apron,B.road,B.tankPark]){fillPoly(rect(...r),(i)=>{grid[i]=TY.PLAZA});draw.zones.push({t:'apron',pts:rect(...r)})}
+  for(const b of B.barracks.concat([B.hq,B.guard]))stamp(rect(...b),TY.BUILD);
+  // aircraft shelters: concrete arches open to the south, a fighter jet inside each
+  B.jets=[];B.tanks=[];for(const[x0,y0,x1,y1]of B.shelters){fillPoly(rect(x0,y0,x1,y1),(i)=>{grid[i]=TY.PLAZA});for(const r of[[x0,y0,x0+2,y1],[x1-2,y0,x1,y1],[x0,y0,x1,y0+2]])stamp(rect(...r),TY.BUILD);roofs.push({x0:x0+2,y0:y0+2,x1:x1-2,y1,h:9});draw.zones.push({t:'apron',pts:rect(x0+2,y0+2,x1-2,y1)});B.jets.push({x:(x0+x1)/2,y:y0+19,a:Math.PI/2})}
+  for(let k=0;k<3;k++)B.tanks.push({x:B.tankPark[0]+16+k*22,y:B.tankPark[1]+24,a:Math.PI/2});
+  B.trucks=[{x:B.tankPark[2]-10,y:B.tankPark[1]+12,a:Math.PI/2}];
+  // posts of the guards (on foot)
+  B.posts=[[1746,1172],[1756,1172],[1760,1214],[1640,1360],[1700,1360],[1830,1296],[1570,1230],[1880,1420]];
+  B.fence=[[B.x0,B.y0],[B.x1,B.y0],[B.x1,B.y1],[B.x0,B.y1],[B.x0,B.y0]];
+  for(let k=0;k+1<B.fence.length;k++){const a=B.fence[k],b=B.fence[k+1];const L2=Math.hypot(b[0]-a[0],b[1]-a[1]);for(let d=0;d<=L2;d+=0.5){const x=Math.floor(a[0]+(b[0]-a[0])*d/L2),y=Math.floor(a[1]+(b[1]-a[1])*d/L2);const i=y*MAP+x;
+    if(y===B.gate.y&&x>=B.gate.x0&&x<=B.gate.x1){if(!B.gate.cells.includes(i))B.gate.cells.push(i);continue}
+    if(x===B.hole.x&&y>=B.hole.y0&&y<=B.hole.y1)continue;
+    if(grid[i]!==TY.ROAD)grid[i]=TY.RAIL}}
+  for(const i of B.gate.cells)grid[i]=TY.RAIL;
+  fillPoly(B.fence,(i)=>{airside[i]=2});
+  L({k:'base',name:B.name,x:1750,y:1320,B});
+  return B})();
+// compounds behind a fence with one gate: 1 airport, 2 air base. out/inn = a point in front of and behind the gate
+const compounds=[null,{gate:{x:airport.gate.x,y:(airport.gate.y0+airport.gate.y1)/2},out:{x:airport.gate.x-15,y:(airport.gate.y0+airport.gate.y1)/2},inn:{x:airport.gate.x+15,y:(airport.gate.y0+airport.gate.y1)/2}},
+  {gate:{x:base.gate.x,y:base.gate.y},out:{x:base.gate.x,y:base.gate.y-14},inn:{x:base.gate.x,y:base.gate.y+16},near:40}];   // near: the access road ends just before the gate
+function roofAt(x,y){for(const r of roofs)if(x>=r.x0&&x<=r.x1&&y>=r.y0&&y<=r.y1)return r;return null}
 // farmland around the city edge
-for(const r of[[1250,600,1450,780],[1480,640,1700,800],[1790,460,1980,640],[1250,820,1500,1000],[1600,900,1950,1150],[1220,1220,1400,1380],[60,1230,280,1380],[450,1240,640,1400],[920,1230,1120,1360],[1450,1250,1700,1450],[1250,1500,1500,1700],[100,1500,330,1700],[700,1500,950,1750],[1700,1600,1950,1900],[300,1800,600,1950],[1250,40,1420,200]]){
+for(const r of[[1250,600,1450,780],[1480,640,1700,800],[1790,460,1980,640],[1250,820,1500,1000],[1600,900,1950,1150],[1220,1220,1400,1380],[60,1230,280,1380],[450,1240,640,1400],[920,1230,1120,1360],[1250,1500,1500,1700],[100,1500,330,1700],[700,1500,950,1750],[1700,1600,1950,1900],[300,1800,600,1950],[1250,40,1420,200]]){
   fillPoly(rect(...r),(i)=>{if(grid[i]===TY.GRASS)grid[i]=TY.FIELD});draw.zones.push({t:'acker',pts:rect(...r),ang:((r[0]*7+r[1])%4)*0.4})}
 // Hallbergmoos: a church on the square
 L({k:'kirche',name:'Hallbergmoos',x:1700,y:520});stamp(rect(1692,512,1708,528),TY.BUILD);
@@ -534,9 +570,9 @@ for(const[id,name,price,anchor,nslots,income]of PROP_DEFS){
   let door;if(b&&bd<70){b.property=id;door=nearestCell(b.front.x+b.front.nx*1.6,b.front.y+b.front.ny*1.6,t=>t===TY.WALK||t===TY.PLAZA,12)}else door=nearestCell(lot.front.x,lot.front.y,t=>t===TY.WALK,20);
   properties.push({id,name,price,income,slots:lot.slots.length,lot,b,x:door.x,y:door.y,gx:lot.cx,gy:lot.cy,gr:Math.min(lot.w,lot.d)/2+1.5});
 }
-// the hangar at the airport: buy it and a small plane plus an armed helicopter wait for you on its apron
+// the hangar at the airport: buy it and your private jet waits inside, an armed helicopter on the apron in front
 properties.push({id:'hangar',name:'Hangar am Flughafen',price:40000,income:0,slots:2,hangar:true,lot:null,b:null,x:1857,y:58.5,gx:1857,gy:64,gr:0,
-  fleet:[{type:'kampfheli',x:1843,y:64.5,a:Math.PI/2},{type:'cessna',x:1872,y:64.5,a:Math.PI/2}]});
+  fleet:[{type:'kampfheli',x:1840,y:64.5,a:Math.PI/2},{type:'privatjet',x:1857,y:35,a:Math.PI/2}]});
 const phoneDefs=[[520,671],[345,630],[532,330],[1000,700],[335,205],[600,905],[200,742],[880,1060],[1000,400]];
 const phones=phoneDefs.map(([x,y])=>{const c=nearestCell(x,y,t=>t===TY.WALK);return{x:c.x,y:c.y}});
 const placesDef=[['Flughafen München',1650,250],['Hallbergmoos',1680,520],['Universität',505,366],['Marienplatz',520,668],['Hauptbahnhof',345,640],['Siegestor',530,320],['Friedensengel',RB.x,RB.y+30],['Maximilianeum',864,640],['Deutsches Museum',riverX(860),846],['Olympiapark',336,200],['BMW-Welt',440,212],['Allianz Arena',1010,112],['Theresienwiese',290,790],['Viktualienmarkt',600,668],['Chinesischer Turm',610,300],['Sendlinger Tor',432,780],['Isartor',690,662],['Odeonsplatz',520,490],['Giesinger Berg',960,1080],['Haidhausen',1040,700],['Bogenhausen',1000,380],['Westend',150,740],['Schwabing',515,180],['Glockenbachviertel',600,920]];
@@ -615,18 +651,28 @@ for(let i=0;i<20000&&packages.length<30;i++){const x=Math.floor(DR(30,1170))+0.5
 // obstacle heights for flying (2 m cells): buildings, landmarks, towers
 const HC=2,HW=MAP/HC,hgrid=new Uint8Array(HW*HW);
 {const hset=(x,y,h)=>{const i=Math.floor(y/HC)*HW+Math.floor(x/HC);if(i>=0&&i<hgrid.length&&hgrid[i]<h)hgrid[i]=Math.min(255,h)};
- for(let y=0;y<MAP;y+=HC)for(let x=0;x<MAP;x+=HC){const g=grid[y*MAP+x];if(g===TY.BUILD)hset(x,y,28);else if(g===TY.SOLID)hset(x,y,14)}
+ for(let y=0;y<MAP;y+=HC)for(let x=0;x<MAP;x+=HC){const g=grid[y*MAP+x];if(g===TY.BUILD)hset(x,y,28);else if(g===TY.SOLID&&!airside[y*MAP+x])hset(x,y,14)}
  for(const b of buildings){const h=Math.round(b.h+(b.pitched?4:1));fillPoly(b.pts,(i,x,y)=>{const k=Math.floor(y/HC)*HW+Math.floor(x/HC);hgrid[k]=Math.min(255,h)})}
  const tall={olympiaturm:[7,190],arena:[0,52],engel:[5,40],mariensaeule:[4,24],siegestor:[0,26],bavaria:[0,22],kirche:[0,28],uni:[0,24],maximilianeum:[0,30],museum:[0,40],chinaturm:[0,26],monopteros:[0,14],bmw:[0,100],riesenrad:[18,40]};
  for(const L of landmarks){const t=tall[L.k];if(!t)continue;if(t[0])fillCircle(L.x,L.y,t[0],(i,x,y)=>hset(x,y,t[1]));else if(t[1])for(let y=L.y-70;y<L.y+70;y+=HC)for(let x=L.x-70;x<L.x+70;x+=HC){const g=at(x,y);if(g===TY.BUILD||g===TY.SOLID){const k=Math.floor(y/HC)*HW+Math.floor(x/HC);if(k>=0&&k<hgrid.length)hgrid[k]=Math.max(hgrid[k]>28?hgrid[k]:0,t[1])}}}
  const fk=landmarks.find(l=>l.k==='frauenkirche');if(fk)for(const r of fk.towers)fillPoly(rect(...r),(i,x,y)=>hset(x,y,99));
- const A=airport;if(A){fillCircle(A.tower.x,A.tower.y,6,(i,x,y)=>hset(x,y,64));for(const st of A.stands)if(!st.fly)fillCircle(st.x,st.y,st.len*0.45,(i,x,y)=>hset(x,y,st.type==='wide'?18:12))}}
+ // airport: exact heights of what is actually drawn (the generic 28 m for building cells was far too tall, the parked jets were round blobs)
+ const A=airport;if(A){const hard=(r,h)=>fillPoly(rect(...r),(i,x,y)=>{hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=h});
+  for(const t of A.terminals)hard(t.box,16);hard(A.satellite,13);for(const b of A.garages)hard(b,17);hard(A.hotel,26);hard(A.hangars[0],19);
+  {const[x0,y0,x1,y1]=A.hangars[1];hard([x0,y0,x1,y1],0);for(const r of[[x0,y0,x0+2,y1],[x1-2,y0,x1,y1],[x0,y0,x1,y0+2]])hard(r,19)}
+  fillCircle(A.tower.x,A.tower.y,3.2,(i,x,y)=>hset(x,y,60));
+  for(const st of A.stands){if(st.fly)continue;const c=Math.cos(st.a),s2=Math.sin(st.a),wide=st.type==='wide',r=wide?3.2:st.type==='regio'?1.6:2.2,fh=wide?10:st.type==='regio'?5:7.5;
+    fillThick([[st.x-c*st.len*0.47,st.y-s2*st.len*0.47],[st.x+c*st.len*0.48,st.y+s2*st.len*0.48]],r,(i,x,y)=>hset(x,y,fh),false);                        // fuselage
+    fillThick([[st.x-s2*st.span*0.48,st.y+c*st.span*0.48],[st.x+s2*st.span*0.48,st.y-c*st.span*0.48]],1.6,(i,x,y)=>hset(x,y,Math.round(r+2.4)),false);     // wings
+    fillThick([[st.x-c*st.len*0.44,st.y-s2*st.len*0.44],[st.x-c*st.len*0.36,st.y-s2*st.len*0.36]],0.6,(i,x,y)=>hset(x,y,fh+(wide?9:6)),false)}}}
+{const B=base,hard=(r,h)=>fillPoly(rect(...r),(i,x,y)=>{hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=h});fillPoly(rect(B.x0,B.y0,B.x1,B.y1),(i,x,y)=>{if(grid[i]!==TY.BUILD)hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=0});
+  for(const b of B.barracks)hard(b,10);hard(B.hq,13);hard(B.guard,4);for(const[x0,y0,x1,y1]of B.shelters){hard([x0,y0,x1,y1],0);for(const r of[[x0,y0,x0+2,y1],[x1-2,y0,x1,y1],[x0,y0,x1,y0+2]])hard(r,9)}}
 function heightAt(x,y){const i=Math.floor(y/HC)*HW+Math.floor(x/HC);return(x<0||y<0||x>=MAP||y>=MAP)?0:hgrid[i]}
 const PCS=8,PGW=Math.ceil(MAP/PCS),pgrid=new Array(PGW*PGW);
 props.forEach((p,i)=>{p.i=i;const k=Math.floor(p.y/PCS)*PGW+Math.floor(p.x/PCS);(pgrid[k]||(pgrid[k]=[])).push(p)});
 function propsNear(x,y,r){const out=[];const x0=Math.max(0,Math.floor((x-r)/PCS)),x1=Math.min(PGW-1,Math.floor((x+r)/PCS)),y0=Math.max(0,Math.floor((y-r)/PCS)),y1=Math.min(PGW-1,Math.floor((y+r)/PCS));for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++){const a=pgrid[yy*PGW+xx];if(a)for(const p of a)out.push(p)}return out}
 
 IH.world={MAP,TY,grid,cross,waterMask,airside,at,nodes,edges,roads,buildings,lots,props,propsNear,landmarks,zones,shops,phones,places,pickups,zebras,draw,properties,ramps,packages,crowds,pigeons,xmas,
-  riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
+  riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,base,compounds,roofs,roofAt,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
 IH.util={mulberry32,clamp,hypot,pointAt,cumLen};
 })(window));

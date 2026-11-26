@@ -239,9 +239,9 @@ details.more>div{display:flex;flex-direction:column;gap:10px;padding:8px 0 4px}
 /* ---------- online activities ---------- */
 #actBtn{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);z-index:6;font-family:var(--font-display);font-size:18px;background:var(--signal);color:var(--ink);border:0;border-radius:999px;padding:13px 24px;box-shadow:0 4px 0 #a87d00,0 8px 24px rgba(0,0,0,.4)}
 #actBtn[hidden],#actHud[hidden],#actInvite[hidden]{display:none}
-#actHud{position:absolute;top:calc(env(safe-area-inset-top,0px) + 84px);left:50%;transform:translateX(-50%);z-index:5;background:rgba(14,16,19,.78);border:1px solid var(--line);border-radius:10px;padding:8px 16px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:240px;text-align:center;font-weight:700;letter-spacing:.03em}
+#actHud{position:absolute;top:calc(env(safe-area-inset-top,0px) + 84px);left:50%;transform:translateX(-50%);z-index:7;pointer-events:none;background:rgba(14,16,19,.78);border:1px solid var(--line);border-radius:10px;padding:8px 16px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:240px;text-align:center;font-weight:700;letter-spacing:.03em}
 #actHud b{font-family:var(--font-display);font-weight:400;font-size:16px;color:var(--signal)}#actHud b.big{font-size:64px;color:#fff}#actHud span{font-size:16px}#actHud .alarm{color:var(--alarm)}
-#actHud button{margin-top:4px;font-family:var(--font-display);font-size:15px;background:var(--signal);color:var(--ink);border:0;border-radius:6px;padding:7px 14px}
+#actHud button{pointer-events:auto;touch-action:none;margin-top:4px;font-family:var(--font-display);font-size:15px;background:var(--signal);color:var(--ink);border:0;border-radius:6px;padding:7px 14px}
 #actHud .bar{display:block;width:200px;height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden}#actHud .bar i{display:block;height:100%;background:var(--alarm)}
 #actInvite{position:absolute;right:calc(env(safe-area-inset-right,0px) + 14px);top:calc(env(safe-area-inset-top,0px) + 300px);z-index:6;display:flex;flex-direction:column;gap:8px;max-width:340px}
 #actInvite .inv{display:flex;align-items:center;gap:8px;background:rgba(14,16,19,.85);border:1px solid var(--signal);border-radius:10px;padding:8px 10px;font-weight:700;font-size:15px}
@@ -421,6 +421,7 @@ body.cutscene #banner,body.cutscene #toast,body.cutscene #mission,body.cutscene 
     <div class="seg" role="group" aria-label="Wetter"><span>Wetter</span><button type="button" data-set="weather" data-val="wechselnd">Wechselnd</button><button type="button" data-set="weather" data-val="klar">Klar</button><button type="button" data-set="weather" data-val="regen">Regen</button></div>
     <div class="seg" role="group" aria-label="Grafik"><span>Grafik</span><button type="button" data-set="quality" data-val="hoch">Hoch</button><button type="button" data-set="quality" data-val="mittel">Mittel</button><button type="button" data-set="quality" data-val="niedrig">Niedrig</button></div>
     <p class="note qnote" hidden>Die neue Grafikstufe gilt nach dem nächsten Start.</p>
+    <div class="seg" role="group" aria-label="Radio-Moderation"><span>Moderation</span><button type="button" data-set="talk" data-val="oft">Oft</button><button type="button" data-set="talk" data-val="selten">Selten</button><button type="button" data-set="talk" data-val="aus">Aus</button></div>
     <div class="seg" role="group" aria-label="Bedienelemente"><span>Tasten</span><button type="button" data-set="ui" data-val="klein">Klein</button><button type="button" data-set="ui" data-val="auto">Mittel</button><button type="button" data-set="ui" data-val="gross">Groß</button></div>
     <div class="row"><button id="btnResume" class="cta" type="button">Weiter</button><button id="btnRestart" class="ghost" type="button">Neues Spiel</button><button id="btnMenu" class="ghost" type="button">Hauptmenü</button></div>
   </div>
