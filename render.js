@@ -767,6 +767,34 @@ function activitySigns(){
     const m=new THREE.Mesh(new THREE.PlaneGeometry(14,3.5),new THREE.MeshBasicMaterial({map:tex}));const f=c.b.front;m.position.set(c.x-f.nx*1.0,9,c.y-f.ny*1.0);m.rotation.y=Math.atan2(-f.nx,-f.ny)+Math.PI;scene.add(m);
     const carpet=new THREE.Mesh(new THREE.PlaneGeometry(2.2,5),lam('#8e1b2c'));carpet.rotation.x=-Math.PI/2;carpet.rotation.z=-Math.atan2(f.ny,f.nx)+Math.PI/2;carpet.position.set(c.x,0.06,c.y);scene.add(carpet)}
 }
+// Forschungszentrum Garching: ESO's round building, the "Atom-Ei" and the FRM II chimney, signs on the institutes
+function campusBuild(C){
+  {const e=C.eso;addMesh(new THREE.CylinderGeometry(e.r,e.r,10.5,40),lam('#e4e2dc'),e.x,5.25,e.y);addMesh(new THREE.CylinderGeometry(e.r+0.4,e.r+0.4,1,40),lam('#9aa3ab'),e.x,10.8,e.y);
+    addMesh(new THREE.CylinderGeometry(e.r*0.55,e.r*0.55,10.7,28),lam('#4a6b4c'),e.x,5.4,e.y);for(let k=0;k<3;k++)addMesh(new THREE.CylinderGeometry(e.r+0.05,e.r+0.05,0.9,40,1,true),lam('#3a4f68',{side:THREE.DoubleSide}),e.x,2.5+k*3,e.y);
+    const sg=labelSprite('ESO · Europäische Südsternwarte','rgba(20,32,52,.88)','#fff',1.0);sg.position.set(e.x,15,e.y);scene.add(sg)}
+  {const e=C.ei;const g=new THREE.SphereGeometry(e.r,28,18);const m=addMesh(g,new THREE.MeshPhongMaterial({color:'#ecebe6',shininess:40}),e.x,6,e.y);m.scale.set(1,1.3,1);addMesh(new THREE.CylinderGeometry(e.r+0.6,e.r+0.6,1.2,28),lam('#b9b6ae'),e.x,0.6,e.y);
+    const sg=labelSprite('Atom-Ei','rgba(20,22,26,.8)','#fff',1.0);sg.position.set(e.x,20,e.y);scene.add(sg)}
+  addMesh(new THREE.CylinderGeometry(1.4,1.9,46,16),lam('#d2d5d8'),1703,23,971);addMesh(new THREE.CylinderGeometry(1.45,1.45,1.2,16),lam('#c0392b'),1703,44,971);
+  for(const b of C.buildings){const sg=labelSprite(b.name,'rgba(0,101,189,.9)','#fff',0.8);sg.position.set(b.x,b.h+3.5,b.y);scene.add(sg)}
+  const sg=labelSprite('FORSCHUNGSZENTRUM GARCHING','rgba(0,101,189,.92)','#fff',1.2);sg.position.set(1740,7,906);scene.add(sg)}
+// Autobahn: guard rails on both sides, a concrete barrier in the middle, blue signs at the exits
+function motorwayBuild(){
+  const rail=[],posts=[],wall=[];const junction=(x,y)=>W.nodes.some(n=>n.edges.length>=3&&Math.abs(n.x-x)<26&&Math.abs(n.y-y)<26&&Math.hypot(n.x-x,n.y-y)<24);
+  const quad=(arr,a,b,y0,y1)=>arr.push(a[0],y0,a[1], b[0],y0,b[1], b[0],y1,b[1], a[0],y0,a[1], b[0],y1,b[1], a[0],y1,a[1]);
+  for(const e of W.edges){if(!e.mw)continue;const L=e.cum[e.cum.length-1];
+    for(const side of[1,-1,0]){let prev=null;for(let d=0;d<=L;d+=4){const p=W.pointAt(e.pts,e.cum,Math.min(d,L));const nx=-p.ty,ny=p.tx,off=side?side*(e.w/2+0.7):0;const q=[p.x+nx*off,p.y+ny*off];
+      if(junction(p.x,p.y)){prev=null;continue}
+      if(prev){if(side){quad(rail,prev,q,0.55,0.85)}else{quad(wall,prev,q,0,0.85)}}
+      if(side&&Math.round(d/4)%1===0)posts.push(q);prev=q}}}
+  const mk=(arr,mat)=>{if(!arr.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));g.computeVertexNormals();const m=new THREE.Mesh(g,mat);m.receiveShadow=true;scene.add(m)};
+  mk(rail,new THREE.MeshLambertMaterial({color:'#b8bec4',side:THREE.DoubleSide}));mk(wall,new THREE.MeshLambertMaterial({color:'#c9c7bf',side:THREE.DoubleSide}));
+  const pg=new THREE.BoxGeometry(0.12,0.85,0.12);pg.translate(0,0.42,0);const im=new THREE.InstancedMesh(pg,lam('#8a9096'),posts.length);posts.forEach((q,i)=>im.setMatrixAt(i,M4().makeTranslation(q[0],0,q[1])));scene.add(im);
+  // exit signs
+  for(const e of W.edges){if(!e.name||!e.name.startsWith('Ausfahrt'))continue;const na=W.nodes[e.a],nb=W.nodes[e.b];const n=na.edges.some(i=>W.edges[i].mw)?na:nb;
+    const sg=labelSprite('A99 · '+e.name,'rgba(31,79,154,.95)','#ffffff',0.9);sg.position.set(n.x,6.5,n.y);scene.add(sg);
+    for(const dx of[-2.5,2.5])addMesh(new THREE.CylinderGeometry(0.1,0.1,5.6,6),lam('#9aa0a6'),n.x+dx,2.8,n.y+4)}
+  for(const[x,y,t]of[[1275,1052,'A92 · Garching · Fliegerhorst'],[1742,1056,'A92 · Ausfahrt Garching / Fliegerhorst'],[1268,535,'A99 · Ausfahrt Flughafen']]){const sg=labelSprite(t,'rgba(31,79,154,.95)','#ffffff',0.9);sg.position.set(x,6.5,y);scene.add(sg)}
+}
 function buildLandmarks(){
   const before=new Set(matCache.values());activitySigns();
   for(const L of W.landmarks){
@@ -809,6 +837,7 @@ function buildLandmarks(){
       case'kirche':dorfkirche(L.x,L.y);break;
       case'airport':airportBuild(L.A);break;
       case'base':baseBuild(L.B);break;
+      case'campus':campusBuild(L.C);break;
       case'hbf':{const[x0,z0,x1,z1]=L.box;texturedBox(x0,z0,x1,z0+16,18,'#b9b2a5');texturedBox(x0,z0+16,x0+14,z1,18,'#b9b2a5');addMesh(new THREE.BoxGeometry(x1-x0-14,12,z1-z0-16),lam('#9aa4ab'),(x0+14+x1)/2,6,(z0+16+z1)/2);
         const hall=new THREE.CylinderGeometry(1,1,1,16,1,false,0,Math.PI);const h=addMesh(hall,new THREE.MeshLambertMaterial({color:'#8fb1c4',transparent:true,opacity:0.75}),(x0+14+x1)/2,12,(z0+16+z1)/2,{rz:Math.PI/2});h.rotation.set(0,0,Math.PI/2);h.scale.set(8,x1-x0-14,(z1-z0-16)/2);
         const lb=labelSprite('Hauptbahnhof','rgba(20,22,26,.72)','#fff',2);lb.position.set((x0+x1)/2,26,(z0+z1)/2);scene.add(lb);break}
@@ -1518,7 +1547,7 @@ R3.init=function(canvas){
   sun=new THREE.DirectionalLight('#fff0d6',0.8);sun.castShadow=Q.shadow>0;if(sun.castShadow){sun.shadow.mapSize.set(Q.shadow,Q.shadow);const sc=sun.shadow.camera;sc.near=10;sc.far=480;sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.04}
   scene.add(sun,sun.target);
   buildPatterns();envUpdate(0);buildSky();buildEnvCube();buildCarMaterials();
-  buildGround();buildBuildings();buildLandmarks();buildProps();buildLights();buildMarkers();buildSkids();buildRain();R3.refreshProps();
+  buildGround();buildBuildings();buildLandmarks();motorwayBuild();buildProps();buildLights();buildMarkers();buildSkids();buildRain();R3.refreshProps();
   ptsN=makePoints(false);ptsA=makePoints(true);
   envUpdate(0);R3.resize();
 };

@@ -1,5 +1,5 @@
 /* 2Isar2Heat service worker: network first (updates show up right away), cache as offline fallback */
-const CACHE='2isar2heat-v23';
+const CACHE='2isar2heat-v24';
 const CORE=['./','index.html','config.js','account.js','three.min.js','world.js','sim.js','render.js','net.js','activities.js','radio.js','story.js','install.js','main.js','manifest.webmanifest','Bungee-Regular.ttf','BarlowCondensed-SemiBold.ttf','BarlowCondensed-Bold.ttf','icon-192.png','icon-512.png','apple-touch-icon.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).catch(()=>{}).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

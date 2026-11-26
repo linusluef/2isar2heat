@@ -4,7 +4,7 @@
 const IH=root.IH=root.IH||{};
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const rng=mulberry32(0x15A2026);
+let rng=mulberry32(0x15A2026);const rngOut=mulberry32(0x6A2C);   // rngOut: everything added outside the city later, so the city itself never changes
 const R=(a,b)=>a+(b-a)*rng(),RI=(a,b)=>Math.floor(a+(b-a+1)*rng()),pickR=a=>a[Math.floor(rng()*a.length)];
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const smooth=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
@@ -109,7 +109,7 @@ for(let i=0;i<MAP*MAP;i++)waterMask[i]=grid[i]===TY.WATER?1:0;
 
 /* ---------- road skeleton ---------- */
 const roads=[];
-function road(name,pts,o){o=o||{};const r={name,pts:densify(pts,o.step||10),w:o.w||7.5,lanes:o.lanes||1,walk:o.walk===undefined?3.5:o.walk,oneway:!!o.oneway,closed:!!o.closed,major:o.major!==false,infill:!!o.infill,alley:!!o.alley,noai:!!o.noai,country:!!o.country,suburb:!!o.suburb};roads.push(r);return r}
+function road(name,pts,o){o=o||{};const r={name,pts:densify(pts,o.step||10),w:o.w||7.5,lanes:o.lanes||1,walk:o.walk===undefined?3.5:o.walk,oneway:!!o.oneway,closed:!!o.closed,major:o.major!==false,infill:!!o.infill,alley:!!o.alley,noai:!!o.noai,country:!!o.country,suburb:!!o.suburb,own:!!o.own,motorway:!!o.motorway,once:!!o.once};roads.push(r);return r}
 const RING_A=(()=>{const x0=360,x1=690,y0=480,y1=780,r=55,pts=[];const arc=(cx,cy,a0)=>{for(let k=0;k<=6;k++){const a=a0+k/6*Math.PI/2;pts.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r])}};
   arc(x1-r,y0+r,-Math.PI/2);arc(x1-r,y1-r,0);arc(x0+r,y1-r,Math.PI/2);arc(x0+r,y0+r,Math.PI);pts.push([pts[0][0],pts[0][1]]);return pts})();
 road('Altstadtring',RING_A,{w:14,lanes:2,closed:true,alley:true});
@@ -150,13 +150,13 @@ road('Wiesn-Zufahrt',[[414,866],[452,861]],{w:7});
 road('Hansastraße',[[290,949],[293,1060]],{w:8});
 road('Herzog-Wilhelm-Straße',[[364,720],[420,722],[452,724]],{w:7});
 // out of town: Erdinger Landstraße to Hallbergmoos, the Flughafen-Zubringer and the airport loop
-road('Erdinger Landstraße',[[1190,512],[1260,522],[1340,516],[1420,500],[1500,494],[1560,498],[1600,500]],{w:9,country:true,walk:2});
+road('Erdinger Landstraße',[[1190,512],[1260,522],[1340,516],[1420,500],[1500,494],[1560,498],[1600,500]],{w:9,country:true,walk:2,once:true});
 for(const y of[460,500,540,580])road('Hallbergmoos',[[1600,y],[1640,y],[1680,y],[1720,y],[1760,y]],{w:7,suburb:true,walk:2.5});
 for(const x of[1600,1640,1680,1720,1760])road('Hallbergmoos',[[x,460],[x,500],[x,540],[x,580]],{w:7,suburb:true,walk:2.5});
 road('Flughafen-Zubringer',[[1600,460],[1602,430],[1604,400],[1604,360],[1606,340]],{w:12,lanes:2,country:true,walk:1});
 road('Terminalstraße',[[1606,340],[1650,338],[1668,320],[1668,180],[1650,162],[1612,162],[1596,180],[1596,320],[1606,340]],{w:10,country:true,closed:true,walk:3});
 road('Zentralallee',[[1596,250],[1668,250]],{w:8,country:true,walk:3});
-road('Fliegerhorststraße',[[1720,580],[1724,700],[1734,820],[1744,950],[1750,1080],[1750,1170]],{w:9,country:true,walk:1});
+road('Fliegerhorststraße',[[1720,580],[1724,700],[1734,820],[1744,950],[1750,1080],[1750,1170]],{w:9,country:true,walk:1,once:true});
 const MAJOR_COUNT=roads.length;
 
 /* ---------- infill districts ---------- */
@@ -233,7 +233,7 @@ function buildGraph(){
   // snap free endpoints onto nearby roads (T-junctions that stop short)
   roads.forEach((r,ri)=>{if(r.closed)return;for(const end of[0,r.pts.length-1]){const p=r.pts[end];let best=null;
     const k0x=Math.floor(p[0]/CS),k0y=Math.floor(p[1]/CS);
-    for(let y=k0y-1;y<=k0y+1;y++)for(let x=k0x-1;x<=k0x+1;x++){const l=hash.get(y*1000+x);if(!l)continue;for(const si of l){const s=segs[si];if(s.ri===ri)continue;const dx=s.b[0]-s.a[0],dy=s.b[1]-s.a[1],L2=dx*dx+dy*dy||1;const t=clamp(((p[0]-s.a[0])*dx+(p[1]-s.a[1])*dy)/L2,0,1);const qx=s.a[0]+dx*t,qy=s.a[1]+dy*t;const d=hypot(qx-p[0],qy-p[1]);if(d<7&&(!best||d<best.d))best={d,s,t,qx,qy}}}
+    for(let y=k0y-1;y<=k0y+1;y++)for(let x=k0x-1;x<=k0x+1;x++){const l=hash.get(y*1000+x);if(!l)continue;for(const si of l){const s=segs[si];if(s.ri===ri||(roads[s.ri].own&&!r.own))continue;const dx=s.b[0]-s.a[0],dy=s.b[1]-s.a[1],L2=dx*dx+dy*dy||1;const t=clamp(((p[0]-s.a[0])*dx+(p[1]-s.a[1])*dy)/L2,0,1);const qx=s.a[0]+dx*t,qy=s.a[1]+dy*t;const d=hypot(qx-p[0],qy-p[1]);if(d<7&&(!best||d<best.d))best={d,s,t,qx,qy}}}
     if(best&&best.d>0.5){roads[best.s.ri].splits.push({s:best.s.i+best.t,x:best.qx,y:best.qy});r.pts[end]=[best.qx,best.qy];r.splits.push({s:end,x:best.qx,y:best.qy})}}});
   roads.forEach(r=>{const n=r.pts.length-1;r.splits.push({s:0,x:r.pts[0][0],y:r.pts[0][1]},{s:n,x:r.pts[n][0],y:r.pts[n][1]})});
   // nodes
@@ -251,11 +251,23 @@ function buildGraph(){
       for(let i=Math.floor(A.s)+1;i<B.s-1e-6;i++)if(i>A.s+1e-6)pts.push(r.pts[i]);
       pts.push([nodes[B.node].x,nodes[B.node].y]);
       const cum=cumLen(pts);const len=cum[cum.length-1];if(len<1.5)continue;
-      edges.push({id:edges.length,road:ri,a:A.node,b:B.node,pts,cum,len,w:r.w,lanes:r.lanes,walk:r.walk,oneway:r.oneway,infill:r.infill,name:r.name,alley:r.alley,alive:true});
+      edges.push({id:edges.length,road:ri,a:A.node,b:B.node,pts,cum,len,w:r.w,lanes:r.lanes,walk:r.walk,oneway:r.oneway,infill:r.infill,name:r.name,alley:r.alley,alive:true,mw:r.motorway});
     }
   });
   return{nodes,edges};
 }
+/* ---------- out of town (added last): Autobahn ring, Garching with the research campus ---------- */
+// A99: east of the city from north to south, then along the south edge to the west; the A92 branches off east to Garching / the air base
+road('A99',[[1272,40],[1272,600],[1272,1180],[1262,1240],[1222,1268],[1140,1272],[600,1272],[40,1272]],{w:17,lanes:2,walk:0,country:true,own:true,motorway:true,step:12});
+road('A92',[[1272,1060],[1400,1064],[1560,1064],[1749,1064]],{w:15,lanes:2,walk:0,country:true,own:true,motorway:true,step:12});
+for(const[n,a,b]of[['Ausfahrt Bogenhausen',[1184,220],[1272,220]],['Ausfahrt Haidhausen',[1194,773],[1272,773]],['Ausfahrt Giesing',[985,1194],[985,1272]],['Ausfahrt Sendling',[345,1198],[345,1272]],['Ausfahrt Westend',[136,1198],[136,1272]],['Ausfahrt Untergiesing',[805,1185],[790,1272]]])
+  road(n,[a,b],{w:9,country:true,own:true,walk:0});
+// Garching: a small town east of the Fliegerhorststraße
+for(const y of[700,740,780,820])road('Garching',[[1712,y],[1780,y],[1830,y],[1880,y]],{w:7,suburb:true,walk:2.5,own:true});
+for(const x of[1780,1830,1880])road('Garching',[[x,700],[x,740],[x,780],[x,820]],{w:7,suburb:true,walk:2.5,own:true});
+// Forschungszentrum Garching: campus road west of the Fliegerhorststraße
+road('Lichtenbergstraße',[[1548,900],[1600,900],[1680,900],[1760,900]],{w:8,country:true,own:true,walk:2});
+road('Boltzmannstraße',[[1600,812],[1600,900],[1600,1000]],{w:8,country:true,own:true,walk:2});
 let G=buildGraph();
 function relink(){for(const n of G.nodes)n.edges=[];for(const e of G.edges)if(e.alive){G.nodes[e.a].edges.push(e.id);if(e.b!==e.a)G.nodes[e.b].edges.push(e.id)}}
 relink();
@@ -279,7 +291,7 @@ for(const n of nodes){
   n.r=n.deg>=3?mw+2.5:0;
   n.round=n.edges.some(ei=>edges[ei].oneway);
   n.light=null;
-  if(n.deg>=3&&!n.round){const big=n.edges.some(ei=>edges[ei].lanes>=2);if(big||n.deg>=4){n.light={axis:0,off:R(0,30)}}}
+  if(n.deg>=3&&!n.round){const big=n.edges.some(ei=>edges[ei].lanes>=2),out=n.edges.some(ei=>roads[edges[ei].road].own);if(out){if(n.edges.some(ei=>roads[edges[ei].road].motorway)){}else if(n.deg>=4)n.light={axis:0,off:rngOut()*30}}else if(big||n.deg>=4){n.light={axis:0,off:R(0,30)}}}   // out of town: own random numbers; no traffic lights on the Autobahn
 }
 for(const n of nodes){if(n.light){const e=edges[n.edges[0]];const p=e.a===n.id?e.pts[1]:e.pts[e.pts.length-2];n.light.axis=Math.atan2(p[1]-n.y,p[0]-n.x)}}
 for(const e of edges){
@@ -291,14 +303,17 @@ for(const e of edges){
   const m=e.pts.length;e.dirB=Math.atan2(e.pts[m-2][1]-e.pts[m-1][1],e.pts[m-2][0]-e.pts[m-1][0]);
   e.bridge=false;for(let s=0;s<e.len;s+=3){const p=pointAt(e.pts,e.cum,s);if(waterMask[Math.floor(p.y)*MAP+Math.floor(p.x)]){e.bridge=true;break}}
 }
-for(const n of nodes){let near=false;for(let dy=-7;dy<=7&&!near;dy++)for(let dx=-7;dx<=7;dx++){if(dx*dx+dy*dy>49)continue;const g=at(n.x+dx,n.y+dy);if(g===TY.PLAZA||g===TY.BUILD||g===TY.SOLID||g===RES){near=true;break}}n.circle=n.deg===1&&!near}
+for(const n of nodes){let near=false;for(let dy=-7;dy<=7&&!near;dy++)for(let dx=-7;dx<=7;dx++){if(dx*dx+dy*dy>49)continue;const g=at(n.x+dx,n.y+dy);if(g===TY.PLAZA||g===TY.BUILD||g===TY.SOLID||g===RES){near=true;break}}n.circle=n.edges.filter(ei=>!roads[edges[ei].road].own).length===1&&!near}   // (roads added outside the city don't count: the turning circles stay as they were)
 const deadEnds=nodes.filter(n=>n.circle);
 
 /* ---------- paint roads ---------- */
 const walkable=t=>t===TY.GRASS||t===TY.PARK||t===TY.BANK||t===TY.WALK||t===TY.FIELD;
-for(const e of edges){fillThick(e.pts,e.w/2+e.walk,(i)=>{const g=grid[i];if(waterMask[i]){if(g!==TY.BRIDGE)grid[i]=TY.WALK}else if(walkable(g))grid[i]=TY.WALK},true)}
+const isOwn=e=>roads[e.road].own;
+function paintWalk(e){fillThick(e.pts,e.w/2+e.walk,(i)=>{const g=grid[i];if(waterMask[i]){if(g!==TY.BRIDGE)grid[i]=TY.WALK}else if(walkable(g))grid[i]=TY.WALK},true)}
+function paintRoad(e){fillThick(e.pts,e.w/2,(i)=>{if(grid[i]===RES)return;grid[i]=waterMask[i]?TY.BRIDGE:TY.ROAD},true)}
+for(const e of edges)if(!isOwn(e))paintWalk(e);   // roads outside the city are painted later, after the city's buildings
 for(const n of deadEnds)fillCircle(n.x,n.y,12.5,(i)=>{if(walkable(grid[i]))grid[i]=TY.WALK});
-for(const e of edges){fillThick(e.pts,e.w/2,(i)=>{if(grid[i]===RES)return;grid[i]=waterMask[i]?TY.BRIDGE:TY.ROAD},true)}
+for(const e of edges)if(!isOwn(e))paintRoad(e);
 for(const n of deadEnds)fillCircle(n.x,n.y,9,(i)=>{if(!waterMask[i]&&grid[i]!==RES)grid[i]=TY.ROAD});
 // roundabout island
 fillCircle(RB.x,RB.y,RB.r-4.5,set(TY.PLAZA));fillCircle(SG.x,SG.y,SG.r-4.5,set(TY.PLAZA));
@@ -443,6 +458,8 @@ function addBuilding(quad,h,pitched,front,cx,cy,zone,street){
 function quadCells(q){let ok=0,bad=0,bld=0;fillPoly(q,(i)=>{const g=grid[i];if(g===TY.GRASS)ok++;else if(g===TY.BUILD)bld++;else bad++});return{ok,bad,bld}}
 function placeAlong(e,second){
   if(e.bridge||e.oneway||roads[e.road].country)return;if(second&&roads[e.road].suburb)return;
+  if(roads[e.road].own){const keep=rng;rng=rngOut;try{placeAlong2(e,second)}finally{rng=keep}return}placeAlong2(e,second)}
+function placeAlong2(e,second){
   for(const side of[1,-1]){
     const off=e.w/2+e.walk+0.4+(second?R(20,26):0);
     let s=e.clearA+(e.clearA?5:2);const sEnd=e.len-e.clearB-(e.clearB?5:2);
@@ -476,8 +493,8 @@ function placeAlong(e,second){
     }
   }
 }
-for(const e of edges)placeAlong(e,false);
-for(const e of edges)if(rng()<0.7)placeAlong(e,true);
+for(const e of edges)if(!isOwn(e))placeAlong(e,false);
+{const onceSeen=new Set();for(const e of edges){const r=roads[e.road];if(r.own)continue;if(r.once){if(onceSeen.has(e.road))continue;onceSeen.add(e.road)}if(rng()<0.7)placeAlong(e,true)}}
 /* ---------- spatial index for edges ---------- */
 const ECS=24,ehash=new Map();
 for(const e of edges)for(let i=0;i<e.pts.length-1;i++){const a=e.pts[i],b=e.pts[i+1];const x0=Math.floor((Math.min(a[0],b[0])-10)/ECS),x1=Math.floor((Math.max(a[0],b[0])+10)/ECS),y0=Math.floor((Math.min(a[1],b[1])-10)/ECS),y1=Math.floor((Math.max(a[1],b[1])+10)/ECS);for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const k=y*1000+x;let l=ehash.get(k);if(!l)ehash.set(k,l=[]);l.push(e.id*1000+i)}}
@@ -490,8 +507,8 @@ function nearestEdge(x,y,maxD,filter){
 }
 // courtyard and back buildings fill the remaining grass inside blocks
 for(let y=8;y<MAP-8;y+=7)for(let x=8;x<MAP-8;x+=7){
-  if(grid[y*MAP+x]!==TY.GRASS)continue;const st=styleAt(x,y);if(rng()>st.fill)continue;
-  const ne=nearestEdge(x,y,90);if(!ne)continue;
+  if(grid[y*MAP+x]!==TY.GRASS)continue;const st=styleAt(x,y);if(rng()>st.fill)continue;   // (outside the city fill is 0: nothing gets built there)
+  const ne=nearestEdge(x,y,90,e=>!isOwn(e));if(!ne)continue;
   const tx=ne.tx,ty=ne.ty,nx=-ty,ny=tx,bw=R(9,17),bd=R(9,15),m=2;
   const c=[x-tx*bw/2-nx*bd/2,y-ty*bw/2-ny*bd/2];const Q=(a,b)=>[c[0]+tx*a+nx*b,c[1]+ty*a+ny*b];
   const cc=quadCells([Q(-m,-m),Q(bw+m,-m),Q(bw+m,bd+m),Q(-m,bd+m)]);if(cc.bad>0||cc.bld>0)continue;
@@ -499,6 +516,26 @@ for(let y=8;y<MAP-8;y+=7)for(let x=8;x<MAP-8;x+=7){
   addBuilding(quad,R(st.h[0],st.h[1])*0.85,rng()<st.pitch,{x,y,nx:0,ny:1},x,y,st.zone,false);
 }
 
+// now the roads outside the city (Autobahn, Garching, campus) and the houses along them
+const mwMask=new Uint8Array(MAP*MAP);
+const campus={buildings:[],eso:{x:1565,y:960,r:13},ei:{x:1650,y:985,r:8}};
+{const keep=rng;rng=rngOut;try{
+  for(const e of edges)if(isOwn(e))paintWalk(e);for(const e of edges)if(isOwn(e))paintRoad(e);
+  for(const e of edges)if(e.mw)fillThick(e.pts,e.w/2,(i)=>{mwMask[i]=1},true);
+  // the field south of Garching makes room for the research campus
+  {const z=draw.zones.find(z=>z.t==='acker'&&z.pts[0][0]===1600&&z.pts[0][1]===900);if(z){fillPoly(rect(1540,900,1950,925),(i)=>{if(grid[i]===TY.FIELD)grid[i]=TY.GRASS});fillPoly(rect(1540,900,1780,1150),(i)=>{if(grid[i]===TY.FIELD)grid[i]=TY.GRASS});z.pts=rect(1780,925,1950,1150);z.bb=null}}
+  // Garching: church on the square
+  L({k:'kirche',name:'Garching',x:1855,y:760});stamp(rect(1847,752,1863,768),TY.BUILD);
+  // Forschungszentrum Garching: TUM institutes, MPQ, ESO, the "Atom-Ei" (old research reactor) and FRM II
+  const C=[{r:[1612,812,1700,846],h:17,name:'TUM Physik-Department',wall:'#d9d4c8',style:1},{r:[1612,856,1662,888],h:14,name:'TUM Chemie',wall:'#cfc8b8',style:1},
+    {r:[1612,912,1700,958],h:21,name:'TUM Maschinenwesen',style:2},{r:[1545,806,1590,842],h:15,name:'MPQ · Max-Planck-Institut für Quantenoptik',style:2,wall:'#bfc6cc'},
+    {r:[1545,852,1590,884],h:12,name:'Walther-Meißner-Institut',style:3},{r:[1682,966,1708,994],h:22,name:'FRM II',wall:'#d8dbdd',style:1}];
+  for(const q of C){const quad=rect(...q.r);fillPoly(quad,(i)=>{grid[i]=TY.BUILD});const cx=(q.r[0]+q.r[2])/2,cy=(q.r[1]+q.r[3])/2;const b=addBuilding(quad,q.h,false,{x:cx,y:q.r[1],nx:0,ny:-1},cx,cy,'out',false);b.style=q.style;if(q.wall)b.wall=q.wall;b.campus=q.name;campus.buildings.push({name:q.name,x:cx,y:cy,h:q.h})}
+  fillCircle(campus.eso.x,campus.eso.y,campus.eso.r,(i)=>{grid[i]=TY.BUILD});fillCircle(campus.ei.x,campus.ei.y,campus.ei.r,(i)=>{grid[i]=TY.BUILD});
+  fillPoly(rect(1612,890,1700,896),(i)=>{if(grid[i]===TY.GRASS)grid[i]=TY.PLAZA});draw.zones.push({t:'plaza',pts:rect(1606,848,1700,856)});
+  L({k:'campus',name:'Forschungszentrum Garching',x:1620,y:900,C:campus});
+  for(const e of edges)if(isOwn(e))placeAlong(e,false);for(const e of edges)if(isOwn(e)&&rngOut()<0.7)placeAlong(e,true);
+}finally{rng=keep}}
 /* ---------- trees & street furniture ---------- */
 const props=[];
 function addProp(p){props.push(p)}
@@ -575,7 +612,7 @@ properties.push({id:'hangar',name:'Hangar am Flughafen',price:40000,income:0,slo
   fleet:[{type:'kampfheli',x:1840,y:64.5,a:Math.PI/2},{type:'privatjet',x:1857,y:35,a:Math.PI/2}]});
 const phoneDefs=[[520,671],[345,630],[532,330],[1000,700],[335,205],[600,905],[200,742],[880,1060],[1000,400]];
 const phones=phoneDefs.map(([x,y])=>{const c=nearestCell(x,y,t=>t===TY.WALK);return{x:c.x,y:c.y}});
-const placesDef=[['Flughafen München',1650,250],['Hallbergmoos',1680,520],['Universität',505,366],['Marienplatz',520,668],['Hauptbahnhof',345,640],['Siegestor',530,320],['Friedensengel',RB.x,RB.y+30],['Maximilianeum',864,640],['Deutsches Museum',riverX(860),846],['Olympiapark',336,200],['BMW-Welt',440,212],['Allianz Arena',1010,112],['Theresienwiese',290,790],['Viktualienmarkt',600,668],['Chinesischer Turm',610,300],['Sendlinger Tor',432,780],['Isartor',690,662],['Odeonsplatz',520,490],['Giesinger Berg',960,1080],['Haidhausen',1040,700],['Bogenhausen',1000,380],['Westend',150,740],['Schwabing',515,180],['Glockenbachviertel',600,920]];
+const placesDef=[['Flughafen München',1650,250],['Hallbergmoos',1680,520],['Universität',505,366],['Marienplatz',520,668],['Hauptbahnhof',345,640],['Siegestor',530,320],['Friedensengel',RB.x,RB.y+30],['Maximilianeum',864,640],['Deutsches Museum',riverX(860),846],['Olympiapark',336,200],['BMW-Welt',440,212],['Allianz Arena',1010,112],['Theresienwiese',290,790],['Viktualienmarkt',600,668],['Chinesischer Turm',610,300],['Sendlinger Tor',432,780],['Isartor',690,662],['Odeonsplatz',520,490],['Giesinger Berg',960,1080],['Haidhausen',1040,700],['Bogenhausen',1000,380],['Westend',150,740],['Schwabing',515,180],['Glockenbachviertel',600,920],['Garching',1830,760],['Forschungszentrum Garching',1620,900],['Fliegerhorst Isartal',1750,1170]];
 const places=placesDef.map(([name,x,y])=>{const c=nearestCell(x,y,t=>t===TY.WALK||t===TY.PLAZA||t===TY.ROAD);return{name,x:c.x,y:c.y}});
 const pickupKinds=['health','health','health','health','health','armor','armor','armor','pistol','pistol','pistol','pistol','smg','smg','shotgun','grenade','health','pistol'];
 const pickups=pickupKinds.map(k=>{for(let i=0;i<50;i++){const x=R(60,MAP-60),y=R(60,MAP-60);const g=at(x,y);if(g===TY.WALK||g===TY.PLAZA||g===TY.PARK){return{k,x:Math.floor(x)+0.5,y:Math.floor(y)+0.5}}}return null}).filter(Boolean);
@@ -667,12 +704,13 @@ const HC=2,HW=MAP/HC,hgrid=new Uint8Array(HW*HW);
     fillThick([[st.x-c*st.len*0.44,st.y-s2*st.len*0.44],[st.x-c*st.len*0.36,st.y-s2*st.len*0.36]],0.6,(i,x,y)=>hset(x,y,fh+(wide?9:6)),false)}}}
 {const B=base,hard=(r,h)=>fillPoly(rect(...r),(i,x,y)=>{hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=h});fillPoly(rect(B.x0,B.y0,B.x1,B.y1),(i,x,y)=>{if(grid[i]!==TY.BUILD)hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=0});
   for(const b of B.barracks)hard(b,10);hard(B.hq,13);hard(B.guard,4);for(const[x0,y0,x1,y1]of B.shelters){hard([x0,y0,x1,y1],0);for(const r of[[x0,y0,x0+2,y1],[x1-2,y0,x1,y1],[x0,y0,x1,y0+2]])hard(r,9)}}
+{const C=campus;const set=(cx,cy,r,h)=>fillCircle(cx,cy,r,(i,x,y)=>{hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=h});set(C.eso.x,C.eso.y,C.eso.r,12);set(C.ei.x,C.ei.y,C.ei.r,16)}
 function heightAt(x,y){const i=Math.floor(y/HC)*HW+Math.floor(x/HC);return(x<0||y<0||x>=MAP||y>=MAP)?0:hgrid[i]}
 const PCS=8,PGW=Math.ceil(MAP/PCS),pgrid=new Array(PGW*PGW);
 props.forEach((p,i)=>{p.i=i;const k=Math.floor(p.y/PCS)*PGW+Math.floor(p.x/PCS);(pgrid[k]||(pgrid[k]=[])).push(p)});
 function propsNear(x,y,r){const out=[];const x0=Math.max(0,Math.floor((x-r)/PCS)),x1=Math.min(PGW-1,Math.floor((x+r)/PCS)),y0=Math.max(0,Math.floor((y-r)/PCS)),y1=Math.min(PGW-1,Math.floor((y+r)/PCS));for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++){const a=pgrid[yy*PGW+xx];if(a)for(const p of a)out.push(p)}return out}
 
 IH.world={MAP,TY,grid,cross,waterMask,airside,at,nodes,edges,roads,buildings,lots,props,propsNear,landmarks,zones,shops,phones,places,pickups,zebras,draw,properties,ramps,packages,crowds,pigeons,xmas,
-  riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,base,compounds,roofs,roofAt,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
+  riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,base,compounds,roofs,roofAt,mwMask,campus,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
 IH.util={mulberry32,clamp,hypot,pointAt,cumLen};
 })(window));

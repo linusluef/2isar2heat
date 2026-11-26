@@ -448,14 +448,15 @@ function copPedAI(p,dt){
   const reach=player.inCar?player.inCar.t.wid/2+1.4:1.2;
   const tz=(tgt.z||0)+(player.inCar?player.inCar.t.ht*0.5:1.1),air=tz>4;
   if(p.mil){   // soldiers keep their distance and fire bursts from the machine gun
-    const see=d<(air?65:45)&&(air?los3(p.x,p.y,1.4,tgt.x,tgt.y,tz):hasLOS(p.x,p.y,tgt.x,tgt.y));
+    const d3=Math.hypot(d,tz-1.4),see=d3<(air?60:45)&&(air?los3(p.x,p.y,1.4,tgt.x,tgt.y,tz):hasLOS(p.x,p.y,tgt.x,tgt.y));
     if(d>(see?14:3))slide(p,dx/d*p.spd*dt,dy/d*p.spd*dt);else p.a=Math.atan2(dy,dx);
-    p.fireCD-=dt;if(see&&d>2&&p.fireCD<=0&&G.state==='play'){if(p.burst<=0)p.burst=5;p.burst--;p.fireCD=p.burst>0?0.11:rand(1.1,1.7);const a=Math.atan2(dy,dx)+rand(-0.09,0.09);p.a=a;fireBullet(p.x+Math.cos(a)*0.8,p.y+Math.sin(a)*0.8,a,'cop',6,p,air?0.5:0.35,1.4,(tz-1.4)/Math.max(1,d)*260+rand(-5,5));sfx('mp',0.45,p.x,p.y)}
+    p.fireCD-=dt;if(see&&d>2&&p.fireCD<=0&&G.state==='play'){if(p.burst<=0)p.burst=5;p.burst--;p.fireCD=p.burst>0?0.11:rand(1.1,1.7);const a=Math.atan2(dy,dx)+rand(-0.09,0.09);p.a=a;fireBullet(p.x+Math.cos(a)*0.8,p.y+Math.sin(a)*0.8,a,'cop',6,p,Math.min(0.35,(d3+12)/260),1.4,(tz-1.4)/Math.max(1,d)*260+rand(-5,5));sfx('mp',0.45,p.x,p.y)}
     if(hasLOS(p.x,p.y,tgt.x,tgt.y)&&d<40)G.seenNow=true;return}
   if(d>reach-0.2)slide(p,dx/d*p.spd*dt,dy/d*p.spd*dt);
   p.fireCD-=dt;
-  if(stars()>=3&&d<(air?55:28)&&d>3&&p.fireCD<=0&&(air?los3(p.x,p.y,1.4,tgt.x,tgt.y,tz):hasLOS(p.x,p.y,tgt.x,tgt.y))){p.fireCD=rand(0.8,1.4);const a=Math.atan2(dy,dx)+rand(-0.13,0.13);p.a=a;fireBullet(p.x+Math.cos(a)*0.8,p.y+Math.sin(a)*0.8,a,'cop',8,p,air?0.5:0.35,1.4,(tz-1.4)/Math.max(1,d)*260+rand(-4,4));sfx('shot',0.55,p.x,p.y)}
-  if(hasLOS(p.x,p.y,tgt.x,tgt.y)&&d<35)G.seenNow=true;
+  const d3=Math.hypot(d,tz-1.4);
+  if(stars()>=3&&d3<(air?45:28)&&d>3&&p.fireCD<=0&&(air?los3(p.x,p.y,1.4,tgt.x,tgt.y,tz):hasLOS(p.x,p.y,tgt.x,tgt.y))){p.fireCD=rand(0.8,1.4);const a=Math.atan2(dy,dx)+rand(-0.13,0.13);p.a=a;fireBullet(p.x+Math.cos(a)*0.8,p.y+Math.sin(a)*0.8,a,'cop',8,p,Math.min(0.35,(d3+12)/260),1.4,(tz-1.4)/Math.max(1,d)*260+rand(-4,4));sfx('shot',0.55,p.x,p.y)}
+  if(hasLOS(p.x,p.y,tgt.x,tgt.y)&&d3<(air?70:35))G.seenNow=true;
   const sp=player.inCar?hypot(player.inCar.vx,player.inCar.vy):hypot(player.vx,player.vy);
   if(d<reach+0.3&&sp<(player.inCar?2.5:3)&&!air)player.arrestT+=dt*(player.inCar?0.7:1.2),G.arrestNow=true;
 }
@@ -547,7 +548,7 @@ function heliTick(dt){
     const dx=tx-heli.x,dy=ty-heli.y,d=hypot(dx,dy);
     const want=Math.min(cruise,d*0.8),k=1-Math.exp(-1.3*dt);heli.vx+=(dx/(d||1)*want-heli.vx)*k;heli.vy+=(dy/(d||1)*want-heli.vy)*k;heli.x+=heli.vx*dt;heli.y+=heli.vy*dt;
     if(hypot(heli.vx,heli.vy)>2)heli.a=Math.atan2(heli.vy,heli.vx);{const wz=Math.max(42,flying?(tgt.z||0)+7:0,W.heightAt(heli.x,heli.y)+12);heli.z+=(wz+Math.sin(G.time*0.7)*2-heli.z)*Math.min(1,dt*0.9)}
-    if(s>=4){heli.fireCD-=dt;if(heli.fireCD<=0&&heli.sees&&pd<(flying?70:50)&&G.state==='play'){heli.fireCD=flying?1.6:2.4;const tz=(tgt.z||0)+(pc?pc.t.ht*0.5:1.1),d3=Math.max(1,pd);for(let i=0;i<4;i++){const a=Math.atan2(tgt.y-heli.y,tgt.x-heli.x)+rand(-0.07,0.07);fireBullet(heli.x,heli.y,a,'cop',7,null,0.55,heli.z-1.2,(tz-heli.z+1.2)/d3*260+rand(-5,5))}sfx('mp',0.8,heli.x,heli.y)}}
+    if(s>=4){heli.fireCD-=dt;const tz0=(tgt.z||0)+(pc?pc.t.ht*0.5:1.1),pd3=Math.hypot(pd,tz0-heli.z+1.2);if(heli.fireCD<=0&&heli.sees&&pd3<(flying?70:50)&&G.state==='play'){heli.fireCD=flying?1.6:2.4;const tz=tz0,d3=Math.max(1,pd);for(let i=0;i<4;i++){const a=Math.atan2(tgt.y-heli.y,tgt.x-heli.x)+rand(-0.07,0.07);fireBullet(heli.x,heli.y,a,'cop',7,null,Math.min(0.5,(pd3+15)/260),heli.z-1.2,(tz-heli.z+1.2)/d3*260+rand(-5,5))}sfx('mp',0.8,heli.x,heli.y)}}
     return}
   if(s>=3&&G.state==='play'&&heli.cool<=0){const a=rand(0,Math.PI*2);heli.x=player.x+Math.cos(a)*260;heli.y=player.y+Math.sin(a)*260;heli.vx=heli.vy=0;heli.hp=220;heli.on=true;heli.down=false;heli.z=42;heli.leaving=0;heli.fireCD=3;heli.lost=0;heli.sees=false;heli.seeT=0;heli.a=a+Math.PI;emit('toast','Polizeihubschrauber im Anflug!')}
 }
@@ -999,7 +1000,7 @@ function aiDrive(c,dt){
   if(!c.q.length||c.qi>=c.q.length){if(!snapToRoad(c)){driveCar(c,0,0,true,dt,true);return}}
   if(c.backT>0){c.backT-=dt;driveCar(c,-0.7,-c.revSteer,false,dt);return}
   const st=followQueue(c);if(!st){snapToRoad(c);driveCar(c,0,0,true,dt,true);return}
-  let target=c.cruise*(1-Math.min(0.68,st.bend*0.85));
+  let target=c.cruise*(1-Math.min(0.68,st.bend*0.85));if(W.mwMask[Math.floor(c.y)*W.MAP+Math.floor(c.x)])target=Math.min(c.t.max*0.92,target*2.2);   // Autobahn: everyone drives fast
   if(st.stopD!==null){const ls=lightState(st.stopIt.stop.n,st.stopIt.stop.ang);if(ls==='r'||(ls==='y'&&st.stopD>9))target=Math.min(target,Math.max(0,st.stopD-1.5)*0.9)}
   const lim=obstacleLimit(c,28);if(!(c.wait>14&&lim<2))target=Math.min(target,lim);
   const vf=c.vf||0;let thr=clamp((target-vf)/3.5,-1,1);if(target<0.4&&vf<0.6)thr=0;
@@ -1111,7 +1112,7 @@ function tankAI(c,dt){
   copDrive(c,dt);const tgt=player.inCar||player,dx=tgt.x-c.x,dy=tgt.y-c.y,d=hypot(dx,dy);c.tur=c.tur||0;
   const lead=Math.min(1.2,d/120),ax=tgt.x+(tgt.vx||0)*lead,ay=tgt.y+(tgt.vy||0)*lead,want=wrapA(Math.atan2(ay-c.y,ax-c.x)-c.a);c.tur+=clamp(wrapA(want-c.tur),-0.9*dt,0.9*dt);
   c.gunCD=(c.gunCD===undefined?3:c.gunCD)-dt;const tz=(tgt.z||0)+(player.inCar?player.inCar.t.ht*0.5:1);
-  if(c.gunCD<=0&&d<100&&d>8&&Math.abs(wrapA(want-c.tur))<0.06&&G.state==='play'&&los3(c.x,c.y,2.4,tgt.x,tgt.y,tz)){c.gunCD=rand(4,6);const ta=c.a+c.tur+rand(-0.04,0.04);fireShell(c.x+Math.cos(ta)*5.2,c.y+Math.sin(ta)*5.2,2.3,ta,(tz-2.3)/Math.max(8,d)*120+rand(-1.5,1.5),'mil',c)}
+  if(c.gunCD<=0&&Math.hypot(d,tz-2.3)<100&&d>8&&(tz-2.3)/d<0.5&&Math.abs(wrapA(want-c.tur))<0.06&&G.state==='play'&&los3(c.x,c.y,2.4,tgt.x,tgt.y,tz)){c.gunCD=rand(4,6);const ta=c.a+c.tur+rand(-0.04,0.04);fireShell(c.x+Math.cos(ta)*5.2,c.y+Math.sin(ta)*5.2,2.3,ta,(tz-2.3)/Math.max(8,d)*120+rand(-1.5,1.5),'mil',c)}
 }
 /* ---------- enemy fighter jets: they hunt you while you fly a stolen fighter ---------- */
 const jets=[];let jetCD=8;
@@ -1712,6 +1713,7 @@ function update(dt){
        else emit('property',p)}
      if(!p)G.propNear=null}
     payIncome();
+    {const c=player.inCar;const on=!!(c&&!inPlane()&&W.mwMask[Math.floor(c.y)*W.MAP+Math.floor(c.x)]);if(on&&!G.onMw&&!G.toldMw){G.toldMw=1;emit('toast','Autobahn – keine Fußgänger, kein Tempolimit. Gib Gas!')}G.onMw=on}
     // taxi side job
     // job vehicles (taxi, ambulance, fire engine, bus, beer truck) no longer start a shift by themselves: see toggleJob()
     G.saveT=(G.saveT||0)-dt;if(G.saveT<=0){G.saveT=12;save()}

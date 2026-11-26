@@ -181,6 +181,7 @@ Players log in with any **name and password** (at least 6 characters). Using an 
   - Patrol cars no longer wait forever at a dead end. They move on to the next search point.
   - **Stealing a police car** gives you at least 2 stars straight away, even without witnesses, because the car reports its position.
   - Stay unseen long enough and you lose a star (about 9 seconds at 1 star, 16 seconds at 5 stars).
+  - **Shooting range against aircraft:** officers only fire at you in the air when you are within about 45 m (soldiers about 60 m, the police helicopter about 70 m, measured in 3D), and their bullets don't fly much further than you. High up you are out of reach of guns on the ground, though tanks and interceptors are another matter. Tanks can't aim their gun steeply upwards.
   - **In the air:** the police track you on radar. As long as you fly higher than about 25 m above the ground, you keep your stars. Only flying low (and then slower than on the ground) or landing and hiding loses them.
   - **On-board guns count as gunfire:** firing the helicopter MG or the fighter jet's cannon near people or traffic gets you wanted, and while you are wanted it keeps the police on you.
 - **Military at 5 stars:**
@@ -313,6 +314,11 @@ These work in the global lobby with other players, and alone (offline or nobody 
   - **Keyboard:** R or N = climb, F or Shift = descend. **Controller:** left stick, or RB = climb, B = descend.
   - **Missions and pick-ups ignore aircraft:** phone booths, story and job targets, packages, health and weapon pick-ups, shops, garages and race checkpoints only react on foot or in a car, motorbike or other ground vehicle. Flying over them does nothing.
   - **Online:** other players see your aircraft at its real height.
+- **Autobahn (A99 and A92):** a motorway runs around the east and south of the city: from the north past Bogenhausen and the Erdinger Landstraße down to Giesing, then west along the southern edge to the Westend. Exits (blue signs) connect it to Bogenhausen, Haidhausen, Untergiesing, Giesing, Sendling and the Westend. At Giesing the **A92** branches off east to Garching and the air base.
+  - Two lanes in each direction, guard rails and a concrete barrier in the middle, a bridge over the Isar.
+  - No pedestrians and no traffic lights, and the traffic there drives about twice as fast as in town. It is the quickest way around Munich.
+- **Garching:** a small town south of Hallbergmoos on the Fliegerhorststraße, with detached houses and a church on the square.
+- **Forschungszentrum Garching:** the research campus west of Garching (Lichtenbergstraße / Boltzmannstraße). It has the TUM Physik-Department, Chemie and Maschinenwesen, the MPQ (Max-Planck-Institut für Quantenoptik), the Walther-Meißner-Institut, ESO's round headquarters, the Atom-Ei (the old research reactor dome) and FRM II with its chimney. All are labelled.
 - **Fliegerhorst Isartal (military air base):** south-east of the city, reached via the Fliegerhorststraße from Hallbergmoos (star symbol on the map). Behind the fence are barracks, a headquarters, watchtowers, three aircraft shelters with a **Kampfjet** each, a tank park with three **Kampfpanzer**, a military truck and its own runway.
   - **Getting in:** the barrier at the gate only opens for the military and the police. Ram it fast with a car to break through, fly in, or sneak in on foot through the **hole in the fence** in the south-west corner.
   - **Guards:** soldiers stand at their posts. If one sees you inside the fence (about 38 m), or as soon as you take a vehicle, the **alarm** goes off: at least 3 stars, the guards open fire, and the police come through the gate to defend the base. While you are inside during the alarm, you can't lose your stars.
