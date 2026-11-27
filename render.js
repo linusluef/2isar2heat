@@ -233,7 +233,9 @@ function drawGround(g,x0,y0,size,k,detail){
     g.fillStyle=z.t==='park'?P('park',C.park):z.t==='field'?P('field',C.field):z.t==='bank'?P('bank',C.bank):z.t==='runway'?P('asphalt',C.road):z.t==='apron'?P('concrete','#a4a49e'):P('plaza',C.plaza);g.beginPath();polyPath(g,z.pts);g.closePath();g.fill()}
   if(detail){g.strokeStyle=P('path',C.path);g.lineWidth=2.4;g.lineCap='round';for(const p of parkPaths){if(!hit(p.bb,x0,y0,x1,y1))continue;g.beginPath();polyPath(g,p.pts);g.stroke()}}
   for(const l of W.lots){if(!hit(l.bb,x0,y0,x1,y1))continue;g.fillStyle=P('lot',C.lot);g.beginPath();polyPath(g,l.pts);g.closePath();g.fill()}
-  g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';for(const w of W.draw.water){g.beginPath();polyPath(g,w.outer);g.closePath();for(const h of w.holes){polyPath(g,h);g.closePath()}g.fill('evenodd')}g.restore();
+  g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';for(const w of W.draw.water){g.beginPath();polyPath(g,w.outer);g.closePath();for(const h of w.holes){polyPath(g,h);g.closePath()}g.fill('evenodd')}
+  if(W.rail&&W.rail.cut){const C=W.rail.cut;g.fillRect(C.x0,C.y0,C.x1-C.x0,C.y1-C.y0)}   // the railway cutting is open: you look down into it
+  g.restore();
   // soft contact shadow ("ambient occlusion") around building footprints, then the footprints
   g.lineJoin='round';
   if(detail){for(const[w,a]of[[5,0.07],[3,0.1],[1.6,0.14]]){g.strokeStyle='rgba(10,12,16,'+a+')';g.lineWidth=w;g.beginPath();for(const b of W.buildings){if(!hit(b.bb,x0,y0,x1,y1))continue;polyPath(g,b.pts);g.closePath()}g.stroke()}}
@@ -246,6 +248,8 @@ function drawGround(g,x0,y0,size,k,detail){
   for(const e of vis){g.strokeStyle=e.bridge?P('bridge',C.bridge):P('asphalt',C.road);g.lineWidth=e.w;g.beginPath();polyPath(g,e.pts);g.stroke()}
   g.fillStyle=P('asphalt',C.road);for(const n of W.nodes)if(n.circle&&n.x>x0-14&&n.x<x1+14&&n.y>y0-14&&n.y<y1+14){g.beginPath();g.arc(n.x,n.y,9,0,7);g.fill()}
   for(const rb of[W.RB,W.SG])if(rb){if(rb.x>x0-30&&rb.x<x1+30&&rb.y>y0-30&&rb.y<y1+30){g.fillStyle=C.curb;g.beginPath();g.arc(rb.x,rb.y,rb.r-3.7,0,7);g.fill();g.fillStyle=P('park',C.park);g.beginPath();g.arc(rb.x,rb.y,rb.r-4.4,0,7);g.fill();g.fillStyle=P('plaza',C.plaza);g.beginPath();g.arc(rb.x,rb.y,rb===W.SG?16:6,0,7);g.fill()}}
+  for(const B of W.bridges||[]){if(B.x<x0-60||B.x>x1+60||B.y<y0-60||B.y>y1+60)continue;g.save();g.translate(B.x,B.y);g.transform(B.ux,B.uy,B.ox,B.oy,0,0);const L=B.ow+B.owalk+3,hw=B.uw;
+    g.fillStyle=P('asphalt',C.road);g.fillRect(-L,-hw,2*L,2*hw);g.fillStyle='#f2efe6';for(const o of[-hw+0.5,hw-0.8])g.fillRect(-L,o,2*L,0.3);for(const o of[-hw/2,hw/2])for(let a=-L;a<L;a+=9)g.fillRect(a,o-0.12,4.5,0.24);g.restore()}
   drawAirfield(g,x0,y0,x1,y1,detail);drawBaseField(g,x0,y0,x1,y1,detail);
   if(!detail)return;
   const r=rnd((x0*3+y0*5)|0);
@@ -326,7 +330,8 @@ function waterDistanceTexture(){
 function buildGround(){
   const ov=buildOverview();const t=new THREE.CanvasTexture(ov);t.anisotropy=maxAniso;renderer.initTexture&&renderer.initTexture(t);t.image={width:ov.width,height:ov.height};ov.width=ov.height=1;
   const base=new THREE.Mesh(new THREE.PlaneGeometry(W.MAP,W.MAP),new THREE.MeshLambertMaterial({map:t,alphaTest:0.5}));base.rotation.x=-Math.PI/2;base.position.set(W.MAP/2,-0.1,W.MAP/2);base.receiveShadow=true;scene.add(base);
-  const outer=new THREE.Mesh(new THREE.PlaneGeometry(6000,6000),lam('#7a9f50'));outer.rotation.x=-Math.PI/2;outer.position.set(W.MAP/2,-0.2,W.MAP/2);scene.add(outer);
+  // the green beyond the map edge: a frame around the map (not under it, so holes in the ground, like the railway cutting, stay open)
+  for(const[cx,cz,w,d]of[[W.MAP/2,-1000,6000,2000],[W.MAP/2,W.MAP+1000,6000,2000],[-1000,W.MAP/2,2000,W.MAP],[W.MAP+1000,W.MAP/2,2000,W.MAP]]){const outer=new THREE.Mesh(new THREE.PlaneGeometry(w,d),lam('#7a9f50'));outer.rotation.x=-Math.PI/2;outer.position.set(cx,-0.2,cz);scene.add(outer)}
   U.detail.value=detailTexture();
   for(let i=0;i<20;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(CHUNK,CHUNK),groundMaterial());m.rotation.x=-Math.PI/2;m.receiveShadow=true;m.visible=false;m.userData.key=-1;m.renderOrder=1;scene.add(m);chunkMeshes.push(m)}
   // the Isar: animated waves, sun glints, sky reflection, foam along the banks
@@ -790,17 +795,17 @@ function railwayBuild(Rr,box){
   for(const[a,b,c,d]of Rr.platforms){addMesh(new THREE.BoxGeometry(c-a,0.4,d-b),lam('#b7b3aa'),(a+c)/2,0.2,(b+d)/2);for(const z of[b+0.25,d-0.25])addMesh(new THREE.BoxGeometry(c-a,0.02,0.18),lam('#f2efe6'),(a+c)/2,0.41,z,{noShadow:true});
     for(let x=a+12;x<c-8;x+=24){addMesh(new THREE.BoxGeometry(0.15,2.6,0.15),lam('#3d4248'),x,1.7,(b+d)/2);const sb=labelSprite('Gleis '+(Rr.platforms.indexOf(Rr.platforms.find(p=>p[1]===b))*2+1)+' · '+(Rr.platforms.indexOf(Rr.platforms.find(p=>p[1]===b))*2+2),'rgba(20,40,90,.9)','#fff',0.45);sb.position.set(x,3.3,(b+d)/2);scene.add(sb)}}
   // tracks: ballast, sleepers (instanced), two rails each
-  const sl=[];for(const y of Rr.tracks){addMesh(new THREE.BoxGeometry(Rr.buffer-Rr.x0+2,0.12,4.2),lam('#8a8378'),(Rr.x0+Rr.buffer)/2,0.06,y,{noShadow:true});for(let x=Rr.x0;x<Rr.buffer;x+=0.9)sl.push([x,y]);
-    for(const o of[-0.72,0.72])addMesh(new THREE.BoxGeometry(Rr.buffer-Rr.x0+1,0.14,0.08),lam('#6d6f72'),(Rr.x0+Rr.buffer)/2,0.24,y+o,{noShadow:true});
+  const C=Rr.cut,ang=Math.atan2(C.depth,C.x1-C.x0-3),sx=C.x1;
+  const sl=[];for(const y of Rr.tracks){addMesh(new THREE.BoxGeometry(Rr.buffer-sx+2,0.12,4.2),lam('#8a8378'),(sx+Rr.buffer)/2,0.06,y,{noShadow:true});for(let x=C.x0;x<Rr.buffer;x+=0.9)sl.push([x,y]);
+    for(const o of[-0.72,0.72])addMesh(new THREE.BoxGeometry(Rr.buffer-sx+1,0.14,0.08),lam('#6d6f72'),(sx+Rr.buffer)/2,0.24,y+o,{noShadow:true});
+    {const len=(C.x1-C.x0)/Math.cos(ang);for(const o of[-0.72,0.72]){const m=addMesh(new THREE.BoxGeometry(len,0.14,0.08),lam('#6d6f72'),(C.x0+C.x1)/2,railDepth((C.x0+C.x1)/2)+0.24,y+o,{noShadow:true});m.rotation.z=ang}}
     addMesh(new THREE.BoxGeometry(0.8,1.0,3.2),lam('#c43b2e'),Rr.buffer+0.4,0.5,y)}   // buffer stop
-  {const g=new THREE.BoxGeometry(0.22,0.1,2.6);const im=new THREE.InstancedMesh(g,lam('#5a4a3c'),sl.length);sl.forEach((q,i)=>im.setMatrixAt(i,M4().makeTranslation(q[0],0.16,q[1])));scene.add(im)}
+  {const g=new THREE.BoxGeometry(0.22,0.1,2.6);const im=new THREE.InstancedMesh(g,lam('#5a4a3c'),sl.length);sl.forEach((q,i)=>im.setMatrixAt(i,M4().makeTranslation(q[0],0.16+railDepth(q[0]),q[1])));scene.add(im)}
   // catenary masts and wires between the tunnel and the hall
-  for(let x=Rr.x0+8;x<hx0;x+=22){for(const z of[Rr.y0+1.5,Rr.y1-1.5])addMesh(new THREE.CylinderGeometry(0.15,0.18,8,6),lam('#7c838b'),x,4,z);addMesh(new THREE.BoxGeometry(0.2,0.25,Rr.y1-Rr.y0-3),lam('#7c838b'),x,7.6,(Rr.y0+Rr.y1)/2)}
-  {const pts=[];for(const y of Rr.tracks)pts.push(new THREE.Vector3(Rr.x0,6.2,y),new THREE.Vector3(Rr.buffer,6.2,y));scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:'#3a3d40'})))}
-  // tunnel portal with dark openings
-  addMesh(new THREE.BoxGeometry(4,9,Rr.y1-Rr.y0+4),lam('#a39d92'),Rr.x0-0.5,4.5,(Rr.y0+Rr.y1)/2);for(const y of Rr.tracks)addMesh(new THREE.BoxGeometry(0.2,5.4,4.2),new THREE.MeshBasicMaterial({color:'#0c0d0f'}),Rr.portal-0.35,2.7,y)
-  buildTrains()}
-let trainObjs=[];const trainClip=[new THREE.Plane(new THREE.Vector3(1,0,0),-121.8)];
+  for(let x=C.x1+6;x<hx0;x+=22){for(const z of[Rr.y0+1.5,Rr.y1-1.5])addMesh(new THREE.CylinderGeometry(0.15,0.18,8,6),lam('#7c838b'),x,4,z);addMesh(new THREE.BoxGeometry(0.2,0.25,Rr.y1-Rr.y0-3),lam('#7c838b'),x,7.6,(Rr.y0+Rr.y1)/2)}
+  {const pts=[];for(const y of Rr.tracks)pts.push(new THREE.Vector3(C.x0,6.2-C.depth,y),new THREE.Vector3(C.x1,6.2,y),new THREE.Vector3(C.x1,6.2,y),new THREE.Vector3(Rr.buffer,6.2,y));scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:'#3a3d40'})))}
+  cuttingBuild(Rr);buildTrains()}
+let trainObjs=[];const trainClip=[new THREE.Plane(new THREE.Vector3(1,0,0),-121.3)];
 function trainCarGeo(type,end){const P=[];const ice=type==='ice',L=ice?19.4:16.6,Wd=3.0,H=ice?3.9:4.6,body=ice?'#f2f2ef':'#c8102e',add=(g,c,m)=>P.push({g,color:c,m});
   if(end){add(taperBox(L,H-0.6,Wd,ice?5.5:1.6,0,0.25),body,tm(0,0.6,0))}else add(new THREE.BoxGeometry(L,H-0.6,Wd),body,tm(0,0.6+(H-0.6)/2,0));
   add(new THREE.BoxGeometry(end?L*0.7:L-0.6,0.25,Wd-0.5),'#8d9196',tm(end?-L*0.15:0,H+0.02,0));
@@ -812,25 +817,55 @@ function trainCarGeo(type,end){const P=[];const ice=type==='ice',L=ice?19.4:16.6
   return mergeGeos(P)}
 function buildTrains(){const mat=new THREE.MeshLambertMaterial({vertexColors:true,clippingPlanes:trainClip,clipShadows:true});const G={};for(const t of['ice','rb'])G[t]={mid:trainCarGeo(t,false),end:trainCarGeo(t,true)};
   trainObjs=(S.trains||[]).map(tr=>{const g=new THREE.Group();const cars=[];for(let k=0;k<tr.cars;k++){const end=k===0||k===tr.cars-1;const m=new THREE.Mesh(end?G[tr.type].end:G[tr.type].mid,mat);m.castShadow=true;if(k===tr.cars-1&&tr.cars>1)m.rotation.y=Math.PI;g.add(m);cars.push(m)}g.visible=false;scene.add(g);return{g,cars}})}
-function syncTrains(){const T=S.trains||[];trainObjs.forEach((o,i)=>{const tr=T[i];o.g.visible=!!(tr&&tr.vis&&tr.xe>W.rail.portal);if(!o.g.visible)return;o.cars.forEach((m,k)=>{m.position.set(tr.xe-(k+0.5)*tr.carLen,0.25,tr.y)})})}
+function syncTrains(){const T=S.trains||[];trainObjs.forEach((o,i)=>{const tr=T[i];o.g.visible=!!(tr&&tr.vis&&tr.xe>W.rail.portal);if(!o.g.visible)return;o.cars.forEach((m,k)=>{const x=tr.xe-(k+0.5)*tr.carLen,h=tr.carLen/2;const y0=railDepth(x-h),y1=railDepth(x+h);m.position.set(x,0.25+(y0+y1)/2,tr.y);m.rotation.z=(m.rotation.y?-1:1)*Math.atan2(y1-y0,tr.carLen)})})}
 // Autobahn: guard rails on both sides, a concrete barrier in the middle, blue signs at the exits
 function motorwayBuild(){
-  const rail=[],posts=[],wall=[];const junction=(x,y)=>W.nodes.some(n=>n.edges.length>=3&&Math.abs(n.x-x)<26&&Math.abs(n.y-y)<26&&Math.hypot(n.x-x,n.y-y)<24);
+  const rail=[],posts=[],wall=[];
   const quad=(arr,a,b,y0,y1)=>arr.push(a[0],y0,a[1], b[0],y0,b[1], b[0],y1,b[1], a[0],y0,a[1], b[0],y1,b[1], a[0],y1,a[1]);
-  for(const e of W.edges){if(!e.mw)continue;const L=e.cum[e.cum.length-1];
-    for(const side of[1,-1,0]){let prev=null;for(let d=0;d<=L;d+=4){const p=W.pointAt(e.pts,e.cum,Math.min(d,L));const nx=-p.ty,ny=p.tx,off=side?side*(e.w/2+0.7):0;const q=[p.x+nx*off,p.y+ny*off];
-      if(junction(p.x,p.y)){prev=null;continue}
-      if(prev){if(side){quad(rail,prev,q,0.55,0.85)}else{quad(wall,prev,q,0,0.85)}}
-      if(side&&Math.round(d/4)%1===0)posts.push(q);prev=q}}}
+  // the barriers come from the world (they are solid there, so what you see is what you hit)
+  for(const B of W.mwBarriers||[]){for(let i=1;i<B.pts.length;i++){const p0=B.pts[i-1],p1=B.pts[i];if(B.kind==='rail'){quad(rail,p0,p1,0.5,0.85);quad(rail,p0,p1,0.18,0.42)}else quad(wall,p0,p1,0,0.9)}
+    if(B.kind==='rail')for(let i=0;i<B.pts.length;i+=2)posts.push(B.pts[i])}
   const mk=(arr,mat)=>{if(!arr.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));g.computeVertexNormals();const m=new THREE.Mesh(g,mat);m.receiveShadow=true;scene.add(m)};
   mk(rail,new THREE.MeshLambertMaterial({color:'#b8bec4',side:THREE.DoubleSide}));mk(wall,new THREE.MeshLambertMaterial({color:'#c9c7bf',side:THREE.DoubleSide}));
-  const pg=new THREE.BoxGeometry(0.12,0.85,0.12);pg.translate(0,0.42,0);const im=new THREE.InstancedMesh(pg,lam('#8a9096'),posts.length);posts.forEach((q,i)=>im.setMatrixAt(i,M4().makeTranslation(q[0],0,q[1])));scene.add(im);
-  // exit signs
-  for(const e of W.edges){if(!e.name||!e.name.startsWith('Ausfahrt'))continue;const na=W.nodes[e.a],nb=W.nodes[e.b];const n=na.edges.some(i=>W.edges[i].mw)?na:nb;
-    const sg=labelSprite('A99 · '+e.name,'rgba(31,79,154,.95)','#ffffff',0.9);sg.position.set(n.x,6.5,n.y);scene.add(sg);
-    for(const dx of[-2.5,2.5])addMesh(new THREE.CylinderGeometry(0.1,0.1,5.6,6),lam('#9aa0a6'),n.x+dx,2.8,n.y+4)}
-  for(const[x,y,t]of[[1275,1052,'A92 · Garching · Fliegerhorst'],[1742,1056,'A92 · Ausfahrt Garching / Fliegerhorst'],[1268,535,'A99 · Ausfahrt Flughafen']]){const sg=labelSprite(t,'rgba(31,79,154,.95)','#ffffff',0.9);sg.position.set(x,6.5,y);scene.add(sg)}
+  const pg=new THREE.BoxGeometry(0.12,0.9,0.12);pg.translate(0,0.45,0);const im=new THREE.InstancedMesh(pg,lam('#8a9096'),posts.length);posts.forEach((q,i)=>im.setMatrixAt(i,M4().makeTranslation(q[0],0,q[1])));scene.add(im);
+  // blue gantry signs over the slip roads and at the junctions
+  const sign=(x,y,t)=>{const sg=labelSprite(t,'rgba(31,79,154,.97)','#ffffff',0.85);sg.position.set(x,6.6,y);scene.add(sg);for(const d of[-3,3])addMesh(new THREE.CylinderGeometry(0.11,0.11,6,6),lam('#9aa0a6'),x+d,3,y)};
+  for(const e of W.edges){if(!e.name)continue;const m=/^Ausfahrt (.+) \((1|2)\)$/.exec(e.name);if(!m)continue;const na=W.nodes[e.a],nb=W.nodes[e.b];const n=na.edges.some(i=>W.edges[i].mw)?na:nb,o=n===na?nb:na;
+    const x=n.x+(o.x-n.x)*0.35,y=n.y+(o.y-n.y)*0.35;sign(x,y,(m[2]==='1'?'↘ ':'↗ ')+'Ausfahrt '+m[1])}
+  for(const B of W.bridges||[])bridgeBuild(B);
+  sign(1300,1046,'A92 · Garching · Fliegerhorst');sign(1300,1078,'A92 · Garching · Fliegerhorst');sign(1272,585,'A99 · München-Süd');sign(1700,1060,'Ende der Autobahn');
 }
+function bridgeBuild(B){
+  // follows the road's own centre line: cross-sections every 1.5 m, deck over the Autobahn, embankments with grass slopes on the ramps
+  const top=B.ow+B.owalk,L=B.uw+3+B.ramp,deck=B.uw+3,pos=[],col=[],cA=new THREE.Color(C.road),cW=new THREE.Color(C.walk),cG=new THREE.Color('#6f9a4e'),cC=new THREE.Color('#bab5aa'),cM=new THREE.Color('#e9e6dc');
+  const tri=(a,b,c,k)=>{pos.push(...a,...b,...c);for(let i=0;i<3;i++)col.push(k.r,k.g,k.b)};const quad=(a,b,c,d,k)=>{tri(a,b,c,k);tri(a,c,d,k)};
+  const S=s=>{const p=W.pointAt(B.line,B.cum,s);const h=W.bridgeProfile(B,s)+0.03;return{x:p.x,y:p.y,nx:-p.ty,ny:p.tx,h}};
+  const P=(q,off,h)=>[q.x+q.nx*off,h,q.y+q.ny*off];
+  for(let s=B.sc-L;s<B.sc+L-0.01;s+=1.5){const A=S(s),C=S(Math.min(B.sc+L,s+1.5)),onDeck=Math.abs(s+0.75-B.sc)<deck;
+    quad(P(A,-B.ow,A.h),P(A,B.ow,A.h),P(C,B.ow,C.h),P(C,-B.ow,C.h),cA);
+    for(const o of[-0.12,0.12])quad(P(A,o-0.07,A.h+0.01),P(A,o+0.07,A.h+0.01),P(C,o+0.07,C.h+0.01),P(C,o-0.07,C.h+0.01),cM);   // centre line
+    for(const sd of[-1,1]){quad(P(A,sd*B.ow,A.h+0.12),P(A,sd*top,A.h+0.12),P(C,sd*top,C.h+0.12),P(C,sd*B.ow,C.h+0.12),cW);
+      if(onDeck)quad(P(A,sd*top,A.h-1.2),P(C,sd*top,C.h-1.2),P(C,sd*top,C.h+1.05),P(A,sd*top,A.h+1.05),cC);   // deck edge with parapet
+      else{quad(P(A,sd*top,A.h),P(C,sd*top,C.h),P(C,sd*(top+C.h*1.6),0),P(A,sd*(top+A.h*1.6),0),cG);if(A.h>0.3)quad(P(A,sd*top,A.h+0.9),P(C,sd*top,C.h+0.9),P(C,sd*top,C.h),P(A,sd*top,A.h),cC)}}
+    if(onDeck)quad(P(A,-top,A.h-1.2),P(A,top,A.h-1.2),P(C,top,C.h-1.2),P(C,-top,C.h-1.2),cC)}
+  for(const sd of[-1,1]){const q=S(B.sc+sd*deck);quad(P(q,-top-q.h*1.6,0),P(q,top+q.h*1.6,0),P(q,top,q.h),P(q,-top,q.h),cC)}   // abutments
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.computeVertexNormals();
+  const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}));m.castShadow=true;m.receiveShadow=true;scene.add(m)}
+// railway cutting west of the Hauptbahnhof: the ground is cut open there (see drawGround); a sloping trough with retaining walls leads into the tunnel
+function railDepth(x){const C=W.rail&&W.rail.cut;if(!C||x>=C.x1)return 0;return -C.depth*Math.min(1,(C.x1-x)/(C.x1-C.x0-3))}
+function cuttingBuild(Rr){const C=Rr.cut,L=C.x1-C.x0,ang=Math.atan2(C.depth,L-3);
+  {const g=new THREE.PlaneGeometry(L,C.y1-C.y0,24,1);g.rotateX(-Math.PI/2);const pa=g.attributes.position;for(let i=0;i<pa.count;i++){const x=pa.getX(i)+(C.x0+C.x1)/2;pa.setY(i,railDepth(x)-0.15)}g.computeVertexNormals();const m=new THREE.Mesh(g,lam('#80796e'));m.position.set((C.x0+C.x1)/2,0,(C.y0+C.y1)/2);m.receiveShadow=true;scene.add(m)}
+  // retaining walls along both sides (from the trough floor up to a parapet) and the tunnel face
+  for(const z of[C.y0,C.y1]){const g=new THREE.PlaneGeometry(L,1,24,1);const pa=g.attributes.position;for(let i=0;i<pa.count;i++){const x=pa.getX(i)+(C.x0+C.x1)/2;pa.setY(i,pa.getY(i)>0?1.0:railDepth(x)-0.2)}g.computeVertexNormals();const m=new THREE.Mesh(g,lam('#a8a296',{side:THREE.DoubleSide}));m.position.set((C.x0+C.x1)/2,0,z);scene.add(m);
+    addMesh(new THREE.BoxGeometry(L,0.3,0.5),lam('#bdb7ab'),(C.x0+C.x1)/2,1.05,z)}
+  addMesh(new THREE.BoxGeometry(1.2,C.depth+1.6,C.y1-C.y0+1),lam('#a39d92'),C.x0-0.6,(1-C.depth)/2+0.2,(C.y0+C.y1)/2);
+  for(const y of Rr.tracks)addMesh(new THREE.BoxGeometry(0.2,5.2,4.4),new THREE.MeshBasicMaterial({color:'#0b0c0e'}),C.x0+0.02,-C.depth+2.6,y);
+  const lb=labelSprite('Bahntunnel','rgba(20,40,90,.85)','#fff',0.6);lb.position.set(C.x0,3,(C.y0+C.y1)/2);scene.add(lb)}
+// the Monopteros hill: a smooth grassy mound with a gravel path and steps up the south side
+function hillBuild(H){const g=new THREE.RingGeometry(0.01,H.r,64,16);const pa=g.attributes.position;for(let i=0;i<pa.count;i++){const x=pa.getX(i),y=pa.getY(i);pa.setZ(i,W.hillAt(H.x+x,H.y-y)+0.05)}g.rotateX(-Math.PI/2);g.computeVertexNormals();
+  const m=new THREE.Mesh(g,lam('#5f9447'));m.position.set(H.x,0,H.y);m.receiveShadow=true;scene.add(m);
+  const step=lam('#d8cfb8');for(let d=H.r-1;d>6.5;d-=0.9){const z=H.y+d,h=W.hillAt(H.x,z);addMesh(new THREE.BoxGeometry(3,0.25,0.9),step,H.x,h+0.05,z,{noShadow:true})}
+  for(let a=0;a<6.28;a+=0.12){const r=7.2,x=H.x+Math.cos(a)*r,z=H.y+Math.sin(a)*r;addMesh(new THREE.BoxGeometry(1.0,0.06,1.0),step,x,W.hillAt(x,z)+0.04,z,{noShadow:true,ry:-a})}}
 function buildLandmarks(){
   const before=new Set(matCache.values());activitySigns();
   for(const L of W.landmarks){
@@ -864,7 +899,7 @@ function buildLandmarks(){
         const ring=new THREE.RingGeometry(0.62,1,48);const rm=addMesh(ring,lam('#dfe6ea',{side:THREE.DoubleSide}),L.x,44,L.y,{rx:-Math.PI/2});rm.scale.set(L.rx,L.ry,1);
         addMesh(new THREE.CylinderGeometry(1,1,0.3,40),lam('#5c9a45'),L.x,0.4,L.y).scale.set(L.rx*0.55,1,L.ry*0.5);break}
       case'chinaturm':{const wood=lam('#8a5a3c'),roof=lam('#3f6d4b');for(let i=0;i<5;i++){const s=9-i*1.5,y=i*5;addMesh(new THREE.BoxGeometry(s*0.75,4,s*0.75),wood,L.x,y+2,L.y);const r=addMesh(new THREE.ConeGeometry(s*0.85,2.2,4),roof,L.x,y+4.6,L.y,{ry:Math.PI/4});void r}addMesh(new THREE.ConeGeometry(0.3,3,6),lam('#d6b13c'),L.x,27,L.y);break}
-      case'monopteros':{const st=lam('#e9e3d3');addMesh(new THREE.CylinderGeometry(6.5,7,1.6,24),st,L.x,0.8,L.y);for(let i=0;i<10;i++){const a=i/10*Math.PI*2;addMesh(new THREE.CylinderGeometry(0.35,0.35,7,8),st,L.x+Math.cos(a)*5,5,L.y+Math.sin(a)*5)}addMesh(new THREE.CylinderGeometry(5.8,5.8,1,24),st,L.x,9,L.y);addMesh(new THREE.SphereGeometry(5.6,16,8,0,Math.PI*2,0,Math.PI/2),lam('#d9d2c0'),L.x,9.4,L.y);break}
+      case'monopteros':{const st=lam('#e9e3d3'),y0=W.hill?W.hill.h-0.4:0;if(W.hill)hillBuild(W.hill);addMesh(new THREE.CylinderGeometry(6.5,7,1.6,24),st,L.x,y0+0.8,L.y);for(let i=0;i<10;i++){const a=i/10*Math.PI*2;addMesh(new THREE.CylinderGeometry(0.35,0.35,7,8),st,L.x+Math.cos(a)*5,y0+5,L.y+Math.sin(a)*5)}addMesh(new THREE.CylinderGeometry(5.8,5.8,1,24),st,L.x,y0+9,L.y);addMesh(new THREE.SphereGeometry(5.6,16,8,0,Math.PI*2,0,Math.PI/2),lam('#d9d2c0'),L.x,y0+9.4,L.y);break}
       case'bavaria':{const br=lam('#5d6b56');addMesh(new THREE.BoxGeometry(9,8,9),lam('#cfc6b2'),L.x,4,L.y);addMesh(new THREE.CylinderGeometry(1.4,2.2,13,10),br,L.x,14.5,L.y);addMesh(new THREE.SphereGeometry(1.1,10,8),br,L.x,21.8,L.y);addMesh(new THREE.BoxGeometry(0.4,5,0.4),br,L.x+1.6,23,L.y,{rz:-0.3});addMesh(new THREE.BoxGeometry(3,2,1.5),br,L.x+2,9,L.y+2.5);
         ruhmeshalle(L.hall);break}
       case'riesenrad':riesenrad(L.x,L.y);break;
@@ -1264,7 +1299,7 @@ function poseCar(c,alive){
   if(c.t.plane){posePlaneVeh(c,alive);return}
   if(c.t.tank){poseTankVeh(c,alive);return}
   alive.add(c.id);const o=carObj(c);
-  const sinkY=c.sink?-Math.min(1.8,c.sink*1.2):0;o.g.position.set(c.x,sinkY+(c.z||0),c.y);
+  const sinkY=c.sink?-Math.min(1.8,c.sink*1.2):0;o.g.position.set(c.x,sinkY+(c.z||0)+W.hillAt(c.x,c.y)+(c.layer==='low'?0:W.bridgeH(c.x,c.y)),c.y);
   const pitch=c.air?clamp(c.vz*0.035,-0.45,0.4):(c.pitch||0);o.g.rotation.set(c.sink?Math.min(0.5,c.sink*0.4):0,-c.a,pitch);
   o.body.rotation.x=c.t.bike?clamp((c.av||0)*Math.abs(c.vf||0)*0.05,-0.55,0.55):clamp(-(c.vl||0)*0.012,-0.08,0.08);
   if(o.rider){o.rider.visible=!!(c.driver||c.remote)&&!c.dead;if(o.rider.visible)o.rider.material.color.set(c.driver==='player'?S.player.shirt:c.remote?'#ff8a1c':['#c0392b','#2c3e70','#1d1f22','#5b6b4a'][c.id%4])}
@@ -1355,7 +1390,8 @@ const GAIT=(()=>{const K={wh:[[0,22],[0.12,18],[0.3,4],[0.5,-10],[0.6,-12],[0.7,
       tab[i]=0.5*((2*p1[1])+(-p0[1]+p2[1])*u+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*u2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*u3)}
     out[k]=t=>{const x=t*N,i=Math.floor(x)%N,f=x-Math.floor(x);return tab[i]+(tab[(i+1)%N]-tab[i])*f}}
   return out})();
-function posePed(o,p,isPlayer){
+function posePed(o,p,isPlayer){posePed0(o,p,isPlayer);const hz=W.hillAt(p.x,p.y)+W.bridgeH(p.x,p.y);if(hz){o.g.position.y+=hz;if(o.pool)o.pool.position.y+=hz}}   // walking up the Monopteros hill
+function posePed0(o,p,isPlayer){
   o.g.position.set(p.x,0,p.y);o.g.rotation.set(0,-p.a,0);o.torso.rotation.set(0,0,0);o.torso.position.set(0,0,0);
   for(const a of[o.a1,o.a2]){a.rotation.set(0,0,0);a.fore.rotation.set(0,0,0)}
   if(p.state==='sit'){   // pillion passenger: thighs forward, shins down, hands on the driver's hips
@@ -1484,7 +1520,8 @@ function updateCamera(dt){
   cam.yaw=cam.base+cam.look;
   const veh=P.inCar||P.rideCar,foot=!veh&&G.state!=='menu';const zoom=IH.settings.zoom||1;
   const pc=veh&&veh.t.plane?veh:null;if(!pc)camAlt=lerp(camAlt,0,1-Math.exp(-3*dt));
-  let dist=chase?(foot?12:pc?pc.t.len*0.9+14:16+speed*0.3):(foot?66:G.state==='menu'?150:(pc?80+pc.t.len*1.2+camAlt*0.5:92+speed*1.25))*zoom;dist=Math.min(dist,chase?(pc?70:32):(pc?260:170));
+  const az=pc?(cam.airZoom||1)*(pc.type==='kampfjet'?1.3:1):1;   // aircraft: pinch zoom (two fingers); the fast fighter sits a bit further away by default
+  let dist=chase?(foot?12:pc?(pc.t.len*0.9+14)*az:16+speed*0.3):(foot?66:G.state==='menu'?150:(pc?(80+pc.t.len*1.2+camAlt*0.5)*az:92+speed*1.25))*zoom;dist=Math.min(dist,chase?(pc?70*Math.max(1,az):32):(pc?260*Math.max(1,az):170));
   lastDist=lerp(lastDist,dist,1-Math.exp(-1.5*dt));if(cam.snap){lastDist=dist}
   const pitch=chase?clamp((foot?0.42:0.36)+cam.lookP,0.08,1.05):G.state==='menu'?0.85:1.13;
   const ahead=chase?0:Math.min(18,speed*0.45);
@@ -1493,8 +1530,9 @@ function updateCamera(dt){
   const fx=Math.sin(cam.yaw),fy=-Math.cos(cam.yaw);
   let hd=Math.cos(pitch)*lastDist;
   if(chase&&!(pc&&camAlt>3)){let free=hd;for(let s=1.5;s<=hd;s+=0.75){const g=W.at(lx-fx*s,ly-fy*s);if(g===W.TY.BUILD||g===W.TY.SOLID){free=Math.max(2.2,s-1.4);break}}camHD=Math.min(lerp(camHD,free,1-Math.exp(-8*dt)),free);hd=camHD}else camHD=hd;
-  const want=new THREE.Vector3(lx-fx*hd,Math.sin(pitch)*lastDist+(chase?1.5:0)+camAlt,ly-fy*hd);
-  const wantLook=new THREE.Vector3(lx+(chase?fx*6:0),(chase?1.4:0)+camAlt*(chase?1:0.85),ly+(chase?fy*6:0));
+  const pv=P.inCar||null,hz=pc?0:W.hillAt(tx,ty)+(pv&&pv.layer==='low'?0:W.bridgeH(tx,ty));
+  const want=new THREE.Vector3(lx-fx*hd,Math.sin(pitch)*lastDist+(chase?1.5:0)+camAlt+hz,ly-fy*hd);
+  const wantLook=new THREE.Vector3(lx+(chase?fx*6:0),(chase?1.4:0)+camAlt*(chase?1:0.85)+hz,ly+(chase?fy*6:0));
   // fast aircraft: carry the camera along with the vehicle first, so the smoothing only acts on the offset (no lag that loses the plane)
   if(pc&&camPrev&&!cam.snap){const mx=tx-camPrev.x,my=ty-camPrev.y;if(Math.abs(mx)+Math.abs(my)<40){camPos.x+=mx;camPos.z+=my;lookPos.x+=mx;lookPos.z+=my}}camPrev={x:tx,y:ty};
   const k=cam.snap?1:1-Math.exp(-6*dt);camPos.lerp(want,k);lookPos.lerp(wantLook,k);cam.snap=false;
@@ -1528,7 +1566,7 @@ function updateMarkers(dt){
   const wp=IH.waypoint;wpBeacon.visible=!!wp&&G.state==='play';if(wp)wpBeacon.position.set(wp.x,15,wp.y);
   {let hidden=false;if(G.state==='play'&&IH.settings.cam!=='chase'){const dx=camPos.x-src.x,dz=camPos.z-src.y,l=hypot(dx,dz)||1;for(let d=1.5;d<=11;d+=1.5)if(W.at(src.x+dx/l*d,src.y+dz/l*d)===W.TY.BUILD){hidden=true;break}}
    playerMark.visible=hidden;if(hidden)playerMark.position.set(src.x,(P.inCar?P.inCar.t.ht:1.8)+1.6+Math.sin(t*5)*0.15,src.y)}
-  playerRing.visible=G.state==='play'&&!P.inCar&&!P.ride;playerRing.position.set(P.x,0.12,P.y);
+  playerRing.visible=G.state==='play'&&!P.inCar&&!P.ride;playerRing.position.set(P.x,0.12+W.hillAt(P.x,P.y),P.y);
   for(const pm of pkgMeshes){const got=S.G.pkgs&&S.G.pkgs.has(pm.p.i);pm.m.visible=!got;pm.beam.visible=!got&&hypot(pm.p.x-src.x,pm.p.y-src.y)<40;if(!got){pm.m.rotation.y=t*1.2+pm.p.i;pm.m.position.y=0.15+Math.sin(t*2.5+pm.p.i)*0.1}}
   updateHeli(dt,t);updatePigeons(dt,src);
   for(const im of runwayLights)im.visible=ENV.night>0.08||ENV.rain>0.4;

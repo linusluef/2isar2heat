@@ -109,7 +109,7 @@ for(let i=0;i<MAP*MAP;i++)waterMask[i]=grid[i]===TY.WATER?1:0;
 
 /* ---------- road skeleton ---------- */
 const roads=[];
-function road(name,pts,o){o=o||{};const r={name,pts:densify(pts,o.step||10),w:o.w||7.5,lanes:o.lanes||1,walk:o.walk===undefined?3.5:o.walk,oneway:!!o.oneway,closed:!!o.closed,major:o.major!==false,infill:!!o.infill,alley:!!o.alley,noai:!!o.noai,country:!!o.country,suburb:!!o.suburb,own:!!o.own,motorway:!!o.motorway,once:!!o.once};roads.push(r);return r}
+function road(name,pts,o){o=o||{};const r={name,pts:densify(pts,o.step||10),w:o.w||7.5,lanes:o.lanes||1,walk:o.walk===undefined?3.5:o.walk,oneway:!!o.oneway,closed:!!o.closed,major:o.major!==false,infill:!!o.infill,alley:!!o.alley,noai:!!o.noai,country:!!o.country,suburb:!!o.suburb,own:!!o.own,motorway:!!o.motorway,once:!!o.once,ramp:!!o.ramp,over:o.over||null};roads.push(r);return r}
 const RING_A=(()=>{const x0=360,x1=690,y0=480,y1=780,r=55,pts=[];const arc=(cx,cy,a0)=>{for(let k=0;k<=6;k++){const a=a0+k/6*Math.PI/2;pts.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r])}};
   arc(x1-r,y0+r,-Math.PI/2);arc(x1-r,y1-r,0);arc(x0+r,y1-r,Math.PI/2);arc(x0+r,y0+r,Math.PI);pts.push([pts[0][0],pts[0][1]]);return pts})();
 road('Altstadtring',RING_A,{w:14,lanes:2,closed:true,alley:true});
@@ -220,6 +220,7 @@ function buildGraph(){
   for(const list of hash.values()){
     for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
       const A=segs[list[i]],B=segs[list[j]];
+      if(roads[A.ri].over===roads[B.ri].name||roads[B.ri].over===roads[A.ri].name)continue;   // a bridge: no junction
       if(A.ri===B.ri){const r=roads[A.ri];const n=r.pts.length-1;const d=Math.abs(A.i-B.i);if(d<=1||(r.closed&&d===n-1))continue}
       const key=list[i]<list[j]?list[i]*100000+list[j]:list[j]*100000+list[i];if(seen.has(key))continue;seen.add(key);
       const px=A.a[0],py=A.a[1],rx=A.b[0]-px,ry=A.b[1]-py,qx=B.a[0],qy=B.a[1],sx=B.b[0]-qx,sy=B.b[1]-qy;
@@ -251,17 +252,32 @@ function buildGraph(){
       for(let i=Math.floor(A.s)+1;i<B.s-1e-6;i++)if(i>A.s+1e-6)pts.push(r.pts[i]);
       pts.push([nodes[B.node].x,nodes[B.node].y]);
       const cum=cumLen(pts);const len=cum[cum.length-1];if(len<1.5)continue;
-      edges.push({id:edges.length,road:ri,a:A.node,b:B.node,pts,cum,len,w:r.w,lanes:r.lanes,walk:r.walk,oneway:r.oneway,infill:r.infill,name:r.name,alley:r.alley,alive:true,mw:r.motorway});
+      edges.push({id:edges.length,road:ri,a:A.node,b:B.node,pts,cum,len,w:r.w,lanes:r.lanes,walk:r.walk,oneway:r.oneway,infill:r.infill,name:r.name,alley:r.alley,alive:true,mw:r.motorway,ramp:r.ramp});
     }
   });
   return{nodes,edges};
 }
 /* ---------- out of town (added last): Autobahn ring, Garching with the research campus ---------- */
 // A99: east of the city from north to south, then along the south edge to the west; the A92 branches off east to Garching / the air base
-road('A99',[[1272,40],[1272,600],[1272,1180],[1262,1240],[1222,1268],[1140,1272],[600,1272],[40,1272]],{w:17,lanes:2,walk:0,country:true,own:true,motorway:true,step:12});
-road('A92',[[1272,1060],[1400,1064],[1560,1064],[1749,1064]],{w:15,lanes:2,walk:0,country:true,own:true,motorway:true,step:12});
-for(const[n,a,b]of[['Ausfahrt Bogenhausen',[1184,220],[1272,220]],['Ausfahrt Haidhausen',[1194,773],[1272,773]],['Ausfahrt Giesing',[985,1194],[985,1272]],['Ausfahrt Sendling',[345,1198],[345,1272]],['Ausfahrt Westend',[136,1198],[136,1272]],['Ausfahrt Untergiesing',[805,1185],[790,1272]]])
-  road(n,[a,b],{w:9,country:true,own:true,walk:0});
+// A99 starts at an interchange with the Erdinger Landstraße (east of Bogenhausen) and runs south, then west along the southern edge of the city
+road('A99',[[1272,600],[1272,1180],[1262,1240],[1222,1268],[1140,1272],[600,1272],[18,1272]],{w:17,lanes:2,walk:0,country:true,own:true,motorway:true,step:12});
+road('A99 Nord',[[1272,40],[1272,600]],{w:17,lanes:2,walk:0,country:true,own:true,motorway:true,step:12,over:'Erdinger Landstraße'});   // the Erdinger Landstraße crosses on a bridge
+const RAMP={w:7,country:true,own:true,walk:0,ramp:true};
+road('A99 Anschluss West',smoothPts([[1272,600],[1266,575],[1250,548],[1228,517.43]],3),RAMP);road('A99 Anschluss Ost',smoothPts([[1272,600],[1278,575],[1294,548],[1316,517.8]],3),RAMP);
+// A92 joins the A99 with two curved branches (an "Autobahndreieck") and ends at the Fliegerhorststraße
+road('A92',[[1330,1062],[1400,1064],[1560,1064],[1749,1064]],{w:15,lanes:2,walk:0,country:true,own:true,motorway:true,step:12});
+road('A92 Dreieck Nord',smoothPts([[1330,1062],[1305,1052],[1285,1035],[1272,1005]],3),{w:9,country:true,own:true,walk:0,ramp:true});road('A92 Dreieck Süd',smoothPts([[1330,1062],[1305,1072],[1285,1089],[1272,1120]],3),{w:9,country:true,own:true,walk:0,ramp:true});
+// exits like the real thing: the town road ends at a junction next to the Autobahn, slip roads leave and join at a shallow angle on both sides
+const EXITS=[['Bogenhausen',[1184,220],[1232,220],'v'],['Haidhausen',[1194,773],[1232,773],'v'],['Giesing',[985,1194],[985,1232],'h'],['Sendling',[345,1198],[345,1232],'h'],['Westend',[136,1198],[136,1232],'h']];
+// a smooth curve through the points (Catmull-Rom), sampled about every `step` metres
+function smoothPts(P,step){const out=[];for(let i=0;i+1<P.length;i++){const p0=P[Math.max(0,i-1)],p1=P[i],p2=P[i+1],p3=P[Math.min(P.length-1,i+2)];const n=Math.max(1,Math.ceil(hypot(p2[0]-p1[0],p2[1]-p1[1])/step));
+  for(let k=0;k<n;k++){const t=k/n,t2=t*t,t3=t2*t;const f=(a,b,c,d)=>0.5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);out.push([f(p0[0],p1[0],p2[0],p3[0]),f(p0[1],p1[1],p2[1],p3[1])])}}out.push(P[P.length-1]);return out}
+// slip roads curve out of the town road and run alongside the Autobahn before they merge in at a shallow angle (one-way: off-ramp before, on-ramp after)
+for(const[n,c,p0,o]of EXITS){road('Ausfahrt '+n,[c,p0],{w:9,country:true,own:true,walk:0});
+  const prof=[[-40,0],[-34.5,3],[-28,10],[-21,23],[-15.5,40],[-11.5,58],[-8.8,76],[-6.6,92],[-3.5,104],[0,114]];   // [offset from the Autobahn centre (town side), distance along]
+  for(const sd of[-1,1]){let pts=smoothPts(prof.map(([q,t])=>o==='v'?[1272+q,p0[1]+sd*t]:[p0[0]+sd*t,1272+q]),3);pts[0]=p0;
+    const off=o==='v'?sd<0:sd>0;if(off)pts=pts.slice().reverse();   // right-hand traffic: you leave before the junction and join after it
+    road('Ausfahrt '+n+(sd<0?' (1)':' (2)'),pts,{w:6.5,country:true,own:true,walk:0,ramp:true,oneway:true})}}
 // Garching: a small town east of the Fliegerhorststraße
 for(const y of[700,740,780,820])road('Garching',[[1712,y],[1780,y],[1830,y],[1880,y]],{w:7,suburb:true,walk:2.5,own:true});
 for(const x of[1780,1830,1880])road('Garching',[[x,700],[x,740],[x,780],[x,820]],{w:7,suburb:true,walk:2.5,own:true});
@@ -322,7 +338,7 @@ for(let y=1;y<MAP-1;y++)for(let x=1;x<MAP-1;x++){const i=y*MAP+x;if(grid[i]!==TY
   for(const j of[i-1,i+1,i-MAP,i+MAP]){const g=grid[j];if(waterMask[j]&&(g===TY.BRIDGE||g===TY.WALK)){grid[i]=TY.RAIL;break}}}
 // zebra crossings: a strip across each street just outside its junction
 const zebras=[];
-for(const e of edges){for(const end of['a','b']){const n=nodes[e[end]];if(n.deg<3||n.round)continue;
+for(const e of edges){if(roads[e.road].own&&roads[e.road].country)continue;for(const end of['a','b']){const n=nodes[e[end]];if(n.deg<3||n.round)continue;if(n.edges.some(ei=>roads[edges[ei].road].own&&roads[edges[ei].road].country))continue;
   const d=end==='a'?e.F:e.B;const s=n.r+1.8;if(s+2>e.len/2)continue;const p=pointAt(d.pts,d.cum,s);
   zebras.push({x:p.x,y:p.y,tx:p.tx,ty:p.ty,w:e.w});
   const nx=-p.ty,ny=p.tx;for(let k=-e.w/2;k<=e.w/2;k+=0.5)for(let a=-1.4;a<=1.4;a+=0.5){const x=Math.floor(p.x+nx*k+p.tx*a),y=Math.floor(p.y+ny*k+p.ty*a);if(x>=0&&y>=0&&x<MAP&&y<MAP)cross[y*MAP+x]=1}}}
@@ -517,11 +533,25 @@ for(let y=8;y<MAP-8;y+=7)for(let x=8;x<MAP-8;x+=7){
 }
 
 // now the roads outside the city (Autobahn, Garching, campus) and the houses along them
-const mwMask=new Uint8Array(MAP*MAP);
+const mwMask=new Uint8Array(MAP*MAP),mwBarriers=[],bridges=[];
 const campus={buildings:[],eso:{x:1565,y:960,r:13},ei:{x:1650,y:985,r:8}};
 {const keep=rng;rng=rngOut;try{
   for(const e of edges)if(isOwn(e))paintWalk(e);for(const e of edges)if(isOwn(e))paintRoad(e);
   for(const e of edges)if(e.mw)fillThick(e.pts,e.w/2,(i)=>{mwMask[i]=1},true);
+  // bridges: the Autobahn passes under these roads
+  for(const r of roads){if(!r.over)continue;const o=roads.find(q=>q.name===r.over);if(!o)continue;
+    for(let i=0;i+1<r.pts.length;i++)for(let j=0;j+1<o.pts.length;j++){const a=r.pts[i],b=r.pts[i+1],c=o.pts[j],d=o.pts[j+1];const rx=b[0]-a[0],ry=b[1]-a[1],sx=d[0]-c[0],sy=d[1]-c[1],den=rx*sy-ry*sx;if(Math.abs(den)<1e-9)continue;
+      const t=((c[0]-a[0])*sy-(c[1]-a[1])*sx)/den,u=((c[0]-a[0])*ry-(c[1]-a[1])*rx)/den;if(t<0||t>1||u<0||u>1)continue;const lu=hypot(rx,ry),lo=hypot(sx,sy);
+      {const cum=cumLen(o.pts);bridges.push({x:a[0]+rx*t,y:a[1]+ry*t,ux:rx/lu,uy:ry/lu,uw:r.w/2,ox:sx/lo,oy:sy/lo,ow:o.w/2,owalk:o.walk,deck:6,ramp:22,name:o.name,line:o.pts,cum,sc:cum[j]+u*lo})}}}
+  const inBridge=(x,y,m)=>bridges.some(B=>{const dx=x-B.x,dy=y-B.y,au=dx*B.ux+dy*B.uy,ao=dx*B.ox+dy*B.oy;return Math.abs(ao)<B.uw+3+(m||0)&&Math.abs(au)<B.ow+B.owalk+4+(m||0)});
+  // guard rails and the concrete barrier in the middle: solid; gaps only where a slip road or another road meets the Autobahn
+  {const near=(x,y,r)=>{const ne=nearestEdge(x,y,r,e=>!e.mw);return!!ne&&ne.d<r};const nodeNear=(x,y,r)=>nodes.some(n=>n.edges.length>=3&&Math.abs(n.x-x)<r&&Math.abs(n.y-y)<r&&hypot(n.x-x,n.y-y)<r);
+   for(const e of edges){if(!e.mw)continue;for(const side of[1,-1,0]){let cur=null;const flush=()=>{if(cur&&cur.pts.length>1)mwBarriers.push(cur);cur=null};
+     for(let d=0;d<=e.len;d+=2){const p=pointAt(e.pts,e.cum,Math.min(d,e.len));const nx=-p.ty,ny=p.tx,off=side?side*(e.w/2+0.7):0,x=p.x+nx*off,y=p.y+ny*off;
+       const gap=inBridge(x,y,2)?false:side?near(x,y,e.w/2+3)||nodeNear(x,y,10):nodeNear(p.x,p.y,13)||e.bridge&&false;
+       if(gap){flush();continue}if(!cur)cur={kind:side?'rail':'wall',pts:[]};cur.pts.push([x,y])}flush()}}
+   for(const b of mwBarriers)fillThick(b.pts,b.kind==='rail'?0.6:0.65,(i,x,y)=>{if(inBridge(x,y))return;   // under a bridge the barriers are only drawn: the cars up on the bridge cross there (the game keeps the two levels apart)
+if(!waterMask[i]||grid[i]===TY.BRIDGE)grid[i]=TY.SOLID},false)}
   // the field south of Garching makes room for the research campus
   {const z=draw.zones.find(z=>z.t==='acker'&&z.pts[0][0]===1600&&z.pts[0][1]===900);if(z){fillPoly(rect(1540,900,1950,925),(i)=>{if(grid[i]===TY.FIELD)grid[i]=TY.GRASS});fillPoly(rect(1540,900,1780,1150),(i)=>{if(grid[i]===TY.FIELD)grid[i]=TY.GRASS});z.pts=rect(1780,925,1950,1150);z.bb=null}}
   // Garching: church on the square
@@ -685,11 +715,12 @@ for(let i=0;i<20000&&packages.length<30;i++){const x=Math.floor(DR(30,1170))+0.5
   if(road||!bld)continue;if(packages.some(p=>hypot(p.x-x,p.y-y)<70))continue;packages.push({i:packages.length,x,y})}
 
 /* ---------- railway into the Hauptbahnhof (from a tunnel in the west; laid out after everything else, so nothing else moves) ---------- */
-const rail=(()=>{const Rr={x0:120,portal:122,buffer:309,y0:620,y1:672,hall:[208,624,312,672],tracks:[630,642,654,666],platforms:[[214,634,306,638],[214,658,306,662]]};
+const rail=(()=>{const Rr={x0:120,portal:122,buffer:309,cut:{x0:121,x1:170,y0:623,y1:671,depth:5.5},y0:620,y1:672,hall:[208,624,312,672],tracks:[630,642,654,666],platforms:[[214,634,306,638],[214,658,306,662]]};
   const hit=(pts)=>pts.some(q=>q[0]>=Rr.x0-1&&q[0]<=Rr.hall[0]+1&&q[1]>=Rr.y0&&q[1]<=Rr.y1);
   // clear the block between the tunnel and the station (buildings, trees, bins)
   for(let i=buildings.length-1;i>=0;i--){const b=buildings[i];if(!hit(b.pts))continue;fillPoly(b.pts,(k)=>{if(grid[k]===TY.BUILD)grid[k]=TY.GRASS});buildings.splice(i,1)}
   for(let i=props.length-1;i>=0;i--){const q=props[i];if(q.x>=Rr.x0-1&&q.x<=Rr.hall[0]+1&&q.y>=Rr.y0-1&&q.y<=Rr.y1+1)props.splice(i,1)}
+  for(let i=props.length-1;i>=0;i--){const q=props[i];const ne=nearestEdge(q.x,q.y,16,e=>isOwn(e)&&roads[e.road].country);if(ne&&ne.d<ne.e.w/2+(q.k==='tree'?3.5:1.6))props.splice(i,1)}
   // the hall is open to the west now: the old west wing and hall floor become track bed; the front building (north) and the concourse (east) stay
   fillPoly(rect(Rr.x0,Rr.y0+2,Rr.hall[2],Rr.y1-2),(k)=>{grid[k]=TY.GRASS});
   for(const y of Rr.tracks)fillPoly(rect(Rr.x0,y-2.2,Rr.hall[2],y+2.2),(k)=>{grid[k]=TY.ROAD});
@@ -697,15 +728,29 @@ const rail=(()=>{const Rr={x0:120,portal:122,buffer:309,y0:620,y1:672,hall:[208,
   fillPoly(rect(Rr.hall[2]-2,Rr.hall[1],Rr.hall[2],Rr.hall[3]),(k)=>{grid[k]=TY.BUILD});   // buffer wall of the concourse
   fillPoly(rect(Rr.x0-2,Rr.y0,Rr.x0+2,Rr.y1),(k)=>{if(!Rr.tracks.some(y=>Math.abs(Math.floor(k/MAP)+0.5-y)<2.4))grid[k]=TY.SOLID});   // tunnel portal (openings for the tracks)
   roofs.push({x0:Rr.hall[0],y0:Rr.hall[1],x1:Rr.hall[2],y1:Rr.hall[3],h:16});
+  // west of the station the tracks dip into a cutting and disappear into the tunnel: the cutting is walled off
+  {const C=Rr.cut;fillPoly(rect(C.x0-1,C.y0,C.x1,C.y1),(k)=>{grid[k]=TY.SOLID})}
   draw.zones.push({t:'apron',pts:rect(Rr.x0,Rr.y0,Rr.hall[2],Rr.y1)});
   return Rr})();
+/* ---------- Monopteros on its hill in the Englischer Garten (moved a little into the park so the hill fits) ---------- */
+const hill=(()=>{const L0=landmarks.find(l=>l.k==='monopteros');if(!L0)return null;const H={x:642,y:420,r:24,h:7};
+  fillCircle(L0.x,L0.y,5,(i)=>{if(grid[i]===TY.SOLID)grid[i]=TY.PARK});L0.x=H.x;L0.y=H.y;fillCircle(H.x,H.y,5.2,(i)=>{grid[i]=TY.SOLID});
+  for(let i=props.length-1;i>=0;i--){const q=props[i];if(hypot(q.x-H.x,q.y-H.y)<H.r+1)props.splice(i,1)}   // a clean lawn on the hill
+  return H})();
+// height of a road that crosses the Autobahn on a bridge (ramps up on embankments to the deck); 0 elsewhere
+function bridgeProfile(B,s){const a=Math.abs(s-B.sc)-(B.uw+3);if(a>B.ramp)return 0;const k=a<=0?1:1-a/B.ramp;return B.deck*k*k*(3-2*k)}
+function bridgeH(x,y){for(const B of bridges){const dx=x-B.x,dy=y-B.y;if(Math.abs(dx)>80||Math.abs(dy)>80)continue;
+  // nearest point on the road's own centre line (so the ramps follow its curve)
+  let best=1e9,bs=0;const L=B.uw+3+B.ramp+4;for(let i=0;i+1<B.line.length;i++){if(B.cum[i+1]<B.sc-L||B.cum[i]>B.sc+L)continue;const p=B.line[i],q=B.line[i+1],sx=q[0]-p[0],sy=q[1]-p[1],l2=sx*sx+sy*sy||1;const t=clamp(((x-p[0])*sx+(y-p[1])*sy)/l2,0,1);const d=hypot(x-p[0]-sx*t,y-p[1]-sy*t);if(d<best){best=d;bs=B.cum[i]+t*Math.sqrt(l2)}}
+  if(best>B.ow+B.owalk+1.5)continue;return bridgeProfile(B,bs)}return 0}
+function hillAt(x,y){const H=hill;if(!H)return 0;const dx=x-H.x,dy=y-H.y;if(Math.abs(dx)>H.r||Math.abs(dy)>H.r)return 0;const d=Math.hypot(dx,dy)/H.r;if(d>=1)return 0;const k=1-d*d;return H.h*k*k}
 /* ---------- prop spatial grid ---------- */
 // obstacle heights for flying (2 m cells): buildings, landmarks, towers
 const HC=2,HW=MAP/HC,hgrid=new Uint8Array(HW*HW);
 {const hset=(x,y,h)=>{const i=Math.floor(y/HC)*HW+Math.floor(x/HC);if(i>=0&&i<hgrid.length&&hgrid[i]<h)hgrid[i]=Math.min(255,h)};
  for(let y=0;y<MAP;y+=HC)for(let x=0;x<MAP;x+=HC){const g=grid[y*MAP+x];if(g===TY.BUILD)hset(x,y,28);else if(g===TY.SOLID&&!airside[y*MAP+x])hset(x,y,14)}
  for(const b of buildings){const h=Math.round(b.h+(b.pitched?4:1));fillPoly(b.pts,(i,x,y)=>{const k=Math.floor(y/HC)*HW+Math.floor(x/HC);hgrid[k]=Math.min(255,h)})}
- const tall={olympiaturm:[7,190],arena:[0,52],engel:[5,40],mariensaeule:[4,24],siegestor:[0,26],bavaria:[0,22],kirche:[0,28],uni:[0,24],maximilianeum:[0,30],museum:[0,40],chinaturm:[0,26],monopteros:[0,14],bmw:[0,100],riesenrad:[18,40]};
+ const tall={olympiaturm:[7,190],arena:[0,52],engel:[5,40],mariensaeule:[4,24],siegestor:[0,26],bavaria:[0,22],kirche:[0,28],uni:[0,24],maximilianeum:[0,30],museum:[0,40],chinaturm:[0,26],monopteros:[0,18],bmw:[0,100],riesenrad:[18,40]};
  for(const L of landmarks){const t=tall[L.k];if(!t)continue;if(t[0])fillCircle(L.x,L.y,t[0],(i,x,y)=>hset(x,y,t[1]));else if(t[1])for(let y=L.y-70;y<L.y+70;y+=HC)for(let x=L.x-70;x<L.x+70;x+=HC){const g=at(x,y);if(g===TY.BUILD||g===TY.SOLID){const k=Math.floor(y/HC)*HW+Math.floor(x/HC);if(k>=0&&k<hgrid.length)hgrid[k]=Math.max(hgrid[k]>28?hgrid[k]:0,t[1])}}}
  const fk=landmarks.find(l=>l.k==='frauenkirche');if(fk)for(const r of fk.towers)fillPoly(rect(...r),(i,x,y)=>hset(x,y,99));
  // airport: exact heights of what is actually drawn (the generic 28 m for building cells was far too tall, the parked jets were round blobs)
@@ -719,6 +764,10 @@ const HC=2,HW=MAP/HC,hgrid=new Uint8Array(HW*HW);
     fillThick([[st.x-c*st.len*0.44,st.y-s2*st.len*0.44],[st.x-c*st.len*0.36,st.y-s2*st.len*0.36]],0.6,(i,x,y)=>hset(x,y,fh+(wide?9:6)),false)}}}
 {const B=base,hard=(r,h)=>fillPoly(rect(...r),(i,x,y)=>{hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=h});fillPoly(rect(B.x0,B.y0,B.x1,B.y1),(i,x,y)=>{if(grid[i]!==TY.BUILD)hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=0});
   for(const b of B.barracks)hard(b,10);hard(B.hq,13);hard(B.guard,4);for(const[x0,y0,x1,y1]of B.shelters){hard([x0,y0,x1,y1],0);for(const r of[[x0,y0,x0+2,y1],[x1-2,y0,x1,y1],[x0,y0,x1,y0+2]])hard(r,9)}}
+if(hill)fillCircle(hill.x,hill.y,hill.r,(i,x,y)=>{const k=Math.floor(y/HC)*HW+Math.floor(x/HC);hgrid[k]=Math.max(hgrid[k],Math.ceil(hillAt(x,y)))});
+for(const B of bridges)fillCircle(B.x,B.y,B.ow+B.owalk+2,(i,x,y)=>{const k=Math.floor(y/HC)*HW+Math.floor(x/HC);hgrid[k]=Math.max(hgrid[k],Math.ceil(B.deck+1))});
+for(const b of mwBarriers)fillThick(b.pts,0.6,(i,x,y)=>{hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=1},false);   // barriers are low: no 14 m wall for aircraft
+{const C=rail.cut;fillPoly(rect(C.x0-1,C.y0,C.x1,C.y1),(i,x,y)=>{hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=1})}
 {const C=campus;const set=(cx,cy,r,h)=>fillCircle(cx,cy,r,(i,x,y)=>{hgrid[Math.floor(y/HC)*HW+Math.floor(x/HC)]=h});set(C.eso.x,C.eso.y,C.eso.r,12);set(C.ei.x,C.ei.y,C.ei.r,16)}
 function heightAt(x,y){const i=Math.floor(y/HC)*HW+Math.floor(x/HC);return(x<0||y<0||x>=MAP||y>=MAP)?0:hgrid[i]}
 const PCS=8,PGW=Math.ceil(MAP/PCS),pgrid=new Array(PGW*PGW);
@@ -726,6 +775,6 @@ props.forEach((p,i)=>{p.i=i;const k=Math.floor(p.y/PCS)*PGW+Math.floor(p.x/PCS);
 function propsNear(x,y,r){const out=[];const x0=Math.max(0,Math.floor((x-r)/PCS)),x1=Math.min(PGW-1,Math.floor((x+r)/PCS)),y0=Math.max(0,Math.floor((y-r)/PCS)),y1=Math.min(PGW-1,Math.floor((y+r)/PCS));for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++){const a=pgrid[yy*PGW+xx];if(a)for(const p of a)out.push(p)}return out}
 
 IH.world={MAP,TY,grid,cross,waterMask,airside,at,nodes,edges,roads,buildings,lots,props,propsNear,landmarks,zones,shops,phones,places,pickups,zebras,draw,properties,ramps,packages,crowds,pigeons,xmas,
-  riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,base,compounds,roofs,roofAt,mwMask,campus,rail,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
+  riverX,riverHalf,islandHalf,westX,eastX,RB,SG,airport,base,compounds,roofs,roofAt,mwMask,mwBarriers,bridges,bridgeH,bridgeProfile,campus,rail,hill,hillAt,bank,casino,raceDefs,heightAt,pointAt,cumLen,nearestEdge,roadPts,ellipse,tents,RING_POLY,MR_POLY,districts,pip};
 IH.util={mulberry32,clamp,hypot,pointAt,cumLen};
 })(window));

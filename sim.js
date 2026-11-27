@@ -634,7 +634,7 @@ function collideRemote(active){
 function collideCars(active){
   const circ=active.map(carCircles);
   for(let i=0;i<active.length;i++){const a=active[i];if(a.sink||a.air)continue;
-    for(let j=i+1;j<active.length;j++){const b=active[j];if(b.sink||b.air)continue;if(Math.abs(a.x-b.x)>7||Math.abs(a.y-b.y)>7)continue;
+    for(let j=i+1;j<active.length;j++){const b=active[j];if(b.sink||b.air)continue;if(Math.abs(a.x-b.x)>7||Math.abs(a.y-b.y)>7)continue;if(a.br&&b.br&&a.layer!==b.layer)continue;   // one on the bridge, one below
       const ra=a.t.wid/2+0.08,rb=b.t.wid/2+0.08;let best=null;
       for(const p of circ[i])for(const q of circ[j]){const dx=q[0]-p[0],dy=q[1]-p[1],d=hypot(dx,dy),ov=ra+rb-d;if(ov>0&&(!best||ov>best.ov))best={ov,nx:dx/(d||1),ny:dy/(d||1),px:(p[0]+q[0])/2,py:(p[1]+q[1])/2}}
       if(!best)continue;
@@ -687,7 +687,7 @@ function collidePedsCars(active){
   const list=(onFoot()&&G.state==='play')?peds.concat([player]):peds;
   for(const p of list){
     for(const c of active){
-      if(c.sink||c.z>1||Math.abs(c.x-p.x)>7||Math.abs(c.y-p.y)>7)continue;if(!pointInCar(c,p.x,p.y,0.35))continue;
+      if(c.sink||c.z>1||Math.abs(c.x-p.x)>7||Math.abs(c.y-p.y)>7)continue;if(!pointInCar(c,p.x,p.y,0.35))continue;if(c.layer==='low'&&onBridgeDeck(p.x,p.y))continue;
       const sp=hypot(c.vx,c.vy);
       if(p===player){if(sp>8&&player.stun<=0){hurtPlayer((sp-8)*2.2,'car');player.stun=0.8;player.vx=c.vx*0.8;player.vy=c.vy*0.8;sfx('punch',1,p.x,p.y)}}
       else if(sp>6&&!isDown(p)){knock(p,c.vx*0.9,c.vy*0.9,c.driver==='player'?'car':null,(sp-4)*9*(c.t.mass||1));sfx('punch',0.7,p.x,p.y);continue}
@@ -893,7 +893,7 @@ function planeStep(c,dt){
   const push=T.acc*Math.max(0,1-c.spd/T.max);
   if(!c.air){
     if(ctl.gas)c.spd+=push*dt;
-    else if(ctl.brake){if(c.spd>0.2)c.spd=Math.max(0,c.spd-((c.z||0)>1?22:9)*dt);else c.spd=Math.max(-3,c.spd-2*dt)}   // on a roof: full brakes, the space is short
+    else if(ctl.brake){if(c.spd>0.2)c.spd=Math.max(0,c.spd-((c.z||0)>1?22:9+c.spd*0.12)*dt);else c.spd=Math.max(-3,c.spd-2*dt)}   // on a roof: full brakes, the space is short
     else c.spd=c.spd>0?Math.max(0,c.spd-0.9*dt):Math.min(0,c.spd+3*dt);
     const rate=steer*T.gturn*clamp(Math.abs(c.spd)/3+0.25,0,1)/(1+Math.abs(c.spd)/25);c.a+=rate*dt*(c.spd<-0.1?-1:1);c.roll*=Math.exp(-6*dt);
     if(c===player.inCar&&c.spd>=T.vr&&!c.toldVr){c.toldVr=1;emit('toast','Abhebegeschwindigkeit – jetzt hochziehen (Joystick nach unten)')}
@@ -908,9 +908,10 @@ function planeStep(c,dt){
     if(c.z<1&&at(c.x,c.y)===TY.WATER&&!c.sink){c.sink=0.01;if(c===player.inCar)wasted('Ins Wasser gestürzt.');return}
   }else{
     const stall=c.spd<T.vr*0.72;
-    if(ctl.gas)c.spd+=push*dt;else if(ctl.brake)c.spd-=6*dt;
+    // brake = air brakes (stronger the faster you are); without gas a fast aircraft also slows down by itself, so jets can be brought down to landing speed
+    if(ctl.gas)c.spd+=push*dt;else{if(ctl.brake)c.spd-=(6+c.spd*0.06)*dt;if(c.spd>T.vr*1.6)c.spd-=(c.spd-T.vr*1.6)*0.05*dt}
     c.spd=Math.max(0,c.spd-c.vz*0.12*dt);
-    let vt=pitch>0?pitch*T.climb*clamp(c.spd/T.vr,0,1.3):pitch*T.climb*1.3;if(c.z<14&&vt<0&&!stall)vt=Math.max(vt,-2.6-c.z*0.25);if(stall){vt=c.z<12?-4.5:-14;if(c===player.inCar&&!c.toldStall){c.toldStall=1;emit('toast','Strömungsabriss! Gas geben')}}else c.toldStall=0;
+    let vt=pitch>0?pitch*T.climb*clamp(c.spd/T.vr,0,1.3):pitch*T.climb*1.3;if(c.z<Math.max(14,T.climb*1.3)&&vt<0&&!stall)vt=Math.max(vt,-2.6-c.z*0.25);if(stall){vt=c.z<12?-4.5:-14;if(c===player.inCar&&!c.toldStall){c.toldStall=1;emit('toast','Strömungsabriss! Gas geben')}}else c.toldStall=0;
     c.vz+=(vt-c.vz)*Math.min(1,dt*1.6);c.z+=c.vz*dt;if(c.z>320){c.z=320;c.vz=Math.min(0,c.vz)}
     c.roll+=(steer*0.65-c.roll)*Math.min(1,dt*3);c.a+=steer*T.turn*dt*clamp(c.spd/T.vr,0.5,1.2);
     // touching something: from above it is a landing (street, field or a roof), from the side it is a crash
@@ -1075,6 +1076,21 @@ function racerDrive(c,dt){aiDrive(c,dt)}
 function countCopPeds(){let n=0;for(const p of peds)if(p.kind==='cop')n++;return n}
 
 
+/* ================= bridges over the Autobahn: two levels at one spot ================= */
+// a car near a bridge is either up on the bridge road or down on the Autobahn (decided by its heading when it gets there);
+// cars on different levels don't collide, and each level keeps its own guard rails / parapets
+function bridgeTick(){const BR=W.bridges;if(!BR||!BR.length)return;
+  for(const c of activeCars){if(c.t.plane||c.sink){c.br=null;continue}let inZ=null,au=0,ao=0;
+    for(const B of BR){const dx=c.x-B.x,dy=c.y-B.y;au=dx*B.ux+dy*B.uy;ao=dx*B.ox+dy*B.oy;if(Math.abs(au)<B.ow+B.owalk+12&&Math.abs(ao)<B.uw+12){inZ=B;break}}
+    if(!inZ){c.br=null;c.layer=null;continue}const B=inZ;
+    if(c.br!==B){const hx=Math.cos(c.a),hy=Math.sin(c.a);c.br=B;c.layer=Math.abs(hx*B.ox+hy*B.oy)>Math.abs(hx*B.ux+hy*B.uy)?'up':'low'}
+    const ca=Math.cos(c.a),sa=Math.sin(c.a),hl=c.t.len/2,hw=c.t.wid/2;
+    if(c.layer==='low'&&Math.abs(au)<B.ow+B.owalk+2){const ext=Math.abs(hl*(ca*B.ox+sa*B.oy))+Math.abs(hw*(-sa*B.ox+ca*B.oy)),lim=B.uw+0.5-ext;
+      if(Math.abs(ao)>lim){const sd=Math.sign(ao);c.x-=B.ox*(Math.abs(ao)-lim)*sd;c.y-=B.oy*(Math.abs(ao)-lim)*sd;const vn=(c.vx*B.ox+c.vy*B.oy)*sd;if(vn>0){c.vx-=B.ox*vn*sd*1.3;c.vy-=B.oy*vn*sd*1.3;if(vn>6){damageCar(c,(vn-6)*1.2,false);sfx('crash',0.5,c.x,c.y)}}}}
+    if(c.layer==='up'&&Math.abs(ao)<B.uw+4){const ext=Math.abs(hl*(ca*B.ux+sa*B.uy))+Math.abs(hw*(-sa*B.ux+ca*B.uy)),lim=B.ow+B.owalk-0.2-ext;
+      if(Math.abs(au)>lim){const sd=Math.sign(au);c.x-=B.ux*(Math.abs(au)-lim)*sd;c.y-=B.uy*(Math.abs(au)-lim)*sd;const vn=(c.vx*B.ux+c.vy*B.uy)*sd;if(vn>0){c.vx-=B.ux*vn*sd*1.3;c.vy-=B.uy*vn*sd*1.3;if(vn>6){damageCar(c,(vn-6)*1.2,false);sfx('crash',0.5,c.x,c.y)}}}}}}
+// is this spot up on a bridge (for people) while a car down on the Autobahn passes under it?
+const onBridgeDeck=(x,y)=>W.bridgeH&&W.bridgeH(x,y)>2;
 /* ================= trains into the Hauptbahnhof (same timetable for every player: driven by the wall clock) ================= */
 // each track: a train comes out of the tunnel, brakes to the buffer stop, waits, then leaves backwards into the tunnel (terminus)
 const TRAINS=[{tr:0,type:'ice',cars:5,per:118,off:0},{tr:1,type:'rb',cars:4,per:96,off:40},{tr:2,type:'ice',cars:5,per:134,off:75},{tr:3,type:'rb',cars:3,per:88,off:20}];
@@ -1674,6 +1690,7 @@ function update(dt){
     }else c.rearL=c.rearR=null;
     collideCarProps(c);
   }
+  bridgeTick();
   {const ground=activeCars.filter(c=>!(c.t.plane&&(c.z||0)>2));collideCars(ground);collideRemote(ground)}
   {const A=W.airport;if(A&&A.gate){const src=player.inCar||player;const gy=(A.gate.y0+A.gate.y1)/2;const open=G.state==='play'&&(hypot(src.x-A.gate.x,src.y-gy)<18||activeCars.some(c=>c.cop&&(c.driver==='cop'||c.driver==='copIdle')&&hypot(c.x-A.gate.x,c.y-gy)<22)||peds.some(p=>p.kind==='cop'&&hypot(p.x-A.gate.x,p.y-gy)<8));if(open!==!!A.gateOpen){A.gateOpen=open;for(const i of A.gate.cells)W.grid[i]=open?TY.FIELD:TY.RAIL}}}
   {const B=W.base;if(B){const gx=B.gate.x,gy=B.gate.y;const open=!!B.broken||activeCars.some(c=>(c.cop||c.mil)&&!c.dead&&c.driver&&c.driver!=='player'&&hypot(c.x-gx,c.y-gy)<22)||peds.some(p=>p.kind==='cop'&&!p.guard&&hypot(p.x-gx,p.y-gy)<8);if(open!==!!B.gateOpen){B.gateOpen=open;for(const i of B.gate.cells)W.grid[i]=open?TY.PLAZA:TY.RAIL}

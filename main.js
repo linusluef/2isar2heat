@@ -348,14 +348,18 @@ zone.addEventListener('pointermove',e=>{if(e.pointerId===joyId){e.preventDefault
 const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;inp.mx=inp.my=inp.mm=0;joy.classList.remove('on');joyRest()};
 zone.addEventListener('pointerup',joyEnd);zone.addEventListener('pointercancel',joyEnd);zone.addEventListener('lostpointercapture',joyEnd);
 // free look: swipe anywhere outside the joystick and the buttons to turn the follow camera (like GTA San Andreas)
-const lookPtr=new Map();
+const lookPtr=new Map();let pinchD=null;
 for(const el of[$('lookA'),$('lookB')]){
-  el.addEventListener('pointerdown',e=>{if(IH.settings.cam!=='chase'||G.state!=='play')return;e.preventDefault();initAudio();try{el.setPointerCapture(e.pointerId)}catch(_){}lookPtr.set(e.pointerId,{x:e.clientX,y:e.clientY})});
-  el.addEventListener('pointermove',e=>{const q=lookPtr.get(e.pointerId);if(!q)return;e.preventDefault();const dx=e.clientX-q.x,dy=e.clientY-q.y;q.x=e.clientX;q.y=e.clientY;
+  el.addEventListener('pointerdown',e=>{const air=!!(P.inCar&&P.inCar.t.plane);if((IH.settings.cam!=='chase'&&!air)||G.state!=='play')return;e.preventDefault();initAudio();try{el.setPointerCapture(e.pointerId)}catch(_){}lookPtr.set(e.pointerId,{x:e.clientX,y:e.clientY});pinchD=null});
+  el.addEventListener('pointermove',e=>{const q=lookPtr.get(e.pointerId);if(!q)return;e.preventDefault();
+    // two fingers (outside the joystick) in an aircraft: pinch to zoom the camera in and out
+    if(lookPtr.size>=2&&P.inCar&&P.inCar.t.plane){q.x=e.clientX;q.y=e.clientY;const[a,b]=[...lookPtr.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinchD&&d>10){IH.cam.airZoom=clamp((IH.cam.airZoom||1)*pinchD/d,0.45,3.5)}pinchD=d;return}
+    if(IH.settings.cam!=='chase')return;
+    const dx=e.clientX-q.x,dy=e.clientY-q.y;q.x=e.clientX;q.y=e.clientY;
     const c=IH.cam,k=3.4*(IH.settings.lookSens||1.8)/Math.max(600,innerWidth),inVeh=!!(P.inCar||P.ride);
     if(inVeh)c.look=(c.look||0)+dx*k;else{c.base=(c.base===undefined?c.yaw:c.base)+dx*k;c.freeT=3}
     c.lookP=clamp((c.lookP||0)+dy*k*0.6,-0.3,0.6);c.lookHold=1.6});
-  const end=e=>{lookPtr.delete(e.pointerId)};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end)}
+  const end=e=>{lookPtr.delete(e.pointerId);pinchD=null};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end)}
 $('nextJob').addEventListener('pointerdown',e=>{if(e.target.closest('#storyBtn')){e.preventDefault();e.stopPropagation();if(IH.story)IH.story.toggleNav()}});
 function joyMove(e){const dx=e.clientX-joyX,dy=e.clientY-joyY,d=hypot(dx,dy),Rr=joyR();const k=d>Rr?Rr/d:1;knob.style.transform='translate('+dx*k+'px,'+dy*k+'px)';let m=Math.min(1,d/Rr);if(m<0.1)m=0;inp.mm=m;inp.mx=dx/(d||1)*m;inp.my=dy/(d||1)*m}
 function bindPad(id,down,up){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId)}catch(_){}el.classList.add('down');initAudio();down()});const end=()=>{el.classList.remove('down');up&&up()};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end)}
